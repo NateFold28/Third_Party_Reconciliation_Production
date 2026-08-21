@@ -64,7 +64,7 @@ FRESHNESS_TTL_SECONDS = int(os.getenv("THIRD_PARTY_RECON_DASHBOARD_FRESHNESS_TTL
 #      so the app skips per-row Python classification. Single UNION query
 #      loads every vendor in one round-trip. Cache TTLs bumped so freshness
 #      key alone drives invalidation.
-SLICE_SCHEMA_VERSION = "v24"
+SLICE_SCHEMA_VERSION = "v25"
 
 # Reconciliation check keys shown on every vendor row.
 CHECKS = [

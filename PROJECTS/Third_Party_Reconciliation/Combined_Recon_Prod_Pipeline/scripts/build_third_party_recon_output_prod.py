@@ -197,14 +197,22 @@ CASE
     THEN 'Marketplace Billing Delay'
 
     -- ── 6. API Usage Recorded, No CW Billing ──────────────────────────────
-    -- TRT / API confirms active usage but CW has no corresponding billing.
-    -- API_QUANTITY is copied onto every row of a partner-month (see backfill
-    -- in _run_reports.py STEP 1d2), so the "no CW billing" check must be at
-    -- partner-month grain — otherwise every product-row with $0 CW billing
-    -- for a partner-month that has ANY API usage would over-fire this bucket.
-    WHEN (COALESCE(API_QUANTITY, 0) > 0
-          AND SUM(COALESCE(TOTAL_BILLING_AMOUNT, 0))
-                OVER (PARTITION BY VENDOR, SF_ID, BILLING_MONTH) = 0)
+    -- TRT / API confirms active usage but THIS ROW has no CW billing.
+    -- Check at row level: if API_QUANTITY > 0 (vendor has API activity),
+    -- and this specific product row has ZERO CW billing, then it's an API-driven
+    -- gap (vendor's product is active but CW hasn't billed it yet).
+    --
+    -- NOTE: API_QUANTITY is backfilled to all rows for a partner-month, so
+    -- a partner-month with API activity on Product A will have that same
+    -- API_QUANTITY copied to Product B rows (even if B has no usage).
+    -- To avoid false positives, ONLY fire this rule if THIS ROW's vendor
+    -- activity matches the API activity (i.e., VENDOR_SEATS > 0 at row grain).
+    -- If VENDOR_SEATS = 0 but API_QUANTITY > 0, the usage is NOT on this product,
+    -- so it falls to Rule 9 (Vendor Billing / CW Billing mismatch).
+    WHEN (COALESCE(VENDOR_SEATS, 0) > 0
+          AND COALESCE(API_QUANTITY, 0) > 0
+          AND COALESCE(TOTAL_BILLING_QUANTITY, 0) = 0
+          AND COALESCE(TOTAL_BILLING_AMOUNT, 0) = 0)
          OR OUTCOME_FLAG IN (
              'API Usage Recorded, No CW Billing',
              'Missing CW Billing - API Confirmed',
