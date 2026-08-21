@@ -3,7 +3,7 @@
 -- =============================================================================
 -- Reads from the unified THIRD_PARTY_RECON_DETAIL_PROD table to show how
 -- outcome flags are distributed per vendor per billing month.
--- Run AFTER all vendor 02_final_reconciliation.sql pipelines have been
+-- Run AFTER all vendor <Vendor>_Reconciliation_Script_Prod.sql pipelines have been
 -- executed so THIRD_PARTY_RECON_DETAIL_PROD is current.
 --
 -- Outputs:

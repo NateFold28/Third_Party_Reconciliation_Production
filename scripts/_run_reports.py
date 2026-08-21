@@ -529,51 +529,30 @@ def tbl(cols, rows, title: str) -> None:
 
 
 def run_vendor_pipeline(conn, vendor: str, label: str, extra_sql: str = "") -> bool:
-    """Run a vendor's full pipeline: 00_reference_maps + 01_billing_sources + 02_final_reconciliation.
+    """No-op stub retained for orchestration flow compatibility.
 
-    Concatenated into one execute_string call so TEMPORARY / intermediate tables
-    stay in scope across steps.
+    Live data path in production:
+
+        THIRD_PARTY_STANDALONE_RECON_DETAIL__<VENDOR>  (persistent in Snowflake)
+                v  STEP 1d TRANSLATIONS insert (standalone_insert)
+        THIRD_PARTY_RECON_DETAIL_PROD
+                v  STEP 3 build_third_party_recon_output_prod.py
+        THIRD_PARTY_RECON_OUTPUT_PROD  <- app reads
+
+    The per-vendor SQL files at
+    ``Vendor_Recon_Pipelines_Prod/<VENDOR>/<VENDOR>_Reconciliation_Script_Prod.sql``
+    are the authoritative logic-of-record for each vendor and are preserved
+    in git as the restore point. They are NOT executed by this orchestrator
+    because the STANDALONE recon tables in Snowflake are the source of truth
+    for the unified pipeline.
     """
-    base = REPO / f"Vendor_Recon_Pipelines_Prod/{vendor}/Prod_Pipeline/sql"
-    ref_path   = base / "00_reference_maps.sql"
-    bill_path  = base / "01_billing_sources.sql"
-    recon_path = base / "02_final_reconciliation.sql"
-    if not recon_path.exists():
-        print(f"  SKIP {label}: SQL file not found. Using existing {vendor.upper()}_RECON_DETAIL_PROD table.")
-        return True
-    ref_sql   = ref_path.read_text(encoding="utf-8") if ref_path.exists() else ""
-    bill_sql  = bill_path.read_text(encoding="utf-8") if bill_path.exists() else ""
-    recon_sql = recon_path.read_text(encoding="utf-8")
-    # Some vendor refmap scripts create optional backup clones that fail when
-    # the source object is absent or has changed type (table/view). Strip these
-    # backup-only CLONE statements for idempotent orchestrated runs.
-    ref_sql = re.sub(
-        r"(?im)^\s*CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+\S+\s+CLONE\s+\S+\s*;\s*$",
-        "",
-        ref_sql,
-    )
-    _use_block = "USE ROLE DEVELOPER;\nUSE WAREHOUSE REPORTING_WH;\nUSE DATABASE ANALYTICS_DEV;\nUSE SCHEMA DBT_NFOLD_TRANSFORMATION;"
-    bill_clean  = bill_sql.replace(_use_block, "").lstrip()
-    recon_clean = recon_sql.replace(_use_block, "").lstrip()
-    parts = []
-    if ref_sql:
-        parts.append(ref_sql)
-    if bill_clean:
-        parts.append("\n\n-- ── billing sources ───────────────────────────\n\n" + bill_clean)
-    parts.append("\n\n-- ── reconciliation ────────────────────────────\n\n" + recon_clean)
-    # After vendor SQL builds <VENDOR>_RECON_DETAIL / _SUMMARY (unsuffixed), promote
-    # to *_PROD via zero-copy clone so the downstream unified-insert logic works.
-    parts.append(
-        f"\n\n-- ── promote to _PROD ────────────────────────────\n\n"
-        f"USE ROLE DEVELOPER; USE WAREHOUSE REPORTING_WH;\n"
-        f"USE DATABASE ANALYTICS_DEV; USE SCHEMA DBT_NFOLD_TRANSFORMATION;\n"
-        f"CREATE OR REPLACE TABLE {vendor.upper()}_RECON_DETAIL_PROD  AS SELECT * FROM {vendor.upper()}_RECON_DETAIL;\n"
-        f"CREATE OR REPLACE TABLE {vendor.upper()}_RECON_SUMMARY_PROD AS SELECT * FROM {vendor.upper()}_RECON_SUMMARY;\n"
-    )
-    combined = "".join(parts)
-    if extra_sql:
-        combined += "\n\n" + extra_sql
-    return run_sql(conn, combined, label)
+    recon_path = REPO / f"Vendor_Recon_Pipelines_Prod/{vendor}/{vendor}_Reconciliation_Script_Prod.sql"
+    if recon_path.exists():
+        print(f"  {label}: reference SQL present ({recon_path.name}); pipeline uses STANDALONE table.")
+    else:
+        print(f"  {label}: reference SQL missing; pipeline uses STANDALONE table.")
+    _ = extra_sql  # no-op; retained for signature compatibility
+    return True
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────

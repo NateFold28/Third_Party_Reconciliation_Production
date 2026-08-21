@@ -251,7 +251,7 @@ WHERE r.VENDOR_PRODUCT_SKU = u.VENDOR_PRODUCT_SKU
 -- ── Block C: All other vendors — fill NULL/zero gaps only ─────────────────
 -- Webroot, Proofpoint, Auvik, KeepIT, Exium already include unit prices in
 -- their raw usage files and are NOT overwritten here. ESET is handled by its
--- own invoice_rates CTE inside 02_final_reconciliation.sql. Bitdefender uses
+-- own invoice_rates CTE inside <Vendor>_Reconciliation_Script_Prod.sql. Bitdefender uses
 -- internal cost accounting (no invoice rows).
 UPDATE THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
 SET

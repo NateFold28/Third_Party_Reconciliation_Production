@@ -5,7 +5,7 @@
 -- what the manual reconciliation team marks as "clear" in their workbooks.
 --
 -- How to use:
---   1. Run all vendor 02_final_reconciliation.sql files to refresh _PROD tables.
+--   1. Run all vendor <Vendor>_Reconciliation_Script_Prod.sql files to refresh _PROD tables.
 --   2. Run 03_flag_distribution_report.sql.
 --   3. Run this script.
 --   4. Compare FLAG_GAP_AUDIT results against the manual recon workbooks
