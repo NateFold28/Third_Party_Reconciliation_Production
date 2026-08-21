@@ -206,10 +206,10 @@ CASE
     -- a partner-month with API activity on Product A will have that same
     -- API_QUANTITY copied to Product B rows (even if B has no usage).
     -- To avoid false positives, ONLY fire this rule if THIS ROW's vendor
-    -- activity matches the API activity (i.e., VENDOR_SEATS > 0 at row grain).
-    -- If VENDOR_SEATS = 0 but API_QUANTITY > 0, the usage is NOT on this product,
+    -- activity matches the API activity (i.e., VENDOR_QUANTITY > 0 at row grain).
+    -- If VENDOR_QUANTITY = 0 but API_QUANTITY > 0, the usage is NOT on this product,
     -- so it falls to Rule 9 (Vendor Billing / CW Billing mismatch).
-    WHEN (COALESCE(VENDOR_SEATS, 0) > 0
+    WHEN (COALESCE(VENDOR_QUANTITY, 0) > 0
           AND COALESCE(API_QUANTITY, 0) > 0
           AND COALESCE(TOTAL_BILLING_QUANTITY, 0) = 0
           AND COALESCE(TOTAL_BILLING_AMOUNT, 0) = 0)
