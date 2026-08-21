@@ -69,15 +69,23 @@ Combined_Recon_Prod_Pipeline/
 
 | Table | Role |
 |---|---|
-| `THIRD_PARTY_STANDALONE_RECON_DETAIL__<VENDOR>` | 61-col canonical recon per vendor; **source of truth** feeding `THIRD_PARTY_RECON_DETAIL_PROD` |
+| `THIRD_PARTY_STANDALONE_RECON_DETAIL__<VENDOR>` | 61-col canonical per-vendor intermediate feeding `THIRD_PARTY_RECON_DETAIL_PROD`. **Currently a static snapshot** — see "Known limitation" below. |
 | `THIRD_PARTY_RECON_VENDOR_INVOICES` | dynamic invoice-price reference; every ingestion script queries it |
 | `THIRD_PARTY_RECON_SOURCE_ZUORA_PROD` / `_MARKETPLACE_PROD` / `_TRT_PROD` / `_ROYALTIES_PROD` | unified billing sources built by `sql/01_unified_billing_sources.sql` |
 
 ## Role of `<Vendor>_Reconciliation_Script_Prod.sql`
 
-These 9 files are the **authoritative vendor business logic preserved in git** as the restore point. They are NOT executed by `_run_reports.py` in the current pipeline because `THIRD_PARTY_STANDALONE_RECON_DETAIL__<VENDOR>` in Snowflake is already the canonical intermediate that the unified `THIRD_PARTY_RECON_DETAIL_PROD` inserts from (STEP 1d TRANSLATIONS via `standalone_insert()`).
+These 9 files are the **authoritative vendor business logic preserved in git** as the restore point. They are NOT executed by `_run_reports.py` — the orchestrator reads directly from the STANDALONE tables via `standalone_insert()` in STEP 1d.
 
 If the STANDALONE tables ever need to be rebuilt from source, each vendor's script contains all reconciliation logic (SKU mapping, partner mapping, billing joins, outcome flag derivation) in one self-contained SQL file.
+
+## Known limitation: STANDALONE decoupling
+
+The engine that populated `THIRD_PARTY_STANDALONE_RECON_DETAIL__<VENDOR>` predates this repo and is not present here. As a result, running `_run_reports.py` does not refresh those tables — it only re-projects them into `THIRD_PARTY_RECON_DETAIL_PROD` and the app-facing tables. Fresh ingestion into `THIRD_PARTY_RECON_VENDOR_USAGE_PROD` therefore does not automatically appear in the app until the STANDALONE tables are rebuilt.
+
+Signal exposed to the app: `THIRD_PARTY_RECON_SUMMARY.DATA_LOAD_STATUS` reports `NOT_LOADED` / `PARTIAL` / `LOADED` per (vendor, month), so the Streamlit surface can render "No Data Loaded" instead of a misleading reconciliation rate.
+
+Follow-up work: replace the STANDALONE-based path with `sql/02_build_recon_detail_from_usage.sql` — a single SQL that derives `THIRD_PARTY_RECON_DETAIL_PROD` directly from `THIRD_PARTY_RECON_VENDOR_USAGE_PROD` joined to `THIRD_PARTY_RECON_SOURCE_*_PROD` and the map tables. See repo memory `standalone_elimination_spec_2026_08_21.md`.
 
 ## Verified run (2026-08-21)
 

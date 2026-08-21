@@ -39,76 +39,12 @@ VENDOR_SPRAWL_TABLES = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Helper: INSERT the standard 33-column detail SELECT from a source table into
-# unified THIRD_PARTY_RECON_DETAIL_PROD with VENDOR column.
-# Caller supplies:
-#   vendor      - vendor name (string) to populate VENDOR column
-#   src         - source table name
-#   inv_expr    - SQL expression for INV_ID  (e.g. "NULL::VARCHAR" or "ZUORA_INV")
-#   sku_expr    - SQL expression for SKU_MATCH_GROUP (e.g. "VENDOR_PRODUCT")
-#   vendor_prod - SQL expression for VENDOR_PRODUCT  (e.g. "VENDOR_PRODUCT" or "EXIUM_PRODUCT")
-#   cw_expr     - SQL expression for CW_SKUS
-#   zuora_sku   - SQL expression for ZUORA_SKUS
-#   mp_sku      - SQL expression for MARKETPLACE_SKUS
-#   v_amount    - SQL expression for VENDOR_AMOUNT   (e.g. "COALESCE(VENDOR_AMOUNT,0)::FLOAT" or "NULL::FLOAT")
-#   v_uprice    - SQL expression for VENDOR_UNIT_PRICE
-#   has_disc    - SQL expression for HAS_DISCOUNT
-#   dup_flag    - SQL expression for DUPLICATE_BILLING_FLAG
-#   outcome_map - CASE expression string for OUTCOME_FLAG
-#   extra_where - optional WHERE clause (empty string = no filter)
+# make_summary() populates THIRD_PARTY_RECON_SUMMARY_PROD from the unified
+# THIRD_PARTY_RECON_DETAIL_PROD once translation blocks have finished. The
+# canonical (14-bucket) SUMMARY table used by the app is built later by
+# build_third_party_recon_output_prod.py; SUMMARY_PROD keeps the pre-canonical
+# 12-value distribution around for legacy consumers and drift audits.
 # ─────────────────────────────────────────────────────────────────────────────
-def make_translation(vendor: str, src: str, *, inv_expr: str, sku_expr: str,
-                     vendor_prod: str = "VENDOR_PRODUCT",
-                     cw_expr: str, zuora_sku: str, mp_sku: str,
-                     v_uprice: str = "VENDOR_UNIT_PRICE::FLOAT",
-                     v_amount: str = "COALESCE(VENDOR_AMOUNT,0)::FLOAT",
-                     has_disc: str = "'FALSE'::VARCHAR",
-                     dup_flag: str, outcome_map: str,
-                     extra_where: str = "") -> str:
-    where = f"\n    WHERE {extra_where}" if extra_where else ""
-    return f"""{USE}
-INSERT INTO THIRD_PARTY_RECON_DETAIL_PROD
-SELECT
-    '{vendor}'::VARCHAR                                                         AS VENDOR,
-    BILLING_MONTH::DATE                                                         AS BILLING_MONTH,
-    SF_ID                                                                       AS SF_ID,
-    {inv_expr}                                                                  AS INV_ID,
-    NULL::VARCHAR                                                               AS BILLING_TYPE,
-    VENDOR_PARTNER_NAME                                                         AS VENDOR_PARTNER_NAME,
-    {vendor_prod}                                                               AS VENDOR_PRODUCT,
-    {sku_expr}                                                                  AS SKU_MATCH_GROUP,
-    {cw_expr}                                                                   AS CW_SKUS,
-    {zuora_sku}                                                                 AS ZUORA_SKUS,
-    {mp_sku}                                                                    AS MARKETPLACE_SKUS,
-    BILLING_SOURCE_MIX                                                          AS BILLING_SOURCE_MIX,
-    NULL::FLOAT                                                                 AS API_QUANTITY,
-    NULL::FLOAT                                                                 AS AVG_API_QUANTITY,
-    COALESCE(VENDOR_QUANTITY,0)::FLOAT                                          AS VENDOR_QUANTITY,
-    {v_uprice}                                                                  AS VENDOR_UNIT_PRICE,
-    {v_amount}                                                                  AS VENDOR_AMOUNT,
-    COALESCE(ZUORA_QUANTITY,0)::FLOAT                                           AS ZUORA_QUANTITY,
-    ZUORA_UNIT_PRICE::FLOAT                                                     AS ZUORA_UNIT_PRICE,
-    COALESCE(ZUORA_AMOUNT,0)::FLOAT                                             AS ZUORA_AMOUNT,
-    COALESCE(MARKETPLACE_QUANTITY,0)::FLOAT                                     AS MARKETPLACE_QUANTITY,
-    CASE WHEN COALESCE(MARKETPLACE_QUANTITY,0)>0
-         THEN MARKETPLACE_AMOUNT/MARKETPLACE_QUANTITY ELSE NULL END::FLOAT      AS MARKETPLACE_UNIT_PRICE,
-    COALESCE(MARKETPLACE_AMOUNT,0)::FLOAT                                       AS MARKETPLACE_AMOUNT,
-    COALESCE(TOTAL_BILLING_QUANTITY,0)::FLOAT                                   AS TOTAL_BILLING_QUANTITY,
-    COALESCE(TOTAL_BILLING_AMOUNT,0)::FLOAT                                     AS TOTAL_BILLING_AMOUNT,
-    QTY_DELTA::FLOAT                                                            AS QTY_DELTA,
-    ABS_QTY_DELTA::FLOAT                                                        AS ABS_QTY_DELTA,
-    AMOUNT_DELTA::FLOAT                                                         AS AMOUNT_DELTA,
-    ABS_AMOUNT_DELTA::FLOAT                                                     AS ABS_AMOUNT_DELTA,
-    CASE WHEN COALESCE(TOTAL_BILLING_AMOUNT,0)>0
-         THEN ROUND((COALESCE(TOTAL_BILLING_AMOUNT,0)-COALESCE(VENDOR_AMOUNT,0))
-              /TOTAL_BILLING_AMOUNT*100,1) ELSE NULL END::FLOAT                 AS CW_MARGIN_PCT,
-    {has_disc}                                                                  AS HAS_DISCOUNT,
-    {dup_flag}                                                                  AS DUPLICATE_BILLING_FLAG,
-    {outcome_map}                                                               AS OUTCOME_FLAG,
-    INVESTIGATION_REASON                                                        AS INVESTIGATION_REASON
-FROM {src}{where};"""
-
-
 def make_summary(vendor: str, src_prod: str) -> str:
     return f"""{USE}
 INSERT INTO THIRD_PARTY_RECON_SUMMARY_PROD
@@ -152,125 +88,10 @@ FROM {src_prod} GROUP BY BILLING_MONTH ORDER BY BILLING_MONTH;"""
 #
 # Rules are mutually exclusive. CW >= vendor → Clear (absorbs old Overage).
 # "CW Billing, Insufficient Vendor Billing" is merged into Clear.
-# ── Outcome maps ─────────────────────────────────────────────────────────────
-ACRONIS_OUTCOME = """CASE
-    WHEN OUTCOME_FLAG IN ('CLEAR','MARKETPLACE_ONLY_CLEAR','MINOR_DRIFT',
-                          'NEGLIGIBLE_DOLLAR_EXPOSURE','NO_ACTIVITY',
-                          'OVERAGE_EXPECTED','MATERIAL_OVER_VENDOR',
-                          'BILLING_DIFFERENTIAL_OVER','MARKETPLACE_OVERAGE')
-                                                             THEN 'Clear'
-    WHEN OUTCOME_FLAG = 'MARKETPLACE_TIMING'                 THEN 'Marketplace Billing Delay'
-    WHEN OUTCOME_FLAG = 'PARTNER_MAPPING_REQUIRED'           THEN 'Unmapped Partner'
-    WHEN OUTCOME_FLAG IN ('VENDOR_PRODUCT_NO_CW_SKU',
-                          'VENDOR_SKU_NO_CW_SKU',
-                          'VENDOR_ADDON_NO_CW_SKU')          THEN 'Vendor SKU, No CW SKU'
-    WHEN OUTCOME_FLAG IN ('CW_ONLY_ADDON_NO_VENDOR',
-                          'CW_SKU_NO_VENDOR_SKU')            THEN 'CW SKU, No Vendor SKU'
-    WHEN OUTCOME_FLAG = 'DUPLICATE_BILLING'                  THEN 'Duplicated CW Invoice'
-    WHEN OUTCOME_FLAG IN ('RMM_DISCOUNTED','KNOWN_DISCOUNT_BUNDLE',
-                          'MDR_BUNDLE','CW_INCLUDED_ZERO_DOLLAR',
-                          'INTENTIONAL_DISCOUNT')            THEN 'Known Discount / Bundle'
-    -- CW has billing but vendor amount = 0
-    WHEN OUTCOME_FLAG IN ('STRUCTURAL_BILLING_ONLY',
-                          'MARKETPLACE_BILLING_NO_VENDOR')
-         AND COALESCE(VENDOR_AMOUNT,0) = 0                   THEN 'CW Billing, No Vendor Billing'
-    -- Vendor has billing but CW amount = 0
-    WHEN OUTCOME_FLAG = 'STRUCTURAL_VENDOR_ONLY_NO_CONTRACT'
-         AND COALESCE(TOTAL_BILLING_AMOUNT,0) = 0            THEN 'Vendor Billing, No CW Billing'
-    -- Vendor > CW by >25%, both sides have amounts
-    WHEN OUTCOME_FLAG IN ('MATERIAL_UNDER_VENDOR','BILLING_DIFFERENTIAL_UNDER')
-         AND COALESCE(TOTAL_BILLING_AMOUNT,0) = 0            THEN 'Vendor Billing, No CW Billing'
-    WHEN OUTCOME_FLAG IN ('MATERIAL_UNDER_VENDOR','BILLING_DIFFERENTIAL_UNDER')
-         AND COALESCE(VENDOR_AMOUNT,0) > COALESCE(TOTAL_BILLING_AMOUNT,0) * 1.25
-                                                             THEN 'Vendor Billing, Insufficient CW Billing'
-    WHEN OUTCOME_FLAG IN ('MATERIAL_UNDER_VENDOR','BILLING_DIFFERENTIAL_UNDER')
-                                                             THEN 'Clear'
-    ELSE 'Other Issue' END"""
-
-# ESET uses direct INSERT from ESET_RECON_DETAIL_PROD; ESET_OUTCOME defined here
-# for documentation only. Normalization is applied in the post-process UPDATE.
-ESSET_OUTCOME_DOC = """-- ESET internal flags: CLEAR, PARTNER_MAPPING_REQUIRED, NO_BILLING_NO_HISTORY,
--- BILLING_OVER_VENDOR, VENDOR_OVER_BILLING. All normalized in post-process."""
-
-EXIUM_OUTCOME = """CASE
-    WHEN OUTCOME_FLAG = 'CLEAR'                        THEN 'Clear'
-    WHEN OUTCOME_FLAG = 'PARTNER_MAPPING_REQUIRED'     THEN 'Unmapped Partner'
-    WHEN OUTCOME_FLAG = 'DUPLICATE_BILLING'            THEN 'Duplicated CW Invoice'
-    WHEN OUTCOME_FLAG = 'BILLING_TIMING_ADJACENT_MONTH' THEN 'Marketplace Billing Delay'
-    WHEN OUTCOME_FLAG = 'SKU_MISMATCH_BILLING_ON_OTHER_SKU' THEN 'Vendor SKU, No CW SKU'
-    WHEN OUTCOME_FLAG = 'NO_BILLING_NO_HISTORY'
-         AND COALESCE(TOTAL_BILLING_AMOUNT,0) = 0      THEN 'Vendor Billing, No CW Billing'
-    WHEN OUTCOME_FLAG = 'BILLING_OVER_VENDOR'
-         AND COALESCE(VENDOR_AMOUNT,0) = 0             THEN 'CW Billing, No Vendor Billing'
-    WHEN OUTCOME_FLAG = 'BILLING_OVER_VENDOR'          THEN 'Clear'
-    WHEN OUTCOME_FLAG = 'VENDOR_OVER_BILLING'
-         AND COALESCE(TOTAL_BILLING_AMOUNT,0) = 0      THEN 'Vendor Billing, No CW Billing'
-    WHEN OUTCOME_FLAG = 'VENDOR_OVER_BILLING'
-         AND COALESCE(VENDOR_AMOUNT,0) > COALESCE(TOTAL_BILLING_AMOUNT,0) * 1.25
-                                                       THEN 'Vendor Billing, Insufficient CW Billing'
-    WHEN OUTCOME_FLAG = 'VENDOR_OVER_BILLING'          THEN 'Clear'
-    ELSE 'Other Issue' END"""
-
-PP_OUTCOME = """CASE
-    WHEN OUTCOME_FLAG IN ('CLEAR','MINOR_DRIFT',
-                          'MATERIAL_OVER_VENDOR','BILLING_DIFFERENTIAL_OVER')
-                                                                THEN 'Clear'
-    WHEN OUTCOME_FLAG = 'MARKETPLACE_TIMING'                    THEN 'Marketplace Billing Delay'
-    WHEN OUTCOME_FLAG = 'PARTNER_MAPPING_REQUIRED'              THEN 'Unmapped Partner'
-    WHEN OUTCOME_FLAG = 'DUPLICATE_BILLING'                     THEN 'Duplicated CW Invoice'
-    WHEN OUTCOME_FLAG = 'SKU_MISMATCH_BILLING_ON_OTHER_SKU'     THEN 'Vendor SKU, No CW SKU'
-    WHEN OUTCOME_FLAG IN ('KNOWN_GOOD_MAPPING_MISSING_CURRENT_BILLING',
-                          'STRUCTURAL_VENDOR_ONLY_NO_CONTRACT',
-                          'NO_BILLING_NO_HISTORY')
-         AND COALESCE(TOTAL_BILLING_AMOUNT,0) = 0               THEN 'Vendor Billing, No CW Billing'
-    WHEN OUTCOME_FLAG = 'CONTRACT_TIMING_OR_INACTIVE'
-         AND COALESCE(TOTAL_BILLING_AMOUNT,0) = 0               THEN 'Vendor Billing, No CW Billing'
-    WHEN OUTCOME_FLAG IN ('MATERIAL_UNDER_VENDOR','BILLING_DIFFERENTIAL_UNDER')
-         AND COALESCE(TOTAL_BILLING_AMOUNT,0) = 0               THEN 'Vendor Billing, No CW Billing'
-    WHEN OUTCOME_FLAG IN ('MATERIAL_UNDER_VENDOR','BILLING_DIFFERENTIAL_UNDER')
-         AND COALESCE(VENDOR_AMOUNT,0) > COALESCE(TOTAL_BILLING_AMOUNT,0) * 1.25
-                                                                THEN 'Vendor Billing, Insufficient CW Billing'
-    WHEN OUTCOME_FLAG IN ('MATERIAL_UNDER_VENDOR','BILLING_DIFFERENTIAL_UNDER')
-                                                                THEN 'Clear'
-    ELSE 'Other Issue' END"""
-
-S1_OUTCOME = """CASE
-    WHEN OUTCOME_FLAG IN ('CLEAR','MINOR_DRIFT',
-                          'MATERIAL_OVER_VENDOR','BILLING_DIFFERENTIAL_OVER')
-                                                              THEN 'Clear'
-    WHEN OUTCOME_FLAG = 'PARTNER_MAPPING_REQUIRED'            THEN 'Unmapped Partner'
-    WHEN OUTCOME_FLAG IN ('VENDOR_ADDON_NO_CW_SKU',
-                          'VENDOR_PRODUCT_NO_CW_SKU',
-                          'VENDOR_SKU_NO_CW_SKU',
-                          'SKU_MISMATCH_BILLING_ON_OTHER_SKU') THEN 'Vendor SKU, No CW SKU'
-    WHEN OUTCOME_FLAG IN ('CW_ONLY_ADDON_NO_VENDOR',
-                          'CW_SKU_NO_VENDOR_SKU')             THEN 'CW SKU, No Vendor SKU'
-    WHEN OUTCOME_FLAG = 'DUPLICATE_BILLING'                   THEN 'Duplicated CW Invoice'
-    WHEN OUTCOME_FLAG = 'MDR_BUNDLE'                          THEN 'Known Discount / Bundle'
-    WHEN OUTCOME_FLAG IN ('STRUCTURAL_VENDOR_ONLY_TRT_CONFIRMED',
-                          'TRT_VENDOR_USAGE_NOT_BILLED')      THEN 'API Usage Recorded, No CW Billing'
-    WHEN OUTCOME_FLAG IN ('STRUCTURAL_VENDOR_ONLY_NO_CONTRACT',
-                          'NO_BILLING_NO_HISTORY',
-                          'MAPPED_ADDON_NO_CURRENT_BILLING',
-                          'KNOWN_GOOD_MAPPING_MISSING_CURRENT_BILLING',
-                          'CONTRACT_TIMING_OR_INACTIVE')
-         AND COALESCE(TOTAL_BILLING_AMOUNT,0) = 0             THEN 'Vendor Billing, No CW Billing'
-    WHEN OUTCOME_FLAG IN ('STRUCTURAL_BILLING_ONLY',
-                          'BILLING_ONLY_NO_VENDOR_USAGE',
-                          'STRUCTURAL_BILLING_ONLY_TRT_CONFIRMED')
-         AND COALESCE(VENDOR_AMOUNT,0) = 0                    THEN 'CW Billing, No Vendor Billing'
-    WHEN OUTCOME_FLAG IN ('MATERIAL_UNDER_VENDOR','BILLING_DIFFERENTIAL_UNDER',
-                          'ACCOUNT_HAS_OTHER_S1_BILLING_NO_MATCH')
-         AND COALESCE(TOTAL_BILLING_AMOUNT,0) = 0             THEN 'Vendor Billing, No CW Billing'
-    WHEN OUTCOME_FLAG IN ('MATERIAL_UNDER_VENDOR','BILLING_DIFFERENTIAL_UNDER',
-                          'ACCOUNT_HAS_OTHER_S1_BILLING_NO_MATCH')
-         AND COALESCE(VENDOR_AMOUNT,0) > COALESCE(TOTAL_BILLING_AMOUNT,0) * 1.25
-                                                              THEN 'Vendor Billing, Insufficient CW Billing'
-    WHEN OUTCOME_FLAG IN ('MATERIAL_UNDER_VENDOR','BILLING_DIFFERENTIAL_UNDER',
-                          'ACCOUNT_HAS_OTHER_S1_BILLING_NO_MATCH')
-                                                              THEN 'Clear'
-    ELSE 'Other Issue' END"""
-
+# All vendor OUTCOME_FLAG canonicalization is now performed centrally by
+# build_third_party_recon_output_prod.py against RECON_DETAIL_PROD. The old
+# per-vendor OUTCOME map CASE constants and LEGACY_TRANSLATIONS were removed
+# 2026-08-21 (unused since STANDALONE tables took over as the source-of-truth).
 # ── Build translation SQL blocks ──────────────────────────────────────────────
 STANDALONE_VENDOR_TABLES = {
     "Acronis":     "THIRD_PARTY_STANDALONE_RECON_DETAIL__ACRONIS",
@@ -341,126 +162,6 @@ TRANSLATIONS = {
     for vendor, table in STANDALONE_VENDOR_TABLES.items()
 }
 
-# Legacy per-vendor translation blocks retained for reference only (unused).
-LEGACY_TRANSLATIONS = {
-    "Acronis": (
-        make_translation("Acronis", "ACRONIS_RECON_DETAIL",
-            inv_expr="NULL::VARCHAR",
-            sku_expr="VENDOR_PRODUCT",
-            cw_expr="ARRAY_TO_STRING(CW_SKUS, ' | ')",
-            zuora_sku="ARRAY_TO_STRING(ZUORA_SKUS, ' | ')",
-            mp_sku="ARRAY_TO_STRING(MARKETPLACE_SKUS, ' | ')",
-            dup_flag="IFF(DUPLICATE_BILLING_FLAG,'TRUE','FALSE')::VARCHAR",
-            outcome_map=ACRONIS_OUTCOME)
-        + "\n" + make_summary("Acronis", "THIRD_PARTY_RECON_DETAIL_PROD")
-    ),
-    "Auvik": (
-        make_translation("Auvik", "AUVIK_RECON_DETAIL",
-            inv_expr="NULL::VARCHAR",
-            sku_expr="SKU_MATCH_GROUP",
-            vendor_prod="AUVIK_PRODUCT",
-            cw_expr="IFF(TYPEOF(CW_SKUS)='ARRAY', ARRAY_TO_STRING(CW_SKUS, ' | '), TO_VARCHAR(CW_SKUS))",
-            zuora_sku="IFF(TYPEOF(ZUORA_SKUS)='ARRAY', ARRAY_TO_STRING(ZUORA_SKUS, ' | '), TO_VARCHAR(ZUORA_SKUS))",
-            mp_sku="IFF(TYPEOF(MARKETPLACE_SKUS)='ARRAY', ARRAY_TO_STRING(MARKETPLACE_SKUS, ' | '), TO_VARCHAR(MARKETPLACE_SKUS))",
-            v_uprice="VENDOR_UNIT_PRICE::FLOAT",
-            v_amount="COALESCE(VENDOR_AMOUNT,0)::FLOAT",
-            has_disc="'FALSE'::VARCHAR",
-            dup_flag="IFF(UPPER(COALESCE(TO_VARCHAR(DUPLICATE_BILLING_FLAG),'FALSE'))='TRUE','TRUE','FALSE')::VARCHAR",
-            outcome_map="OUTCOME_FLAG")
-        + "\n" + make_summary("Auvik", "THIRD_PARTY_RECON_DETAIL_PROD")
-    ),
-    "Bitdefender": (
-        make_translation("Bitdefender", "BITDEFENDER_RECON_DETAIL",
-            inv_expr="NULL::VARCHAR",
-            sku_expr="SKU_MATCH_GROUP",
-            cw_expr="IFF(TYPEOF(CW_SKUS)='ARRAY', ARRAY_TO_STRING(CW_SKUS, ' | '), TO_VARCHAR(CW_SKUS))",
-            zuora_sku="IFF(TYPEOF(ZUORA_SKUS)='ARRAY', ARRAY_TO_STRING(ZUORA_SKUS, ' | '), TO_VARCHAR(ZUORA_SKUS))",
-            mp_sku="IFF(TYPEOF(MARKETPLACE_SKUS)='ARRAY', ARRAY_TO_STRING(MARKETPLACE_SKUS, ' | '), TO_VARCHAR(MARKETPLACE_SKUS))",
-            v_uprice="VENDOR_UNIT_PRICE::FLOAT",
-            v_amount="COALESCE(VENDOR_AMOUNT,0)::FLOAT",
-            has_disc="'FALSE'::VARCHAR",
-            dup_flag="IFF(UPPER(COALESCE(TO_VARCHAR(DUPLICATE_BILLING_FLAG),'FALSE'))='TRUE','TRUE','FALSE')::VARCHAR",
-            outcome_map="OUTCOME_FLAG")
-        + "\n" + make_summary("Bitdefender", "THIRD_PARTY_RECON_DETAIL_PROD")
-    ),
-    "ESET": (
-        make_translation("ESET", "ESET_RECON_DETAIL",
-            inv_expr="NULL::VARCHAR",
-            sku_expr="VENDOR_PRODUCT",
-            cw_expr="IFF(TYPEOF(CW_SKUS)='ARRAY', ARRAY_TO_STRING(CW_SKUS, ' | '), TO_VARCHAR(CW_SKUS))",
-            zuora_sku="IFF(TYPEOF(ZUORA_SKUS)='ARRAY', ARRAY_TO_STRING(ZUORA_SKUS, ' | '), TO_VARCHAR(ZUORA_SKUS))",
-            mp_sku="IFF(TYPEOF(MARKETPLACE_SKUS)='ARRAY', ARRAY_TO_STRING(MARKETPLACE_SKUS, ' | '), TO_VARCHAR(MARKETPLACE_SKUS))",
-            v_uprice="VENDOR_UNIT_PRICE::FLOAT",
-            v_amount="COALESCE(VENDOR_AMOUNT,0)::FLOAT",
-            has_disc="'FALSE'::VARCHAR",
-            dup_flag="IFF(UPPER(COALESCE(TO_VARCHAR(DUPLICATE_BILLING_FLAG),'FALSE'))='TRUE','TRUE','FALSE')::VARCHAR",
-            outcome_map="BASE_OUTCOME_FLAG")
-        + "\n" + make_summary("ESET", "THIRD_PARTY_RECON_DETAIL_PROD")
-    ),
-    "Exium": (
-        make_translation("Exium", "EXIUM_RECON_DETAIL",
-            inv_expr="NULL::VARCHAR",
-            sku_expr="SKU_MATCH_GROUP",
-            vendor_prod="EXIUM_PRODUCT",
-            cw_expr="ARRAY_TO_STRING(CW_SKUS, ' | ')",
-            zuora_sku="ARRAY_TO_STRING(ZUORA_SKUS, ' | ')",
-            mp_sku="ARRAY_TO_STRING(MARKETPLACE_SKUS, ' | ')",
-            dup_flag="IFF(DUPLICATE_BILLING_FLAG=TRUE,'TRUE','FALSE')::VARCHAR",
-            outcome_map=EXIUM_OUTCOME)
-        + "\n" + make_summary("Exium", "THIRD_PARTY_RECON_DETAIL_PROD")
-    ),
-    "KeepIT": (
-        make_translation("KeepIT", "KEEPIT_RECON_DETAIL",
-            inv_expr="NULL::VARCHAR",
-            sku_expr="VENDOR_PRODUCT",
-            cw_expr="IFF(TYPEOF(CW_SKUS)='ARRAY', ARRAY_TO_STRING(CW_SKUS, ' | '), TO_VARCHAR(CW_SKUS))",
-            zuora_sku="IFF(TYPEOF(ZUORA_SKUS)='ARRAY', ARRAY_TO_STRING(ZUORA_SKUS, ' | '), TO_VARCHAR(ZUORA_SKUS))",
-            mp_sku="IFF(TYPEOF(MARKETPLACE_SKUS)='ARRAY', ARRAY_TO_STRING(MARKETPLACE_SKUS, ' | '), TO_VARCHAR(MARKETPLACE_SKUS))",
-            v_uprice="VENDOR_UNIT_PRICE::FLOAT",
-            v_amount="COALESCE(VENDOR_AMOUNT,0)::FLOAT",
-            has_disc="'FALSE'::VARCHAR",
-            dup_flag="IFF(UPPER(COALESCE(TO_VARCHAR(DUPLICATE_BILLING_FLAG),'FALSE'))='TRUE','TRUE','FALSE')::VARCHAR",
-            outcome_map="OUTCOME_FLAG")
-        + "\n" + make_summary("KeepIT", "THIRD_PARTY_RECON_DETAIL_PROD")
-    ),
-    "Proofpoint": (
-        make_translation("Proofpoint", "PROOFPOINT_RECON_DETAIL",
-            inv_expr="NULL::VARCHAR",
-            sku_expr="VENDOR_PRODUCT",
-            cw_expr="ARRAY_TO_STRING(CW_SKUS, ' | ')",
-            zuora_sku="ARRAY_TO_STRING(ZUORA_SKUS, ' | ')",
-            mp_sku="ARRAY_TO_STRING(MARKETPLACE_SKUS, ' | ')",
-            dup_flag="IFF(DUPLICATE_BILLING_FLAG,'TRUE','FALSE')::VARCHAR",
-            outcome_map=PP_OUTCOME)
-        + "\n" + make_summary("Proofpoint", "THIRD_PARTY_RECON_DETAIL_PROD")
-    ),
-    "SentinelOne": (
-        make_translation("SentinelOne", "SENTINELONE_RECON_DETAIL",
-            inv_expr="ZUORA_INV",
-            sku_expr="SKU_MATCH_GROUP",
-            cw_expr="ARRAY_TO_STRING(CW_SKUS, ' | ')",
-            zuora_sku="ARRAY_TO_STRING(ZUORA_SKUS, ' | ')",
-            mp_sku="ARRAY_TO_STRING(MARKETPLACE_SKUS, ' | ')",
-            has_disc="IFF(COALESCE(MDR_BUNDLE_AMOUNT,0)>0,'TRUE','FALSE')::VARCHAR",
-            dup_flag="IFF(DUPLICATE_BILLING_FLAG,'TRUE','FALSE')::VARCHAR",
-            outcome_map=S1_OUTCOME)
-        + "\n" + make_summary("SentinelOne", "THIRD_PARTY_RECON_DETAIL_PROD")
-    ),
-    "Webroot": (
-        make_translation("Webroot", "WEBROOT_RECON_DETAIL",
-            inv_expr="NULL::VARCHAR",
-            sku_expr="SKU_MATCH_GROUP",
-            cw_expr="IFF(TYPEOF(CW_SKUS)='ARRAY', ARRAY_TO_STRING(CW_SKUS, ' | '), TO_VARCHAR(CW_SKUS))",
-            zuora_sku="IFF(TYPEOF(ZUORA_SKUS)='ARRAY', ARRAY_TO_STRING(ZUORA_SKUS, ' | '), TO_VARCHAR(ZUORA_SKUS))",
-            mp_sku="IFF(TYPEOF(MARKETPLACE_SKUS)='ARRAY', ARRAY_TO_STRING(MARKETPLACE_SKUS, ' | '), TO_VARCHAR(MARKETPLACE_SKUS))",
-            v_uprice="VENDOR_UNIT_PRICE::FLOAT",
-            v_amount="COALESCE(VENDOR_AMOUNT,0)::FLOAT",
-            has_disc="'FALSE'::VARCHAR",
-            dup_flag="IFF(UPPER(COALESCE(TO_VARCHAR(DUPLICATE_BILLING_FLAG),'FALSE'))='TRUE','TRUE','FALSE')::VARCHAR",
-            outcome_map="OUTCOME_FLAG")
-        + "\n" + make_summary("Webroot", "THIRD_PARTY_RECON_DETAIL_PROD")
-    ),
-}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -793,10 +494,10 @@ WHERE d.SF_ID = e.sf_id AND d.BILLING_MONTH = e.billing_month;"""
     print("\n=== STEP 1d2: Backfill cycle-aware API_QUANTITY / AVG_API_QUANTITY ===")
     # Vendor-level populate ran in STEP 1c3 (Auvik/BD/Webroot/SentinelOne).
     # For Auvik/BD/Webroot the values flow into the unified table automatically
-    # via SELECT * in STEP 1d. SentinelOne uses make_translation() which writes
-    # NULL::FLOAT explicitly, so this UPDATE is the SentinelOne bridge — and
-    # also a defense-in-depth catch-all for any vendor whose translation path
-    # doesn't preserve the columns.
+    # via SELECT * in STEP 1d. SentinelOne's standalone_insert() writes
+    # NULL::FLOAT explicitly for the API columns, so this UPDATE is the
+    # SentinelOne bridge — and also a defense-in-depth catch-all for any vendor
+    # whose translation path doesn't preserve the columns.
     # THIRD_PARTY_RECON_SOURCE_TRT_PROD is built by sql/01_unified_billing_sources.sql
     # from ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE.
     # Filter shape matches the manual recon Excel files exactly:
