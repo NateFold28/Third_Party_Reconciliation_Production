@@ -43,29 +43,26 @@ WITH partner_name_map AS (
 ),
 vendor_product_map AS (
     SELECT
-        vendor_entity,
-        UPPER(TRIM(vendor_product)) AS vendor_product_key,
-        REGEXP_REPLACE(sku_match_group, '^EXIUM_(CMS|CW)_', 'EXIUM_') AS sku_match_group,
-        exium_product_family,
-        LISTAGG(DISTINCT mapping_source, ' | ') WITHIN GROUP (ORDER BY mapping_source) AS mapping_sources
+        NULL::VARCHAR                               AS vendor_entity,
+        UPPER(TRIM(VENDOR_SKU))                    AS vendor_product_key,
+        COALESCE(SKU_MATCH_KEY, VENDOR_SKU)        AS sku_match_group,
+        NULL::VARCHAR                              AS exium_product_family,
+        COALESCE(MAPPING_NOTES, 'RECON_SKU_MAP') AS mapping_sources
     FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Exium')
-    WHERE is_active = TRUE
-      AND vendor_product IS NOT NULL
-      AND sku_match_group IS NOT NULL
-      AND vendor_entity IS NOT NULL
-    GROUP BY 1, 2, 3, 4
+    WHERE VENDOR_SKU IS NOT NULL
+      AND SKU_MATCH_KEY IS NOT NULL
+    GROUP BY 1, 2, 3, 4, 5
 ),
 cw_sku_map AS (
     SELECT
-        UPPER(TRIM(cw_sku)) AS cw_sku_key,
-        REGEXP_REPLACE(sku_match_group, '^EXIUM_(CMS|CW)_', 'EXIUM_') AS sku_match_group,
-        exium_product_family,
-        LISTAGG(DISTINCT mapping_source, ' | ') WITHIN GROUP (ORDER BY mapping_source) AS mapping_sources
+        UPPER(TRIM(CW_SKU))                        AS cw_sku_key,
+        COALESCE(SKU_MATCH_KEY, VENDOR_SKU)        AS sku_match_group,
+        NULL::VARCHAR                              AS exium_product_family,
+        COALESCE(MAPPING_NOTES, 'RECON_SKU_MAP') AS mapping_sources
     FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Exium')
-    WHERE is_active = TRUE
-      AND cw_sku IS NOT NULL
-      AND sku_match_group IS NOT NULL
-    GROUP BY 1, 2, 3
+    WHERE CW_SKU IS NOT NULL
+      AND SKU_MATCH_KEY IS NOT NULL
+    GROUP BY 1, 2, 3, 4
 ),
 contract_group_rates AS (
     SELECT

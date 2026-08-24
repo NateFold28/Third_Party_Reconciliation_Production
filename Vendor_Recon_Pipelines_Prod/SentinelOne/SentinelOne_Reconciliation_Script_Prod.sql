@@ -59,12 +59,13 @@ sku_map AS (
         vendor_sku_invoices,
         UPPER(TRIM(cw_sku)) AS cw_sku,
         sku_match_group,
-        mapping_source,
-        vendor_invoice_unit_price,
-        vendor_invoice_sku,
-        vendor_invoice_rate_source
-    FROM SENTINELONE_SKU_MAP_NORMALIZED
-    WHERE is_active
+        SKU_MATCH_KEY              AS sku_match_group,
+        MAPPING_NOTES              AS mapping_source,
+        CW_RETAIL_RATE             AS vendor_invoice_unit_price,
+        VENDOR_SKU                 AS vendor_invoice_sku,
+        'RECON_SKU_MAP'            AS vendor_invoice_rate_source
+    FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'SentinelOne')
+    WHERE SKU_MATCH_KEY IS NOT NULL
 ),
 
 -- One row per sku_match_group with the canonical invoice-derived unit price

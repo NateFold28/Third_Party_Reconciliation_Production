@@ -80,6 +80,7 @@ roy_desc_group AS (
         SELECT d.PRODUCT_DESCRIPTION, gp.sku_match_group,
                ROW_NUMBER() OVER (PARTITION BY d.PRODUCT_DESCRIPTION ORDER BY LENGTH(gp.pattern) DESC) AS rn
         FROM (
+              SELECT DISTINCT VENDOR_PRODUCT_SKU AS PRODUCT_DESCRIPTION
               FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD
               WHERE VENDOR = 'Bitdefender' AND VENDOR_PRODUCT_SKU IS NOT NULL
         ) d
