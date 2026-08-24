@@ -1,199 +1,94 @@
-# Third Party Reconciliation - Production Pipeline
+﻿# Third Party Vendor Reconciliation Pipeline
 
-Authoritative production repository.
+Production reconciliation system for 9 third-party vendors against ConnectWise billing.
 
 **Repo:** https://github.com/NateFold28/Third_Party_Reconciliation_Production
 
-## Status (2026-08-23)
-
-**Skeleton complete: all 9 vendors emit LIVE end-to-end.** No snapshot fallback. `THIRD_PARTY_RECON_OUTPUT_PROD` = 101,938 rows across 12 valid `EXCEPTION_TYPE` buckets. Schema matches the app expectation (45 cols).
-
-Remaining work is per-vendor business-logic fine-tuning (see "Fine-tuning priorities" below).
-
-## Vendors (9)
-Acronis, Auvik, Bitdefender, ESET, Exium, KeepIT, Proofpoint, SentinelOne, Webroot.
-
-## Architecture (current, verified 2026-08-23)
+## Repository Structure
 
 ```
-scripts/ingestion/<Vendor>_Vendor_Usage_Ingestion_Prod.py  x 9    (Excel/CSV in)
-                       |
-                       v
-   <VENDOR>_USAGE                                             (per-vendor raw usage)
-   THIRD_PARTY_RECON_VENDOR_USAGE_PROD                        (unified copy)
-                       +
-   sql/01_unified_billing_sources.sql
-                       |
-                       v
-   THIRD_PARTY_RECON_SOURCE_ZUORA_PROD                        (unified Zuora billing)
-   THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD                  (unified marketplace)
-   THIRD_PARTY_RECON_SOURCE_TRT_PROD                          (unified TRT / API telemetry)
-                       +
-   sql/02_unified_reference_maps.sql
-                       |
-                       v
-   RECON_PARTNER_MAP  (25,893 rows, union of 8 vendor _LEGACY_20260823 tables
-                       + RECON_MANUAL_SEED_PARTNER_MAP)
-   RECON_SKU_MAP      (1,223 rows, union of 7 vendor _LEGACY_20260823 tables
-                       + RECON_MANUAL_SEED_SKU_MAP)
-   <VENDOR>_PARTNER_MAPPING_V5     x 9 backward-compat views over RECON_PARTNER_MAP
-   <VENDOR>_SKU_MAP_V5             x 9 backward-compat views over RECON_SKU_MAP
-                       +
-   sql/03_compat_dead_object_views.sql
-                       |
-                       v
-   Extra vendor-specific compat views:
-     SENTINELONE_CHARGE_TO_GROUP
-     WEBROOT_TRT_USAGE_MONTHLY
-     WEBROOT_TRT_ENDPOINT_RMM_DISCOUNT_MONTHLY
-     EXIUM_PARTNER_MAPPING_V5 (enriched)
-     EXIUM_SKU_MAP_V5 (enriched)
-     EXIUM_USAGE_RECON_COMPAT
-     EXIUM_CONTRACT_RATES
-     EXIUM_BILLING_MATCHED
-     EXIUM_MARKETPLACE_BILLING_MATCHED
-                       |
-                       v
-   Vendor_Recon_Pipelines_Prod/<VENDOR>/<VENDOR>_Reconciliation_Script_Prod.sql  x 9
-                       |
-                       v
-   <VENDOR>_RECON_DETAIL   x 9  (per-vendor canonical detail)
-                       |
-                       v  scripts/_run_skeleton_pipeline.py  STEP 1b: live_emit_block()
-                       v
-   THIRD_PARTY_RECON_DETAIL_PROD   (single unified detail table, 34-col canonical)
-                       |
-                       v  scripts/build_third_party_recon_output_prod.py  STEP 3
-                       v  (12-bucket classifier)
-   THIRD_PARTY_RECON_OUTPUT_PROD    +  THIRD_PARTY_RECON_SUMMARY
-                       |
-                       v
-              app/combined_recon_app.py (Streamlit)
+├── Ingestion/          10 ingestion scripts (9 vendor usage + 1 invoice)
+├── Reconciliation/     9 vendor recon SQL files + 2 pipeline orchestrators
+├── Maps/
+│   ├── sql/            5 SQL files for billing sources, reference maps, compat views
+│   └── seeds/          3 seed CSV files (partner map, SKU map, SentinelOne rates)
+└── App/                Streamlit reconciliation dashboard
 ```
 
-**Key architectural invariants:**
-- Every vendor SQL file runs against the current live schema. **Zero** references to `_LEGACY_20260823`, `_SNAPSHOT_20260823`, or `THIRD_PARTY_STANDALONE_RECON_DETAIL__` tables anywhere (verified by `scripts/_audit_architecture.py`).
-- `VENDOR_FALLBACK = {}` in `_run_skeleton_pipeline.py` so any live-path regression fails loudly instead of silently reverting to the 2026-08-23 snapshot.
+## Architecture
 
-## App-facing tables (parity-locked - do not modify without app changes)
+```
+Ingestion (10 scripts)
+  9 × <Vendor>_Vendor_Usage_Ingestion_Prod.py  →  THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+  1 × Netsuite_Invoice_JSON_Ingestion_Prod.py  →  THIRD_PARTY_RECON_VENDOR_INVOICES
 
-| Table | Role |
-|---|---|
-| `THIRD_PARTY_RECON_OUTPUT_PROD` | Primary flat table the app reads (45 cols) |
-| `THIRD_PARTY_RECON_SUMMARY_PROD` | Per-(vendor, month) aggregates + `DATA_LOAD_STATUS` |
-| `THIRD_PARTY_RECON_DETAIL_PROD` | Row-level detail (drilldown, 34 cols) |
-| `THIRD_PARTY_RECON_VENDOR_USAGE_PROD` | Ingested vendor usage |
-| `RECON_PARTNER_MAP` | Unified partner mapping (25,893 rows) |
-| `RECON_SKU_MAP` | Unified SKU mapping (1,223 rows) |
+Maps (Engineering manages directly in Snowflake)
+  THIRD_PARTY_RECON_PARTNER_MAP_PROD  (seed: Maps/seeds/RECON_PARTNER_MAP.csv)
+  THIRD_PARTY_RECON_SKU_MAP_PROD      (seed: Maps/seeds/RECON_SKU_MAP.csv)
+  Maps/sql/02 → RECON_PARTNER_MAP + RECON_SKU_MAP (working copies)
 
-## Run
+Billing Sources (from analytics DB)
+  Maps/sql/01 → THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
+              → THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
+              → THIRD_PARTY_RECON_SOURCE_TRT_PROD
 
-Prerequisites (idempotent, run any time the compat contract changes):
-1. Apply `sql/02_unified_reference_maps.sql` to Snowflake.
-2. Apply `sql/03_compat_dead_object_views.sql` to Snowflake.
+Reconciliation (9 SQL files + orchestrators)
+  <Vendor>_Reconciliation_Script_Prod.sql  →  <VENDOR>_RECON_DETAIL  (staging per vendor)
+  _run_skeleton_pipeline.py                →  THIRD_PARTY_RECON_DETAIL_PROD (unified)
+  build_third_party_recon_output_prod.py   →  THIRD_PARTY_RECON_OUTPUT_PROD (LOCKED)
+                                           →  THIRD_PARTY_RECON_SUMMARY_PROD
 
-Full pipeline:
+App
+  App/combined_recon_app.py reads OUTPUT_PROD + SUMMARY_PROD  (Streamlit)
+```
+
+## Running the Pipeline
+
 ```powershell
-cd Combined_Recon_Prod_Pipeline
-..\..\..\.venv\Scripts\python.exe scripts\_run_skeleton_pipeline.py
+# 1. Ingest vendor usage files (run when new monthly files arrive)
+.venv\Scripts\python.exe "Ingestion\<Vendor>_Vendor_Usage_Ingestion_Prod.py" --all-months
+
+# 2. Ingest Netsuite invoices (run after Engineering updates PARSED_VENDOR_DATA)
+.venv\Scripts\python.exe "Ingestion\Netsuite_Invoice_JSON_Ingestion_Prod.py" --from 2026-01
+
+# 3. Run the full reconciliation pipeline
+.venv\Scripts\python.exe "Reconciliation\_run_skeleton_pipeline.py"
+
+# 4. Launch the app
+streamlit run "App\combined_recon_app.py"
 ```
 
-Launch app:
-```powershell
-run_app.bat
-```
+## The Two Levers for Improvement
 
-## Verified metrics (2026-08-23, post-KeepIT-fix + SUMMARY_PROD rename)
+1. **Partner Map** — Edit `THIRD_PARTY_RECON_PARTNER_MAP_PROD` in Snowflake → re-run `Maps/sql/02_unified_reference_maps.sql` → re-run pipeline
+2. **SKU Map** — Edit `THIRD_PARTY_RECON_SKU_MAP_PROD` in Snowflake → re-run `Maps/sql/02_unified_reference_maps.sql` → re-run pipeline
 
-- `THIRD_PARTY_RECON_OUTPUT_PROD`: **101,938 rows / 9 vendors LIVE / no fallback / 12 EXCEPTION_TYPE buckets / 45 cols** (matches app parity contract).
-- `THIRD_PARTY_RECON_SUMMARY_PROD`: 69 rows, per-vendor row parity 100% vs OUTPUT_PROD (verified via `scripts/_verify_app_wiring.py`).
-- `DATA_LOAD_STATUS`: 60 LOADED / 8 NOT_LOADED / 1 PARTIAL (per vendor-month).
-- Overall clear rate: **54.1%** (55,135 / 101,938).
+## Current Pipeline Performance (2026-08-24)
 
-### Vendor vs CW parity (the manual-team scoring metric)
+| Vendor | Clear % | Note |
+|---|---|---|
+| Proofpoint | **95.2%** ✅ | Gold standard |
+| Bitdefender | 86.7% | |
+| Acronis | 82.3% | SKU map gaps |
+| SentinelOne | 79.5% | Add-on SKUs |
+| Exium | 72.2% | Small vendor |
+| Auvik | 63.8% | SKU map gaps |
+| Webroot | 47.1% | Pricing calibration |
+| KeepIT | 28.4% | Product SKU mapping |
+| ESET | 13.4% | SKU/rate calibration |
 
-| Vendor | Clear % | Vendor QTY | CW QTY | Abs QTY Δ | QTY parity % | Vendor $ | CW $ | Abs $ Δ | $ parity % |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Proofpoint | 96.1% | 2.4M | 2.4M | 39,681 | 100.6% | $3.6M | $5.0M | $1.4M | 73.3% |
-| Bitdefender | 86.7% | 2.47M | 2.45M | 529,679 | 100.8% | $1.4M | $3.1M | $1.8M | 45.1% |
-| Acronis | 82.5% | 95.5M | 79.8M | 32.9M | 119.8% | $3.2M | $5.9M | $3.8M | 54.4% |
-| SentinelOne | 78.4% | 12.8M | 10.0M | 3.76M | 128.4% | $10.2M | $34.5M | $28.5M | 29.5% |
-| Exium | 71.6% | 40,383 | 30,108 | 70,491 | 134.1% | $262K | $278K | $540K | 94.1% |
-| Auvik | 61.7% | 703K | 568K | 418K | 123.6% | $3.8M | $4.3M | $3.2M | 88.6% |
-| Webroot | 42.0% | 7.63M | 2.94M | 5.61M | 259.6% | $4.0M | $2.9M | $2.6M | 135.5% |
-| KeepIT | 28.4% | 3.39M | 4.38M | 5.85M | 77.5% | $2.7M | $5.1M | $6.0M | 52.9% |
-| ESET | 9.3% | 117.3M | 4.1M | 114.1M | 2854.3% | $0 | $5.2M | $0 | 0.0% |
-| **OVERALL** | **54.1%** | **242.2M** | **106.6M** | **163.2M** | **227.3%** | **$29.1M** | **$66.1M** | **$47.8M** | **44.0%** |
+**OUTPUT_PROD**: 109,689 rows across 9 vendors, 12 EXCEPTION_TYPE buckets, 45 columns
 
-### EXCEPTION_TYPE distribution
+## Snowflake Environment
 
-| Bucket | Rows | Vendor $ |
-|---|---:|---:|
-| Clear | 55,135 | $21.1M |
-| CW Billing, No Vendor Billing | 14,510 | $0 |
-| Known Discount / Bundle | 11,065 | $715K |
-| Vendor Billing, No CW Billing | 7,208 | $2.60M |
-| API Usage Recorded, No CW Billing | 5,651 | $1.65M |
-| Duplicated CW Invoice | 4,734 | $580K |
-| Vendor Billing, Insufficient CW Billing | 2,964 | $1.81M |
-| Unmapped Partner | 351 | $573K |
-| Marketplace Billing Delay | 224 | $40K |
-| Vendor SKU, No CW SKU | 90 | $40K |
-| Other Issue | 4 | $0 |
-| CW SKU, No Vendor SKU | 2 | $0 |
+- Role: `DEVELOPER`
+- Warehouse: `REPORTING_WH`
+- Database: `ANALYTICS_DEV`
+- Schema: `DBT_NFOLD_TRANSFORMATION`
 
-### Manual-team parity targets (the bar we're chasing)
+## Do-Nots
 
-From `cowork_output/output/ENGINEERING_MONTHLY_INGESTION_MANIFEST.md`:
-
-| Vendor | Manual QTY parity | Current QTY parity | Gap |
-|---|---:|---:|---:|
-| Exium | 100.0% | 134.1% | over 34.1% |
-| Auvik | 100.3% | 123.6% | over 23.3% |
-| Webroot | 100.3% | 259.6% | over 159% (double-count) |
-| Acronis | 98.1% | 119.8% | over 21.7% |
-| ESET | 98.4% | 2854.3% | vendor_qty exploding (units bug) |
-| SentinelOne | 101.1% | 128.4% | over 27.3% |
-| Proofpoint | 95.4% | 100.6% | **beat target** |
-| Bitdefender | 93.3% | 100.8% | **beat target** |
-| KeepIT | complex | 77.5% | under 22.5% (need product-level fix) |
-
-## Fine-tuning priorities (2026-08-24 backlog)
-
-Prioritized by CW-side SKU mapping gap (`scripts/_audit_cw_sku_universe.py`), not clear-rate:
-
-| Vendor | Unmapped SKUs | Unmapped Annual ARR |
-|---|---:|---:|
-| **Auvik** | 284 | **$30.0M** |
-| **Bitdefender** | 170 | **$14.9M** |
-| **SentinelOne** | 44 | **$8.6M** |
-| ESET | 2,903 | $1.9M |
-| Acronis | 354 | $1.0M |
-| Proofpoint | 48 | $11K |
-| Exium | 8 | $0 |
-| KeepIT | 0 | $0 |
-| Webroot | 0 | $0 |
-
-Auvik / Bitdefender / SentinelOne SKU map gaps are the single biggest lift available: add the missing rows to `RECON_MANUAL_SEED_SKU_MAP` and the clear rate + investigation queue should self-correct.
-
-## Recent history
-
-- **2026-08-23** — KeepIT partner fanout fix (`8e9ca2d`). `KEEPIT_PARTNER_CMS_CROSSWALK_V5` had 16K rows for 681 partner names, joining by name caused up to 376x row fanout. Fix added a `QUALIFY ROW_NUMBER()` dedupe in `partner_bridge` CTE. VENDOR_AMOUNT went $182M -> $4.2M. Clear rate 7.6% -> 28.4%.
-- **2026-08-23** — Skeleton complete (`0739570`). All 9 vendors LIVE, fallback removed, per-vendor emit-block overrides for column-name differences (Auvik/Exium `VENDOR_PRODUCT`, Webroot `CW_SKUS`, KeepIT `MARKETPLACE_SKUS`). Compat views bridged 8 dead objects to the unified schema.
-- **2026-08-23** — Unified reference maps consolidation (`732ef9e`). Manual seeds added: 17,622 partner rows + 55 SKU rows.
-
-## Diagnostics / audits
-
-Read-only helpers in `scripts/`:
-- `_audit_architecture.py` — schema check + banned-table scan.
-- `_diag_exception_buckets.py` — top exception per vendor + $ impact.
-- `_diag_keepit_duplication.py` — partner-name fanout detector.
-- `_audit_cw_sku_universe.py` — CW-side SKU coverage vs `RECON_SKU_MAP`.
-
-## Key files
-
-- `sql/01_unified_billing_sources.sql` — Zuora / Marketplace / TRT unification.
-- `sql/02_unified_reference_maps.sql` — `RECON_PARTNER_MAP` + `RECON_SKU_MAP` build. Idempotent.
-- `sql/03_compat_dead_object_views.sql` — compat views over the unified schema for objects vendor SQL still references. Idempotent.
-- `scripts/_run_skeleton_pipeline.py` — orchestrator. Runs 9 vendor SQLs, emits into `DETAIL_PROD`, invokes classifier.
-- `scripts/build_third_party_recon_output_prod.py` — **LOCKED** classifier. Do not modify.
+- Do NOT modify `Reconciliation/build_third_party_recon_output_prod.py` (locked classifier)
+- Do NOT reintroduce `VENDOR_FALLBACK` entries to the exception taxonomy
+- Do NOT create per-vendor staging tables beyond `<VENDOR>_RECON_DETAIL`
+- All `_LEGACY_20260823` tables and V5 compat views have been dropped — do not reference them

@@ -340,7 +340,7 @@ def run_vendor_sql_file(conn, vendor: str) -> bool:
     Each vendor SQL rebuilds its own <VENDOR>_RECON_DETAIL (and _SUMMARY)
     tables. That table is what live_emit_block() then reads.
     """
-    path = REPO / "Vendor_Recon_Pipelines_Prod" / vendor / f"{vendor}_Reconciliation_Script_Prod.sql"
+    path = REPO / "Reconciliation" / f"{vendor}_Reconciliation_Script_Prod.sql"
     sql = USE + "\n" + path.read_text(encoding="utf-8")
     return run_sql(conn, sql, f"execute {vendor} SQL file")
 
