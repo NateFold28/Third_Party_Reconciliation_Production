@@ -50,19 +50,31 @@ USE = (
 )
 
 # ---------------------------------------------------------------------------
-# Vendor source table -- flip this per vendor as it graduates from snapshot
-# to live vendor-SQL output during fine-tune.
+# VENDOR ROUTING
+#
+# For each vendor we choose one of two paths into THIRD_PARTY_RECON_DETAIL_PROD:
+#
+#   "live"      -> execute Vendor_Recon_Pipelines_Prod/<VENDOR>/<VENDOR>_Reconciliation_Script_Prod.sql
+#                  (which rebuilds <VENDOR>_RECON_DETAIL) and emit from that
+#                  table. This is what production will use for every vendor.
+#
+#   "snapshot"  -> emit from THIRD_PARTY_STANDALONE_RECON_DETAIL__<V>_SNAPSHOT_20260823
+#                  (frozen 2026-08-23 Phase 0 backup). Used for vendors whose
+#                  live SQL still needs calibration.
+#
+# Flip a vendor from "snapshot" to "live" when its numbers are cleaned up.
 # ---------------------------------------------------------------------------
-VENDOR_SOURCES = {
-    "Acronis":     "THIRD_PARTY_STANDALONE_RECON_DETAIL__ACRONIS_SNAPSHOT_20260823",
-    "Auvik":       "THIRD_PARTY_STANDALONE_RECON_DETAIL__AUVIK_SNAPSHOT_20260823",
-    "Bitdefender": "THIRD_PARTY_STANDALONE_RECON_DETAIL__BITDEFENDER_SNAPSHOT_20260823",
-    "ESET":        "THIRD_PARTY_STANDALONE_RECON_DETAIL__ESET_SNAPSHOT_20260823",
-    "Exium":       "THIRD_PARTY_STANDALONE_RECON_DETAIL__EXIUM_SNAPSHOT_20260823",
-    "KeepIT":      "THIRD_PARTY_STANDALONE_RECON_DETAIL__KEEPIT_SNAPSHOT_20260823",
-    "Proofpoint":  "THIRD_PARTY_STANDALONE_RECON_DETAIL__PROOFPOINT_SNAPSHOT_20260823",
-    "SentinelOne": "THIRD_PARTY_STANDALONE_RECON_DETAIL__SENTINELONE_SNAPSHOT_20260823",
-    "Webroot":     "THIRD_PARTY_STANDALONE_RECON_DETAIL__WEBROOT_SNAPSHOT_20260823",
+VENDOR_ROUTING: dict[str, tuple[str, str]] = {
+    # vendor        : (mode, source)
+    "Proofpoint":  ("live",     "PROOFPOINT_RECON_DETAIL"),
+    "Bitdefender": ("live",     "BITDEFENDER_RECON_DETAIL"),
+    "Acronis":     ("live",     "ACRONIS_RECON_DETAIL"),
+    "Auvik":       ("snapshot", "THIRD_PARTY_STANDALONE_RECON_DETAIL__AUVIK_SNAPSHOT_20260823"),
+    "ESET":        ("snapshot", "THIRD_PARTY_STANDALONE_RECON_DETAIL__ESET_SNAPSHOT_20260823"),
+    "Exium":       ("snapshot", "THIRD_PARTY_STANDALONE_RECON_DETAIL__EXIUM_SNAPSHOT_20260823"),
+    "KeepIT":      ("snapshot", "THIRD_PARTY_STANDALONE_RECON_DETAIL__KEEPIT_SNAPSHOT_20260823"),
+    "SentinelOne": ("snapshot", "THIRD_PARTY_STANDALONE_RECON_DETAIL__SENTINELONE_SNAPSHOT_20260823"),
+    "Webroot":     ("snapshot", "THIRD_PARTY_STANDALONE_RECON_DETAIL__WEBROOT_SNAPSHOT_20260823"),
 }
 
 # ---------------------------------------------------------------------------
@@ -219,6 +231,93 @@ FROM {source_table};
 """
 
 
+def live_emit_block(vendor: str, live_table: str) -> str:
+    """Emit from a vendor's live <VENDOR>_RECON_DETAIL into DETAIL_PROD.
+
+    Live tables share a common shape but differ from SNAPSHOT tables in
+    small ways:
+      - no INV_ID column (invoice id not carried through)
+      - no SKU_MATCH_GROUP column
+      - no MARKETPLACE_UNIT_PRICE column (compute from AMOUNT/QUANTITY)
+      - Bitdefender has no VENDOR column (hardcode); Proofpoint/Acronis have it
+      - OUTCOME_FLAG carries vendor-slang and is normalized by the same CASE
+
+    This is intentionally kept in one function so every "live" vendor uses
+    the same mapping. When new vendors go live, they only need to expose the
+    columns referenced in this SELECT.
+    """
+    return f"""{USE}
+
+-- Idempotent: remove any prior rows for this vendor.
+DELETE FROM THIRD_PARTY_RECON_DETAIL_PROD WHERE VENDOR = '{vendor}';
+
+INSERT INTO THIRD_PARTY_RECON_DETAIL_PROD (
+    VENDOR, BILLING_MONTH, SF_ID, INV_ID, BILLING_TYPE,
+    VENDOR_PARTNER_NAME, VENDOR_PRODUCT, SKU_MATCH_GROUP,
+    CW_SKUS, ZUORA_SKUS, MARKETPLACE_SKUS, BILLING_SOURCE_MIX,
+    API_QUANTITY, AVG_API_QUANTITY,
+    VENDOR_QUANTITY, VENDOR_UNIT_PRICE, VENDOR_AMOUNT,
+    ZUORA_QUANTITY, ZUORA_UNIT_PRICE, ZUORA_AMOUNT,
+    MARKETPLACE_QUANTITY, MARKETPLACE_UNIT_PRICE, MARKETPLACE_AMOUNT,
+    TOTAL_BILLING_QUANTITY, TOTAL_BILLING_AMOUNT,
+    QTY_DELTA, ABS_QTY_DELTA, AMOUNT_DELTA, ABS_AMOUNT_DELTA,
+    CW_MARGIN_PCT, HAS_DISCOUNT, DUPLICATE_BILLING_FLAG,
+    OUTCOME_FLAG, INVESTIGATION_REASON
+)
+SELECT
+    '{vendor}'::VARCHAR                                                        AS VENDOR,
+    BILLING_MONTH::DATE                                                        AS BILLING_MONTH,
+    SF_ID                                                                      AS SF_ID,
+    NULL::VARCHAR                                                              AS INV_ID,
+    NULL::VARCHAR                                                              AS BILLING_TYPE,
+    VENDOR_PARTNER_NAME                                                        AS VENDOR_PARTNER_NAME,
+    VENDOR_PRODUCT                                                             AS VENDOR_PRODUCT,
+    NULL::VARCHAR                                                              AS SKU_MATCH_GROUP,
+    ARRAY_TO_STRING(CW_SKUS, ',')                                              AS CW_SKUS,
+    ARRAY_TO_STRING(ZUORA_SKUS, ',')                                           AS ZUORA_SKUS,
+    ARRAY_TO_STRING(MARKETPLACE_SKUS, ',')                                     AS MARKETPLACE_SKUS,
+    BILLING_SOURCE_MIX                                                         AS BILLING_SOURCE_MIX,
+    NULL::FLOAT                                                                AS API_QUANTITY,
+    NULL::FLOAT                                                                AS AVG_API_QUANTITY,
+    COALESCE(VENDOR_QUANTITY, 0)::FLOAT                                        AS VENDOR_QUANTITY,
+    VENDOR_UNIT_PRICE::FLOAT                                                   AS VENDOR_UNIT_PRICE,
+    COALESCE(VENDOR_AMOUNT, 0)::FLOAT                                          AS VENDOR_AMOUNT,
+    COALESCE(ZUORA_QUANTITY, 0)::FLOAT                                         AS ZUORA_QUANTITY,
+    ZUORA_UNIT_PRICE::FLOAT                                                    AS ZUORA_UNIT_PRICE,
+    COALESCE(ZUORA_AMOUNT, 0)::FLOAT                                           AS ZUORA_AMOUNT,
+    COALESCE(MARKETPLACE_QUANTITY, 0)::FLOAT                                   AS MARKETPLACE_QUANTITY,
+    CASE WHEN COALESCE(MARKETPLACE_QUANTITY, 0) > 0
+         THEN MARKETPLACE_AMOUNT / MARKETPLACE_QUANTITY ELSE NULL END::FLOAT   AS MARKETPLACE_UNIT_PRICE,
+    COALESCE(MARKETPLACE_AMOUNT, 0)::FLOAT                                     AS MARKETPLACE_AMOUNT,
+    COALESCE(TOTAL_BILLING_QUANTITY, 0)::FLOAT                                 AS TOTAL_BILLING_QUANTITY,
+    COALESCE(TOTAL_BILLING_AMOUNT, 0)::FLOAT                                   AS TOTAL_BILLING_AMOUNT,
+    QTY_DELTA::FLOAT                                                           AS QTY_DELTA,
+    ABS_QTY_DELTA::FLOAT                                                       AS ABS_QTY_DELTA,
+    AMOUNT_DELTA::FLOAT                                                        AS AMOUNT_DELTA,
+    ABS_AMOUNT_DELTA::FLOAT                                                    AS ABS_AMOUNT_DELTA,
+    CASE WHEN COALESCE(TOTAL_BILLING_AMOUNT, 0) > 0
+         THEN ROUND((COALESCE(TOTAL_BILLING_AMOUNT, 0) - COALESCE(VENDOR_AMOUNT, 0))
+                    / TOTAL_BILLING_AMOUNT * 100, 1)
+         ELSE NULL END::FLOAT                                                  AS CW_MARGIN_PCT,
+    'FALSE'::VARCHAR                                                           AS HAS_DISCOUNT,
+    IFF(DUPLICATE_BILLING_FLAG, 'TRUE', 'FALSE')::VARCHAR                      AS DUPLICATE_BILLING_FLAG,
+    ({CANONICAL_OUTCOME_FLAG_NORMALIZATION})                                   AS OUTCOME_FLAG,
+    INVESTIGATION_REASON                                                       AS INVESTIGATION_REASON
+FROM {live_table};
+"""
+
+
+def run_vendor_sql_file(conn, vendor: str) -> bool:
+    """Execute a vendor's Reconciliation_Script_Prod.sql end-to-end.
+
+    Each vendor SQL rebuilds its own <VENDOR>_RECON_DETAIL (and _SUMMARY)
+    tables. That table is what live_emit_block() then reads.
+    """
+    path = REPO / "Vendor_Recon_Pipelines_Prod" / vendor / f"{vendor}_Reconciliation_Script_Prod.sql"
+    sql = USE + "\n" + path.read_text(encoding="utf-8")
+    return run_sql(conn, sql, f"execute {vendor} SQL file")
+
+
 # ---------------------------------------------------------------------------
 # Per-vendor DETAIL_PROD overlays: things we know how to add once rows are
 # in the shared table. These stay identical to the current pipeline.
@@ -343,9 +442,27 @@ def main() -> int:
         print("\n=== STEP 0: initialize THIRD_PARTY_RECON_DETAIL_PROD ===")
         run_sql(conn, INIT_SQL, "init + truncate DETAIL_PROD")
 
-        print("\n=== STEP 1: emit each vendor directly into DETAIL_PROD ===")
-        for vendor, src in VENDOR_SOURCES.items():
-            run_sql(conn, emit_vendor_block(vendor, src), f"emit {vendor:<12} <-  {src}")
+        print("\n=== STEP 1a: run live vendor SQL files (rebuild <VENDOR>_RECON_DETAIL) ===")
+        live_vendors = [v for v, (m, _) in VENDOR_ROUTING.items() if m == "live"]
+        if not live_vendors:
+            print("  (no live vendors this run)")
+        for vendor in live_vendors:
+            run_vendor_sql_file(conn, vendor)
+
+        print("\n=== STEP 1b: emit each vendor into DETAIL_PROD ===")
+        live_ok: list[str] = []
+        snap_ok: list[str] = []
+        for vendor, (mode, src) in VENDOR_ROUTING.items():
+            if mode == "live":
+                if run_sql(conn, live_emit_block(vendor, src),
+                           f"emit {vendor:<12} LIVE     <- {src}"):
+                    live_ok.append(vendor)
+            else:
+                if run_sql(conn, emit_vendor_block(vendor, src),
+                           f"emit {vendor:<12} snapshot <- {src}"):
+                    snap_ok.append(vendor)
+        print(f"\n  live vendors:     {', '.join(live_ok) or '(none)'}")
+        print(f"  snapshot vendors: {', '.join(snap_ok) or '(none)'}")
 
         print("\n=== STEP 2: overlays on the shared table (per-vendor) ===")
         run_sql(conn, API_BACKFILL_SQL, "backfill API_QUANTITY / AVG_API_QUANTITY (S1/BD/Webroot/Auvik)")
