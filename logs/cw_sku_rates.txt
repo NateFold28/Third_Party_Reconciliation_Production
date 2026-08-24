@@ -1,0 +1,262 @@
+﻿=== CW SKU -> vendor rate summary ===
+Total distinct CW SKUs: 221
+
+DETECTED_VENDOR
+Acronis         1
+Auvik           9
+Bitdefender    58
+ESET           11
+Exium           5
+KeepIT          1
+Proofpoint     79
+SentinelOne    22
+Webroot        35
+
+--- Acronis (1 SKUs) ---
+PRODUCTCODE                                              NAME  CONTRACT_COST_RATE  CW_RETAIL_RATE             STATUS  TIER_COUNT
+  SP1AMSENS Acronis Files Sync&Share-GB-Hosted Strg per GB-G1                0.09             0.0 ACTIVE MARKETPLACE           5
+
+--- Auvik (9 SKUs) ---
+                PRODUCTCODE                                                 NAME  CONTRACT_COST_RATE  CW_RETAIL_RATE              STATUS  TIER_COUNT
+       3PARTYSAASAUVIKTRFMO                          Auvik Transfer - Essentials                6.30            5.04              Active           9
+       3RDPARTYSAASAUVIKTRF                   Auvik Transfer - Essentials Annual              189.66          144.00              Active           9
+           AUVIK-ESSENTIALS                                     Auvik Essentials                6.36            4.20              Active           9
+AUVIK-PRM-ANM-NEW-BUSSINESS             Auvik ANM - Full Performance - Committed               24.82           17.37              Active          13
+     AUVIK-PRM-ANM-TRANSFER  Auvik ANM - Full Performance - Committed (Transfer)               24.84           19.87              Active           9
+       AUVIKPERFORMANCADDON            Auvik AMN - Performance AddOn - Committed                3.44            2.28              Active           9
+       AUVIKPROMOBILLDEVICE                            Auvik Promotional License                0.00            0.00 Active\Billing Only           1
+        CULICSAAS1007200003 ConnectWise RMM Network - Auvik Performance Unmapped                5.20            0.00              Active           6
+           CW-AUVIK-MRM-ASM                     Auvik ASM - Standard - Committed                0.80            0.52              Active           8
+
+--- Bitdefender (58 SKUs) ---
+                   PRODUCTCODE                                                   NAME  CONTRACT_COST_RATE  CW_RETAIL_RATE             STATUS  TIER_COUNT
+              2765PHMSN012AAZZ                                      Bitdefender PHASR                3.25            1.11             Active           1
+             2765SEESN012AAZZ0                               Bitdefender Secure Extra                9.75            3.30             Active           1
+              2765SEPSN012AAZZ                                Bitdefender Secure Plus                6.85            2.30             Active           1
+          3PARTYONPREMBTCDSCCW                Bitdefender Cloud Security Gravity Zone                0.68            0.40 ACTIVE MARKETPLACE          10
+          3PTYPROVISIONPACKLRG  Bitdefender Provisioning Pack for MSP Service - Large             1400.00         1120.00             Active           1
+          3PTYPROVISIONPACKMED Bitdefender Provisioning Pack for MSP Service - Medium              700.00          560.00             Active           1
+          3PTYPROVISIONPACKSML  Bitdefender Provisioning Pack for MSP Service - Small              350.00          280.00             Active           1
+               AL1775A00A-EN-D   Bitdefender Security for Virtualized Environments VS                5.05            3.69 ACTIVE MARKETPLACE           1
+               AL1775A00B-EN-D         BitDefender Security for VE VS 100-999 EndPnts                4.30            3.14 ACTIVE MARKETPLACE           1
+               AL1775A00C-EN-D     BitDefender Security for VE VS 1,000-9,999 EndPnts                3.80            2.77 ACTIVE MARKETPLACE           1
+               AL1775A00D-EN-D         BitDefender Security for VE VS 10,000+ EndPnts                3.05            2.23 ACTIVE MARKETPLACE           1
+                 AL1778A00A-EN          Bitdefender Cloud Security Exchange (1-99 ep)                1.35            0.42 ACTIVE MARKETPLACE           1
+                 AL1778A00B-EN            Bitdefender Cloud Security Exchange 100-249                1.25            0.42 ACTIVE MARKETPLACE           1
+                 AL1778A00C-EN       Bitdefender Cloud Security Exchange (750-999 ep)                1.00            0.42 ACTIVE MARKETPLACE           1
+          AL1778A00C-EN250-499       Bitdefender Cloud Security Exchange (250-499 ep)                1.15            0.42 ACTIVE MARKETPLACE           1
+          AL1778A00C-EN500-749       Bitdefender Cloud Security Exchange (500-749 ep)                1.10            0.42 ACTIVE MARKETPLACE           1
+                 AL1778A00D-EN              Bitdefender Cloud Security Exchange 1000+                0.90            0.42 ACTIVE MARKETPLACE           1
+                 AL1795A00A-EN                 Bitdefender Cloud Encryption (1-99 ep)                1.05            0.40 ACTIVE MARKETPLACE           1
+                 AL1795A00B-EN                   Bitdefender Cloud Encryption 100-249                0.95            0.40 ACTIVE MARKETPLACE           1
+                 AL1795A00C-EN                   Bitdefender Cloud Encryption 750-999                0.70            0.40 ACTIVE MARKETPLACE           1
+          AL1795A00C-EN250-499                   Bitdefender Cloud Encryption 250-499                0.85            0.40 ACTIVE MARKETPLACE           1
+          AL1795A00C-EN500-749                   Bitdefender Cloud Encryption 500-749                0.75            0.40 ACTIVE MARKETPLACE           1
+                 AL1795A00D-EN                     Bitdefender Cloud Encryption 1000+                0.65            0.40 ACTIVE MARKETPLACE           1
+  CMS-SEC-SAAS-SEC-CYB-XDRCLOD                                Bitdefender XDR - Cloud                2.50            0.65             Active           1
+  CMS-SEC-SAAS-SEC-CYB-XDRIDEN                             Bitdefender XDR - Identity                2.50            0.65             Active           1
+  CMS-SEC-SAAS-SEC-CYB-XDRNTWK                              Bitdefender XDR - Network                2.50            0.65             Active           1
+  CMS-SEC-SAAS-SEC-CYB-XDRPROD                    Bitdefender XDR - Productivity Apps                2.50            0.65             Active           1
+           CU-BITDF-CLD-ENCRYP                           Bitdefender Cloud Encryption                1.05            0.40             Active           1
+           CU-BITDF-CLDSECEXCH                    Bitdefender Cloud Security Exchange                1.35            0.42             Active           1
+          CU-BITDF-GRAVITYZONE        Bitdefender Cloud Security Gravity Zone (Usage)                0.68            0.42             Active          10
+           CU-BITDF-PATCH-MNGT                           Bitdefender Patch Management                1.30            0.95             Active           1
+          CU-BITDF-VITENVIR-VS   Bitdefender Security for Virtualized Environments VS                5.05            3.69             Active           1
+          CU-BITDFEDRMSPSECURE                           Bitdefender EDR (MSP Secure)                3.20            1.47             Active           1
+          CUBITDFEDSEC-4-MOBIL                        Bitdefender Security for Mobile                1.75            0.72             Active           1
+          CW-BITDFEDRMSPSECURE                        CW Bitdefender EDR (MSP Secure)                3.20            1.47 ACTIVE MARKETPLACE           1
+              DL17106A00A-EN-D           Bitdefender Advanced Threat Security 1-99 ep                1.08            0.55 ACTIVE MARKETPLACE           1
+              DL17106A00B-EN-D        Bitdefender Advanced Threat Security 100-499 ep                1.01            0.55 ACTIVE MARKETPLACE           1
+              DL17106A00C-EN-D        Bitdefender Advanced Threat Security 500-999 ep                0.94            0.55 ACTIVE MARKETPLACE           1
+              DL17106A00D-EN-D      Bitdefender Advanced Threat Security 1000-4999 ep                0.87            0.55 ACTIVE MARKETPLACE           1
+              DL17106A00E-EN-D          Bitdefender Advanced Threat Security 5000+ ep                0.80            0.55 ACTIVE MARKETPLACE           1
+              DL17107A00A-EN-D                         Bitdefender ATS & EDR, 1-99 ep                1.80            1.05 ACTIVE MARKETPLACE           1
+              DL17107A00B-EN-D                      Bitdefender ATS & EDR, 100-499 ep                1.80            1.05 ACTIVE MARKETPLACE           1
+              DL17107A00C-EN-D                      Bitdefender ATS & EDR, 500-999 ep                1.80            1.05 ACTIVE MARKETPLACE           1
+              DL17107A00D-EN-D                    Bitdefender ATS & EDR, 1000-4999 ep                1.60            1.05 ACTIVE MARKETPLACE           1
+              DL17107A00E-EN-D                        Bitdefender ATS & EDR, 5000+ ep                1.50            1.05 ACTIVE MARKETPLACE           1
+              DL17108A00A-EN-D                Bitdefender Patch Management, 1 - 99 ep                1.30            0.95 ACTIVE MARKETPLACE           1
+              DL17108A00B-EN-D             Bitdefender Patch Management, 100 - 499 ep                1.17            0.85 ACTIVE MARKETPLACE           1
+              DL17108A00C-EN-D             Bitdefender Patch Management, 500 - 999 ep                1.05            0.77 ACTIVE MARKETPLACE           1
+              DL17108A00D-EN-D           Bitdefender Patch Management, 1000 - 4999 ep                0.95            0.69 ACTIVE MARKETPLACE           1
+              DL17108A00E-EN-D                 Bitdefender Patch Management, 5000+ ep                0.85            0.62 ACTIVE MARKETPLACE           1
+ SwO-3P-CYBR-MDR-SAAS-EDR-MSPS                       SwO Bitdefender EDR - MSP Secure                3.20            1.47             Active           1
+     SwO-3P-CYBR-SOLP-BDATSEDR                              SwO Bitdefender ATS & EDR                1.80            1.05             Active           1
+SwO-3P-CYBR-SOLP-SAAS-ADVTHRET               SwO Bitdefender Advanced Threat Security                1.10            0.55             Active           1
+SwO-3P-CYBR-SOLP-SAAS-CLDENCRY                       SwO Bitdefender Cloud Encryption                1.05            0.40             Active           1
+SwO-3P-CYBR-SOLP-SAAS-CLDSECEX                SwO Bitdefender Cloud Security Exchange                1.35            0.42             Active           1
+SwO-3P-CYBR-SOLP-SAAS-PATCHMGT                       SwO Bitdefender Patch Management                1.30            0.95             Active           1
+SwO-3P-CYBR-SOLP-SAAS-SECMOBIL                    SwO Bitdefender Security for Mobile                1.75            0.72             Active           1
+ TA-BITDEFENDER-EDR-MSP-SECURE                        TA-Bitdefender EDR (MSP Secure)                3.20            0.60             Active           1
+
+--- ESET (11 SKUs) ---
+PRODUCTCODE                                                               NAME  CONTRACT_COST_RATE  CW_RETAIL_RATE             STATUS  TIER_COUNT
+       DSLP                                       ESET Endpoint Encryption Pro                2.15            1.33 ACTIVE MARKETPLACE           6
+       EEPA                                    ESET PROTECT Entry On-Prem (NA)                1.49            0.75 ACTIVE MARKETPLACE           6
+       EEPS                                     ESET PROTECT Essential On-Prem                1.10            0.51 ACTIVE MARKETPLACE           6
+MSP-ECAT-Y1 ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 1 User                5.63           17.50             Active          13
+    MSP2-EI                                    ESET Enterprise Inspector (EDR)                0.83            0.94 ACTIVE MARKETPLACE          13
+    MSP2-PA                                              ESET Protect Advanced                1.26            1.02 ACTIVE MARKETPLACE          14
+    MSP2-PC                                              ESET Protect Complete                1.55            1.26 ACTIVE MARKETPLACE          14
+    MSP2-PE                                                 ESET Protect Entry                0.97            0.79 ACTIVE MARKETPLACE          14
+   MSP2-PEN                                            ESET Protect Enterprise                2.48            2.20 ACTIVE MARKETPLACE          10
+   MSP2-PMP                                             ESET Protect Mail Plus                0.44            0.50 ACTIVE MARKETPLACE          13
+   MSP2FDE4                                  ESET Full Disk Encryption 500-749                1.22            0.75 ACTIVE MARKETPLACE           1
+
+--- Exium (5 SKUs) ---
+       PRODUCTCODE                            NAME  CONTRACT_COST_RATE  CW_RETAIL_RATE STATUS  TIER_COUNT
+EX-SASE-ESSENTIALS           Exium SASE Essentials                11.0            5.50 Active           1
+       EX-SASE-PRO                  Exium SASE Pro                17.5            8.75 Active           1
+      EX-XDR-30DAY Exium XDR with 30-day Retention                 8.0            4.00 Active           1
+       EX-XDR-7DAY  Exium XDR with 7-day Retention                 4.0            2.00 Active           1
+         EXIUM_CGW          Exium CGW-CyberGateway               100.0           50.00 Active           1
+
+--- KeepIT (1 SKUs) ---
+                   PRODUCTCODE                                             NAME  CONTRACT_COST_RATE  CW_RETAIL_RATE STATUS  TIER_COUNT
+SwO-3P-BCDR-SOLP-SAAS-MSSBM365 SwO Keepit Backup and Recovery for Microsoft 365                1.75            1.02 Active           1
+
+--- Proofpoint (79 SKUs) ---
+                   PRODUCTCODE                                                                                                 NAME  CONTRACT_COST_RATE  CW_RETAIL_RATE             STATUS  TIER_COUNT
+              APP-BC-SEAAMSENS                                                            APP-Acronis Cyber Protect Cloud - Website                1.95          0.5000             Active           1
+              APP-BC-SEDAMSENS                                    APP-Acronis Advanced Disaster Recovery - Hosted Public IP address                3.90          1.7500             Active           1
+              APP-BC-SO1AMSENS                                                    APP-Acronis Omnivoice (virtual phone system) Seat               11.65          9.7500             Active           1
+              APP-BC-SO2AMSENS                                             APP-Acronis Omnivoice (virtual phone system) 300 minutes                6.20          5.2000             Active           1
+              APP-BC-SO3AMSENS                                                 APP-Acronis Omnivoice (virtual phone system) 100 SMS                3.10          2.6000             Active           1
+              APP-BC-SO4AMSENS                                               APP-Acronis Advanced Email Security (Perception Point)                2.47          1.4500             Active           1
+              APP-BC-SP1AMSENS                                 APP-Acronis Cyber Files Cloud - Acronis Hosted Storage (per GB) - G1                0.16          0.0351             Active           1
+              APP-BC-SP2AMSENS                                              APP-Acronis Cyber Files Cloud - Hybrid Storage (per GB)                0.10          0.0360             Active           1
+              APP-BC-SP3AMSENS                                     APP-Acronis Cyber Protect Cloud - Google Hosted Storage (per GB)                0.16          0.0371             Active           1
+              APP-BC-SP4BMSENS                                             APP-Acronis Cyber Protect Cloud - Local Storage (per GB)                0.09          0.0150             Active           1
+              APP-BC-SPBAMSENS                               APP-Acronis Cyber Protect Cloud - Acronis Hosted Storage (per GB) - G1                0.16          0.0351             Active           1
+              APP-BC-SPBBMSENS                                            APP-Acronis Cyber Protect Cloud - Hybrid Storage (per GB)                0.10          0.0338             Active           1
+              APP-BC-SPDAMSENS        APP-Acronis Cyber Protect Cloud - Acronis Hosted Storage for per Workload model (per GB) - G1                0.06          0.0110             Active           1
+              APP-BC-SPEAMSENS                                                             APP-Acronis Cyber Protect Cloud - Server               31.20          8.7467             Active           1
+              APP-BC-SPFAMSENS                                                                 APP-Acronis Cyber Protect Cloud - VM                9.75          3.4125             Active           1
+              APP-BC-SPGAMSENS                                                        APP-Acronis Cyber Protect Cloud - Workstation                5.07          1.6458             Active           1
+              APP-BC-SPIAMSENS                                                      APP-Acronis Cyber Files Cloud - User (per user)                2.21          0.4873             Active           1
+              APP-BC-SPXAMSENS              APP-Acronis Cyber Protect Cloud - Google Hosted Storage for per Workload model (per GB)                0.07          0.0154             Active           1
+              APP-BC-SQ1AMSENS               APP-Acronis Cyber Protect Cloud - Azure Hosted Storage for per Workload model (per GB)                0.07          0.0154             Active           1
+              APP-BC-SQ2AMSENS                                      APP-Acronis Cyber Protect Cloud - Azure Hosted Storage (per GB)                0.16          0.0371             Active           1
+              APP-BC-SQ4AMSENS                                     APP-Acronis Cyber Notary Cloud - Notarization (per notarization)                0.03          0.0150             Active           1
+              APP-BC-SQ5AMSENS                                               APP-Acronis Cyber Notary Cloud - eSignature (per file)                0.04          0.1800             Active           1
+              APP-BC-SQ6AMSENS                                APP-Acronis Cyber Notary Cloud - Acronis Hosted Storage (per GB) - G1                0.04          0.0180             Active           1
+              APP-BC-SQ7AMSENS                                                     APP-Acronis Cyber Protect Cloud - Hosting Server                5.07          1.7820             Active           1
+              APP-BC-SQ8AMSENS                                              APP-Acronis Cyber Protect Cloud - Google Workspace - G1                2.86          0.6300             Active           1
+              APP-BC-SQYAMSENS                 APP-Advanced Disaster Recovery - Acronis Hosted - 1 compute point (per running hour)                0.06          0.0300             Active           1
+              APP-BC-SR1AMSENS                                               APP-Advanced File Sync & Share - eSignature (per file)                1.17          0.1800             Active           1
+              APP-BC-SR2AMSENS                                     APP-Advanced File Sync & Share - Notarization (per notarization)                0.04          0.0150             Active           1
+              APP-BC-SR3AMSENS                                 APP-Acronis Cyber Notary Cloud - eSignature templates (per template)                3.00          1.5700             Active           1
+              APP-BC-SRAAMSENS            APP-Acronis Cyber Protect Cloud - Microsoft 365 seat (for SP/Azure/Google Hosted storage)                1.86          0.5600             Active           1
+              APP-BC-SRBAMSENS                                                             APP-Acronis Cyber Protect Cloud - Mobile                1.30          0.4000             Active           1
+              APP-BC-SRDAMSENS                                                                 APP-Acronis Advanced Backup - Server               13.00          5.2500             Active           1
+              APP-BC-SREAMSENS                                                                     APP-Acronis Advanced Backup - VM                5.20          2.2500             Active           1
+              APP-BC-SRFAMSENS                                                            APP-Acronis Advanced Backup - Workstation                1.30          0.4500             Active           1
+              APP-BC-SRGAMSENS                                                                 APP-Advanced Backup - Hosting Server                1.30          0.4500             Active           1
+              APP-BC-SRHAMSENS                                                                      APP-Acronis Advanced Management                2.47          0.3600             Active           1
+              APP-BC-SRIAMSENS                                                                        APP-Acronis Advanced Security                1.30          0.5500             Active           1
+              APP-BC-SRJAMSENS  APP-Acronis Cyber Protect Cloud-Microsoft 365 seat (with unlimited Acronis Hosted Cloud storage)-G1                2.86          1.2400             Active           1
+              APP-BC-ST6AMSENS                                          APP-Acronis Cyber Protect Cloud - Microsoft Hosted Exchange                1.30          0.4500             Active           1
+              APP-BC-SUVAMSENS                                 APP-Acronis Cyber Files Cloud - Acronis Hosted Storage (per GB) - G1                0.06          0.0180             Active           1
+              APP-BC-SVEAMSENS                                APP-Acronis Advanced Disaster Recovery - Hosted Storage (per GB) - G1                0.08          0.0320             Active           1
+              APP-BC-SVFAMSENS                                             APP-Advanced Disaster Recovery - Hybrid Storage (per GB)                0.05          0.0180             Active           1
+              APP-BC-SVVAMSENS                                                 APP-Acronis Cyber Protect Cloud - vCloud Director VM               10.40          4.2131             Active           1
+              APP-SA-SBATFNLOS                                                  APP-Advanced Security Awareness Training (Per user)                1.82          0.7100             Active           1
+              APP-SA-SCVAMSENS                                                     APP-Acronis Cyber Infrastructure - SPLA (per GB)                0.02          0.0080             Active           1
+              APP-SA-SO6AMSENS              APP-Acronis Cyber Protect Cloud Advanced Collaboration Apps Security (Perception Point)                1.69          0.7000             Active           1
+              APP-SA-SP1AMSENS                APP-Acronis Cyber Protect Cloud Files Sync & Share-GB-Acronis Hosted Storage (per GB)                0.16          0.0504             Active           1
+              APP-SA-SP4BMSENS                                  APP-Acronis Cyber Protect Cloud Backup-GB-Customer Storage (per GB)                0.09          0.0259             Active           1
+              APP-SA-SP5AMSENS                    APP-Acronis Cyber Protect Cloud Backup-Geo-redundant-GB/WL-Acronis Hosted Storage                0.05          0.0105             Active           1
+              APP-SA-SPD5MSENS                                                                APP-Acronis Cyber Protect Cloud - NAS               20.80          8.0000             Active           1
+              APP-SA-SPDCMSENS                             APP-Acronis Cyber Protect Cloud Cyber Protect Cloud-Essential Protection                0.00          0.0000             Active           1
+              APP-SA-SQACMSENS                                       APP-Acronis Cyber Protect Cloud Advanced Automation (Per user)               65.00         21.0000             Active           1
+              APP-SA-SQBBMSENS                                                  APP-Acronis Advanced Backup - Google Workspace seat                0.52          0.2600             Active           1
+              APP-SA-SQBGMSENS                        APP-Acronis Cyber Protect Cloud Backup-Geo-redundant-WL-Google Workspace seat                2.15          0.7455             Active           1
+              APP-SA-SQBPMSENS APP-Acronis Cyber Protect Cloud Backup-WL-Google Workspace seat (for SP/Azure/Google Hosted storage)                1.86          0.5075             Active           1
+              APP-SA-SQKBMSENS                                                     APP-Acronis Advanced Backup - Microsoft 365 seat                0.52          0.2600             Active           1
+              APP-SA-SRGAMSENS                                    APP-Acronis Cyber Protect Cloud Advanced Backup-WL-Hosting Server                1.30          0.3150             Active           1
+              APP-SA-SRI1MSENS                                                                   CU-Acronis Advanced Security + EDR                2.80          1.7000             Active           1
+              APP-SA-SRI5MSENS                                                            APP-Acronis Advanced Data Loss Prevention                3.25          1.4500             Active           1
+              APP-SA-SRI6MSENS                                                   APP-Managed Detection and Response - Standard - WL                4.16          0.6745             Active           1
+              APP-SA-SRI7MSENS                                                   APP-Managed Detection and Response - Advanced - WL                8.32          1.9525             Active           1
+              APP-SA-SRJGMSENS                           APP-Acronis Cyber Protect Cloud Backup-Geo-redundant-WL-Microsoft 365 seat                2.15          0.7455             Active           1
+              APP-SA-SRXAMSENS                                                                     APP-Advanced Security + XDR - WL                2.21          0.6745             Active           1
+                 APP-SH3AMSENS                           APP-Acronis Archiving GB Google Hosted Storage Acronis Cyber Protect Cloud                0.16          0.0575 ACTIVE MARKETPLACE           1
+                 APP-SHBAMSENS                     APP-Acronis Cyber Protect Cloud - Archiving Acronis Hosted Storage (per GB) - G1                0.16          0.0511 ACTIVE MARKETPLACE           1
+                 APP-SHBBMSENS                         APP-Acronis Cyber Protect Cloud - Acronis Archiving Partner Storage (per GB)                0.09          0.0291 ACTIVE MARKETPLACE           1
+                 APP-SPZBMSENS                               APP-Acronis Microsoft 365 Backup Storage (per GB) Microsoft 365 Backup                0.20          0.0923 ACTIVE MARKETPLACE           1
+                 APP-SRMAMSENS                  APP-Acronis Cyber Protect Cloud - Acronis Advanced Management - Microsoft 365 seats                1.56          0.6000 ACTIVE MARKETPLACE           1
+                 CU-PP-ESS-ADV                                                                               CU-Proofpoint Advanced                3.10          1.6500             Active           1
+            CU-PP-ESS-ADV-PLUS                                                                          CU-Proofpoint Advanced Plus                3.69          2.0500             Active           1
+                 CU-PP-ESS-BUS                                                                               CU-Proofpoint Business                2.18          1.2100             Active           1
+            CU-PP-ESS-BUS-PLUS                                                                          CU-Proofpoint Business Plus                2.42          1.3400             Active           1
+                 CU-PP-ESS-PRO                                                                           CU-Proofpoint Professional                4.22          2.3400             Active           1
+            CU-PP-ESS-PRO-PLUS                                                                      CU-Proofpoint Professional Plus                4.94          2.7400             Active           1
+              CU-PP-ESS-PSAT-A                                                                                   CU-Proofpoint PESA                0.90          0.5500             Active           1
+            CU-WEBROOT-EPP-RMM                                                              Webroot Endpoint Protection- for CW RMM                0.63          0.5200             Active          10
+             M2M-CU-PP-ESS-ADV                                                                           M2M-CU-Proofpoint Advanced                3.10          1.6500             Active           1
+     SwO-3P-CYBR-SOLP-ESS-ADV2                                                                         SwO Proofpoint Advanced Plus                3.69          2.0500             Active           1
+SwO-3P-CYBR-SOLP-SAAS-PROFPLUS                                                                     SwO Proofpoint Professional Plus                4.94          2.7400             Active           1
+
+--- SentinelOne (22 SKUs) ---
+                    PRODUCTCODE                                            NAME  CONTRACT_COST_RATE  CW_RETAIL_RATE STATUS  TIER_COUNT
+CMS-S1-CYBR-SOLP-SAAS-IDDETRESP     SentinelOne Identity Detection and Response                3.75            1.25 Active           1
+                 CU-PM-RT180-ND              SentinelOne 180 Day Data Retention                2.50            0.27 Active           1
+                  CU-PM-RT1Y-ND              SentinelOne 365 Day Data Retention                4.90            0.36 Active           1
+                  CU-PM-RT30-ND               SentinelOne 30 Day Data Retention                0.75            0.09 Active           1
+                  CU-PM-RT90-ND               SentinelOne 90 Day Data Retention                1.50            0.18 Active           1
+       M2M-SENTINELONE-COMPLETE                        M2M-SentinelOne Complete                3.75            1.01 Active           1
+        M2M-SENTINELONE-CONTROL                         M2M-SentinelOne Control                3.20            0.69 Active           1
+           SENTINELONE-COMPLETE                            SentinelOne Complete                3.75            1.01 Active           1
+            SENTINELONE-CONTROL                             SentinelOne Control                3.20            0.72 Active           1
+                      SP-RGR-ND       SentinelOne Singularity Network Discovery                1.20            0.38 Active           1
+                 SP-RSO-ND-T1-C               SentinelOne Singularity RemoteOps                0.60            0.30 Active           1
+ SwO-3P-CYBR-SOLP-SAAS-IDETRESP SwO SentinelOne Identity Detection and Response                3.75            1.25 Active           1
+ SwO-3P-CYBR-SOLP-SAAS-NTWKDSCV   SwO SentinelOne-Singularity-Network-Discovery                1.20            0.38 Active           1
+ SwO-3P-CYBR-SOLP-SAAS-RSONDT1C                       SwO SentinelOne RemoteOps                0.60            0.30 Active           1
+ SwO-3P-CYBR-SOLP-SAAS-S1-1YRET          SwO SentinelOne 365 Day Data Retention                4.90            0.36 Active           1
+ SwO-3P-CYBR-SOLP-SAAS-S1-30RET           SwO SentinelOne 30-Day Data Retention                0.75            0.09 Active           1
+ SwO-3P-CYBR-SOLP-SAAS-S1-6MRET          SwO SentinelOne 180 Day Data Retention                2.50            0.27 Active           1
+ SwO-3P-CYBR-SOLP-SAAS-S1-90RET           SwO SentinelOne 90-Day Data Retention                1.50            0.18 Active           1
+ SwO-3P-CYBR-SOLP-SAAS-S1CMPLET                        SwO SentinelOne Complete                3.75            1.01 Active           1
+ SwO-3P-CYBR-SOLP-SAAS-S1CNTROL                         SwO SentinelOne Control                3.20            0.69 Active           1
+        TA-SENTINELONE-COMPLETE                         TA-SentinelOne Complete                3.75            1.01 Active           1
+         TA-SENTINELONE-CONTROL                          TA-SentinelOne Control                3.20            0.69 Active           1
+
+--- Webroot (35 SKUs) ---
+                   PRODUCTCODE                                                  NAME  CONTRACT_COST_RATE  CW_RETAIL_RATE             STATUS  TIER_COUNT
+          3P-SAAS30022019FFSAT                    ConnectWise Webroot SAT-01-01-2015                1.25            0.00             Active           1
+CMS-EG-CYBR-SOLP-SAAS-MDRDSKTP     CMS EVG Webroot Endpoint Protection-(MDR) Desktop                2.10            0.52             Active           1
+CMS-EG-CYBR-SOLP-SAAS-MDRSERVR      CMS EVG Webroot Endpoint Protection-(MDR) Server                2.10            0.52             Active           1
+CMS-IH-CYBR-SOLP-SAAS-MDRDSKTP         CMS Webroot Endpoint Protection-(MDR) Desktop                2.10            0.52             Active           1
+CMS-IH-CYBR-SOLP-SAAS-MDRSERVR          CMS Webroot Endpoint Protection-(MDR) Server                2.10            0.52             Active           1
+          CW-RMM-WR-EEP-OVERAG Webroot Endpoint Protection-(MDR)- Overage for CW RMM                1.35            0.52             Active           1
+                    SEWRSSAT10         Webroot SecureAnywhere SecAwarenessTrain 1-99                0.90            0.02 ACTIVE MARKETPLACE           1
+                   SEWRSSAT100      Webroot SecureAnywhere SecAwarenessTrain 100-249                0.75            0.02 ACTIVE MARKETPLACE           1
+                  SEWRSSAT1000    Webroot SecureAnywhere SecAwarenessTrain 1000-2499                0.63            0.02 ACTIVE MARKETPLACE           1
+                 SEWRSSAT10000    Webroot SecureAnywhere SecAwarenessTrain 10K-19999                0.44            0.02 ACTIVE MARKETPLACE           1
+                 SEWRSSAT20000       Webroot SecureAnywhere SecAwarenessTrain 20000+                0.41            0.02 ACTIVE MARKETPLACE           1
+                   SEWRSSAT250      Webroot SecureAnywhere SecAwarenessTrain 250-499                0.72            0.02 ACTIVE MARKETPLACE           1
+                  SEWRSSAT2500    Webroot SecureAnywhere SecAwarenessTrain 2500-4999                0.54            0.02 ACTIVE MARKETPLACE           1
+                   SEWRSSAT500      Webroot SecureAnywhere SecAwarenessTrain 500-749                0.70            0.02 ACTIVE MARKETPLACE           1
+                  SEWRSSAT5000    Webroot SecureAnywhere SecAwarenessTrain 5000-9999                0.50            0.02 ACTIVE MARKETPLACE           1
+                   SEWRSSAT750      Webroot SecureAnywhere SecAwarenessTrain 750-999                0.67            0.02 ACTIVE MARKETPLACE           1
+SwO-3P-CYBR-SOLP-SAAS-30021010                            SwO Webroot DNS Protection                1.75            0.00             Active           1
+SwO-IH-CYBR-SOLP-SAAS-ENDPPRMM           SwO Webroot Endpoint Protection- for CW RMM                0.63            0.41             Active          10
+                    WRSECGSM10                  Webroot SecureAnywhere GSM Key 10-99                1.54            0.52 ACTIVE MARKETPLACE           1
+                   WRSECGSM100                Webroot SecureAnywhere GSM Key 100-249                1.43            0.52 ACTIVE MARKETPLACE           1
+                  WRSECGSM1000                  Webroot SecureAnywhere GSM Key 1000+                1.09            0.52 ACTIVE MARKETPLACE           1
+                   WRSECGSM250                Webroot SecureAnywhere GSM Key 250-499                1.32            0.52 ACTIVE MARKETPLACE           1
+                   WRSECGSM500                Webroot SecureAnywhere GSM Key 500-749                1.24            0.52 ACTIVE MARKETPLACE           1
+                   WRSECGSM750                Webroot SecureAnywhere GSM Key 750-999                1.14            0.52 ACTIVE MARKETPLACE           1
+           WSADNSP-STAND-ALONE                            Webroot SecureAnywhere DNS                0.59            0.42 ACTIVE MARKETPLACE          10
+          WSADNSPSTANDAL-00001                 Webroot SecureAnywhere DNS - 1-99 EPs                1.35            0.42 ACTIVE MARKETPLACE           1
+          WSADNSPSTANDAL-00100              Webroot SecureAnywhere DNS - 100-249 EPs                1.24            0.42 ACTIVE MARKETPLACE           1
+          WSADNSPSTANDAL-00250              Webroot SecureAnywhere DNS - 250-499 EPs                1.11            0.42 ACTIVE MARKETPLACE           1
+          WSADNSPSTANDAL-00500              Webroot SecureAnywhere DNS - 500-749 EPs                1.00            0.42 ACTIVE MARKETPLACE           1
+          WSADNSPSTANDAL-00750              Webroot SecureAnywhere DNS - 750-999 EPs                1.00            0.42 ACTIVE MARKETPLACE           1
+          WSADNSPSTANDAL-01000            Webroot SecureAnywhere DNS - 1000-2499 EPs                0.89            0.42 ACTIVE MARKETPLACE           1
+          WSADNSPSTANDAL-02500            Webroot SecureAnywhere DNS - 2500-4999 EPs                0.83            0.42 ACTIVE MARKETPLACE           1
+          WSADNSPSTANDAL-05000            Webroot SecureAnywhere DNS - 5000-9999 EPs                0.76            0.42 ACTIVE MARKETPLACE           1
+          WSADNSPSTANDAL-10000          Webroot SecureAnywhere DNS - 10000-19999 EPs                0.70            0.42 ACTIVE MARKETPLACE           1
+          WSADNSPSTANDAL-20000               Webroot SecureAnywhere DNS - 20000+ EPs                0.59            0.42 ACTIVE MARKETPLACE           1
+

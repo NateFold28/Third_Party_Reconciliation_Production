@@ -1,0 +1,985 @@
+VENDOR,VENDOR_PRODUCT,VENDOR_SKU,CW_SKU,SKU_MATCH_KEY,MAPPING_NOTES,CONTRACT_COST_RATE,CW_RETAIL_RATE
+Webroot,SDNS,1000063236,WSADNSP,DNS,OpenText Core DNS Protection | CW product=Webroot GSM integrated Webroot SecureAnywhere DNS,,
+Webroot,SDNS,1000063236,WSADNSPSTANDAL-00001,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 1-99 EPs,0.42,1.35
+Webroot,SDNS,1000063236,3P-SAAS30021100FFDNS,DNS,OpenText Core DNS Protection | CW product=Webroot DNS_Not Use,,
+Webroot,SDNS,1000063236,M2MSAAS30021010FFDNS,DNS,OpenText Core DNS Protection | CW product=M2M-ConnectWise SIEM Webroot DNS,,
+Webroot,SDNS,1000063236,MP-SECUREANYWHEREDNS,DNS,OpenText Core DNS Protection | CW product=MP-Webroot SecureAnywhere DNS,,
+Webroot,SDNS,1000063236,SWO-EG-CYBR-SOLP-SAAS-30021010,DNS,OpenText Core DNS Protection | CW product=EVG Webroot DNS Protection,,
+Webroot,SDNS,1000063236,SwO-3P-CYBR-SOLP-SAAS-30021010,DNS,OpenText Core DNS Protection | CW product=SwO Webroot DNS Protection,,1.75
+Webroot,SDNS,1000063236,WSADNSP-IIT,DNS,OpenText Core DNS Protection | CW product=Webroot GSM integrated Webroot SecureAnywhere DNS - IIT,,
+Webroot,SDNS,1000063236,WSADNSPSTANDAL-00750,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 750-999 EPs,0.42,1.0
+Webroot,SDNS,1000063236,WSADNSPSTANDAL-01000,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 1000-2499 EPs,0.42,0.89
+Webroot,SDNS,1000063236,WSADNSPSTANDAL-05000,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 5000-9999 EPs,0.42,0.76
+Webroot,SDNS,1000063236,WSADNSPSTANDAL-10000,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 10000-19999 EPs,0.42,0.7
+Webroot,SDNS,1000063236,WSADNSPSTANDAL-20000,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 20000+ EPs,0.42,0.59
+Webroot,SAEP,1000062533,CU-WEBROOT-EPP-RMM,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection- for CW RMM,0.52,0.63
+Proofpoint,Business +,PP-ESS-BUS2,M2M-CU-PP-ESS-BUS-PLUS,Business +,,1.3377,
+Proofpoint,Beginner,PP-ESS-BEG,CU-PP-ESS-BEG,Beginner,,0.6314,
+Proofpoint,Business,PP-ESS-BUS,CU-PP-ESS-BUS,Business,,1.1951,1.21
+Proofpoint,Advanced OEM,PP-ESS-CWTPS,SWO-EG-CYBR-OTHR-SAAS-EMSECADV,OEM,,2.04,
+Proofpoint,Advanced +,PP-ESS-ADV2,M2M-CU-PP-ESS-ADV-PLUS,Advanced +,,1.9794,
+Proofpoint,Business +,PP-ESS-BUS2,PP-ESS-BUS-PLUS,Business +,,1.3377,
+Proofpoint,Beginner,PP-ESS-BEG,PP-ESS-BEG,Beginner,,0.6314,
+Proofpoint,Basic OEM,PP-ESS-CWADV,SWO-EG-CYBR-OTHR-SAAS-EMSECESS,OEM,,1.4836,
+Proofpoint,Professional,PP-ESS-PRO,CU-PP-ESS-PRO,Professional,,2.3388,2.34
+Proofpoint,Advanced +,PP-ESS-ADV2,SwO-3P-CYBR-SOLP-ESS-ADV2,Advanced +,,1.9794,
+Proofpoint,Advanced,PP-ESS-ADV,CMS-EG-CYBER-SOLP-SAAS-PPESSADV,Advanced,,1.6432,
+Proofpoint,Business,PP-ESS-BUS,M2M-CU-PP-ESS-BUS,Business,,1.1951,
+Proofpoint,Business,PP-ESS-BUS,PP-ESS-BUS,Business,,1.1951,
+Proofpoint,Advanced +,PP-ESS-ADV2,SWO-EG-CYBR-SOLP-ESS-ADV2,Advanced +,,1.9794,
+Proofpoint,Advanced +,PP-ESS-ADV2,CU-PP-ESS-ADV-PLUS,Advanced +,,1.9794,2.05
+Proofpoint,Professional,PP-ESS-PRO,PP-ESS-PRO,Professional,,2.3388,
+Proofpoint,Advanced OEM,PP-ESS-CWTPS,CWP-IH-CYBR-OTHR-SAAS-EMSECADV,OEM,,2.04,
+Proofpoint,Business +,PP-ESS-BUS2,CU-PP-ESS-BUS-PLUS,Business +,,1.3377,1.34
+Proofpoint,Beginner,PP-ESS-BEG,M2M-CU-PP-ESS-BEG,Beginner,,0.6314,
+Proofpoint,Advanced +,PP-ESS-ADV2,PP-ESS-ADV-PLUS,Advanced +,,1.9794,
+Proofpoint,Basic OEM,PP-ESS-CWADV,CWP-IH-CYBR-OTHR-SAAS-EMSECESS,OEM,,1.4836,
+Proofpoint,Advanced,PP-ESS-ADV,M2M-CU-PP-ESS-ADV,Advanced,,1.6432,1.65
+Proofpoint,Advanced,PP-ESS-ADV,CU-PP-ESS-ADV,Advanced,,1.6432,1.65
+Proofpoint,Advanced,PP-ESS-ADV,PP-ESS-ADV,Advanced,,1.6432,
+Proofpoint,Professional +,PP-ESS-PRO2,PP-ESS-PRO-PLUS,Professional +,,2.74,
+Proofpoint,Professional +,PP-ESS-PRO2,SwO-3P-CYBR-SOLP-SAAS-PROFPLUS,Professional +,,2.74,
+Proofpoint,Security Awareness,PP-ESS-PSAT-A,PP-ESS-PSAT-A,Security Awareness,,0.5495,
+Proofpoint,Professional +,PP-ESS-PRO2,CU-PP-ESS-PRO-PLUS,Professional +,,2.74,2.74
+Proofpoint,Professional +,PP-ESS-PRO2,M2M-CU-PP-ESS-PRO-PLUS,Professional +,,2.74,
+Proofpoint,Professional +,PP-ESS-PRO2,SWO-EG-CYBR-SOLP-SAAS-PROFPLUS,Professional +,,2.74,
+Proofpoint,Professional,PP-ESS-PRO,M2M-CU-PP-ESS-PRO,Professional,,2.3388,
+Proofpoint,Security Awareness,PP-ESS-PSAT-A,CU-PP-ESS-PSAT-A,Security Awareness,,0.5495,0.55
+Proofpoint,Security Awareness,PP-ESS-PSAT-A,M2M-CU-PP-ESS-PSAT-A,Security Awareness,,0.5495,
+SentinelOne,Core,,UNMAPPED,CORE,SentinelOne does not invoice Core as a separate SKU; kept as its own group so it does not silently inflate CONTROL.,,
+SentinelOne,RSO,SP-RSO-ND-T1-C,SP-RSO-ND-T1-C,REMOTEOPS,S1 RemoteOps,0.6,0.3
+SentinelOne,RSO,SP-RSO-ND-T1-C,M2M-SP-RSO-ND-T1-C,REMOTEOPS,M2M,,
+SentinelOne,RSO,SP-RSO-ND-T1-C,SA-SP-RSO-ND-T1-C,REMOTEOPS,SA,,
+SentinelOne,RSO,SP-RSO-ND-T1-C,SwO-3P-CYBR-SOLP-SAAS-RSONDT1C,REMOTEOPS,SwO 3P,,
+SentinelOne,RSO,SP-RSO-ND-T1-C,SWO-EG-CYBR-SOLP-SAAS-RSONDT1C,REMOTEOPS,SwO EG,,
+SentinelOne,Forensics,SP-FOR-ND-T1-SA,SP-RSO-ND-T1-C,REMOTEOPS,S1 RemoteOps Forensics (SP-FOR-ND-T1-SA at $0.30) = CW RemoteOps (SP-RSO-ND-T1-C at $0.60 retail). Same product. Reconciles Forensics vendor qty against CW RSO billing.,0.6,0.3
+SentinelOne,Ranger Insights,SP-RGI-ND-T2-SA,UNMAPPED,RANGER_INSIGHTS,Singularity Vulnerability Management. Separately invoiced by SentinelOne; no CW-side SKU today.,0.75,
+SentinelOne,Ranger AD,SP-RAD-US-T2-SA,UNMAPPED,RANGER_AD,Singularity Ranger AD. First appears on Jun 2026 invoice; no CW SKU today.,0.55,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,CUSERVOTHRFFEPSECPRM,COMPLETE,Fortify Endpoint Premium,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,SENTINELONE-COMPLETE,COMPLETE,SentinelOne Complete 3P,1.01,1.01
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,M2M-SENTINELONE-COMPLETE,COMPLETE,M2M,1.01,1.01
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,M2MSENTINEL1-COMPLET,COMPLETE,Legacy M2M,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,M2MSEROTHRFFEPSECPRM,COMPLETE,M2M MDR Premium,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,SwO-3P-CYBR-SOLP-SAAS-S1CMPLET,COMPLETE,SwO 3P,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,SWO-EG-CYBR-SOLP-SAAS-S1CMPLET,COMPLETE,SwO EG,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,SwO-EG-CYBR-SIEM-SAAS-EPSECADV,COMPLETE,SwO EG SIEM,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,SwO-IH-CYBR-SIEM-SAAS-EPSECADV,COMPLETE,SwO IH SIEM,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,CMS-EG-CYBER-MDR-SAAS-EPSECPRM,COMPLETE,CMS MDR Premium,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,CU-3P-SAASS1Complete,COMPLETE,CU 3P,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,CU-S1-COMPLETE-BYOL,COMPLETE,BYOL,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,CU_S1_COMPLETE_BYOL,COMPLETE,BYOL underscore,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,CW-S1COMPLETE-IIT,COMPLETE,IIT,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,CWSENTINEL1-COMPLETE,COMPLETE,Legacy CW,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,DR-S1COMPLETE-IIT,COMPLETE,DR IIT,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,TA-SENTINELONE-COMPLETE,COMPLETE,TA,1.01,1.01
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,TA-CW-MDR-SENTINELONE-PREM,COMPLETE,TA MDR Premium,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,UNMAPPED,COMPLETE,Complete Tier 2 variant on Jan and Apr invoices; same COMPLETE group.,1.01,
+SentinelOne,Complete,S1ES-CMP-EN-T8-SA,S1COMPLETEONBOARDING,COMPLETE,One-time Complete onboarding SKU billed via Zuora; not on vendor invoice.,1.01,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,CUSERVOTHR300520EPSB,CONTROL,Fortify Endpoint,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,SENTINELONE-CONTROL,CONTROL,SentinelOne Control 3P,0.72,0.72
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,M2M-SENTINELONE-CONTROL,CONTROL,M2M,0.72,0.69
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,M2MSENTINEL1-CONTROL,CONTROL,Legacy M2M,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,M2MSEROTHR300520EPSB,CONTROL,M2M MDR,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,SwO-3P-CYBR-SOLP-SAAS-S1CNTROL,CONTROL,SwO 3P,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,SWO-EG-CYBR-SOLP-SAAS-S1CNTROL,CONTROL,SwO EG,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,SwO-EG-CYBR-SIEM-SAAS-0520EPSB,CONTROL,SwO EG SIEM,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,SwO_EG_CYBR_SIEM_SAAS_0520EPSB,CONTROL,SwO EG underscore,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,SwO_IH_CYBR_SIEM_SAAS_0520EPSB,CONTROL,SwO IH underscore,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,CMS-EG-CYBER-SIEM-SAAS-0520EPSB,CONTROL,CMS MDR,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,CU-3P-SAAS-S1Control,CONTROL,CU 3P,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,CU-S1-CONTROL-BYOL,CONTROL,BYOL,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,CU_S1_CONTROL_BYOL,CONTROL,BYOL underscore,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,CW-S1CONTROL-IIT,CONTROL,IIT,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,CWSENTINEL1-CONTROL,CONTROL,Legacy CW,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,DR-S1CONTROL-IIT,CONTROL,DR IIT,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,TA-SENTINELONE-CONTROL,CONTROL,TA,0.72,0.69
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,TA-CW-MDR-SENTINELONE,CONTROL,TA MDR,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,S1Control,CONTROL,Legacy simple,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,CUSERVOTHER300440PAR,CONTROL,Fortify Endpoint parent,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,CUSERVOTHER300450PAR,CONTROL,Fortify Endpoint parent v2,0.72,
+SentinelOne,Control,S1ES-CTL-EN-T9-SA,UNMAPPED,CONTROL,Control Tier 2 variant on Jan and Apr invoices; same CONTROL group.,0.72,
+SentinelOne,Ranger,SP-RGR-ND-T2-SA,SP-RGR-ND,RANGER,S1 Ranger,0.38,0.38
+SentinelOne,Ranger,SP-RGR-ND-T2-SA,M2M-SP-RGR-ND,RANGER,M2M,0.38,
+SentinelOne,Ranger,SP-RGR-ND-T2-SA,SA-SP-RGR-ND,RANGER,SA,0.38,
+SentinelOne,Ranger,SP-RGR-ND-T2-SA,SwO-3P-CYBR-SOLP-SAAS-NTWKDSCV,RANGER,SwO 3P,0.38,
+SentinelOne,Ranger,SP-RGR-ND-T2-SA,SWO-EG-CYBR-SOLP-SAAS-NTWKDSCV,RANGER,SwO EG,0.38,
+SentinelOne,Data Retention - 30 Days,PM-RT30-ND-T2-SA,CU-PM-RT30-ND,DATA_RETENTION_30,30 day,0.09,0.09
+SentinelOne,Data Retention - 30 Days,PM-RT30-ND-T2-SA,SwO-3P-CYBR-SOLP-SAAS-S1-30RET,DATA_RETENTION_30,SwO 3P,0.09,
+SentinelOne,Data Retention - 30 Days,PM-RT30-ND-T2-SA,SWO-EG-CYBR-SOLP-SAAS-S1-30RET,DATA_RETENTION_30,SwO EG,0.09,
+SentinelOne,Data Retention - 90 Days,PM-RT90-ND-T2-SA,CU-PM-RT90-ND,DATA_RETENTION_90,90 day,0.18,0.18
+SentinelOne,Data Retention - 90 Days,PM-RT90-ND-T2-SA,M2M-CU-PM-RT90-ND,DATA_RETENTION_90,M2M,0.18,
+SentinelOne,Data Retention - 90 Days,PM-RT90-ND-T2-SA,SwO-3P-CYBR-SOLP-SAAS-S1-90RET,DATA_RETENTION_90,SwO 3P,0.18,
+SentinelOne,Data Retention - 90 Days,PM-RT90-ND-T2-SA,SWO-EG-CYBR-SOLP-SAAS-S1-90RET,DATA_RETENTION_90,SwO EG,0.18,
+SentinelOne,Data Retention - 180 Days,PM-RT180-ND-T2-SA,CU-PM-RT180-ND,DATA_RETENTION_180,180 day,0.27,0.27
+SentinelOne,Data Retention - 180 Days,PM-RT180-ND-T2-SA,SwO-3P-CYBR-SOLP-SAAS-S1-6MRET,DATA_RETENTION_180,SwO 3P,0.27,
+SentinelOne,Data Retention - 180 Days,PM-RT180-ND-T2-SA,SWO-EG-CYBR-SOLP-SAAS-S1-6MRET,DATA_RETENTION_180,SwO EG,0.27,
+SentinelOne,Data Retention - 365 Days,PM-RT1Y-ND-T2-SA,CU-PM-RT1Y-ND,DATA_RETENTION_365,365 day,0.36,0.36
+SentinelOne,Data Retention - 365 Days,PM-RT1Y-ND-T2-SA,SwO-3P-CYBR-SOLP-SAAS-S1-1YRET,DATA_RETENTION_365,SwO 3P,0.36,
+SentinelOne,Data Retention - 365 Days,PM-RT1Y-ND-T2-SA,SWO-EG-CYBR-SOLP-SAAS-S1-1YRET,DATA_RETENTION_365,SwO EG,0.36,
+SentinelOne,XDR Ingest Retention 14,PM-XIRT14-GB-T2-SA,UNMAPPED,XDR_INGEST_14,XDR ingest retention 14-day (GB-metered). First appears Jun 2026; no CW SKU today.,10.08,
+SentinelOne,Cloud Funnel,PM-CFL-ND-T1-SA,UNMAPPED,CLOUD_FUNNEL,"Cloud Funnel Data Export. Invoiced by SentinelOne, no CW SKU.",0.3,
+SentinelOne,Purple AI,PR-AIAST-ND-T1-SA,UNMAPPED,PURPLE_AI,"Purple AI SOC Analyst. Invoiced by SentinelOne, no CW SKU (~4k/mo billed vs ~66k usage per engineering).",0.5,
+SentinelOne,Threat Intelligence,PM-TI-ND-T2-SA,UNMAPPED,THREAT_INTELLIGENCE,"Singularity Threat Intelligence. Invoiced by SentinelOne starting Feb 2026, no CW SKU.",0.88,
+SentinelOne,WatchTower,SS-WAT-ND-T2-SA,UNMAPPED,WATCHTOWER,Singularity WatchTower / MDR add-on. Appears on Jan and Jun invoices; no CW SKU today.,0.46,
+SentinelOne,Singularity Identity,S1ES-IDE-EN-T2-SA,SwO-3P-CYBR-SOLP-SAAS-IDETRESP,SINGULARITY_IDENTITY,SwO 3P,0.95,
+SentinelOne,Singularity Identity,S1ES-IDE-EN-T2-SA,SWO-EG-CYBR-SOLP-SAAS-IDETRESP,SINGULARITY_IDENTITY,SwO EG,0.95,
+SentinelOne,Singularity Identity,S1ES-IDE-EN-T2-SA,CMS-S1-CYBR-SOLP-SAAS-IDDETRESP,SINGULARITY_IDENTITY,CMS,0.95,1.25
+KeepIT,KEEPIT_CW_ONLY_ADHOC_CHARGE,UNCONFIRMED_VENDOR_SKU,CU-OTHERCORP900902RS,KEEPIT_CW_ONLY_ADHOC_CHARGE,Adhoc billing charge; no matching vendor usage SKU expected,,
+KeepIT,KEEPIT_CW_ONLY_AZURE_DEVOPS,UNCONFIRMED_VENDOR_SKU,CMS-UMM-SAAS-KPIT-BDR-3PDEVOPS,KEEPIT_CW_ONLY_AZURE_DEVOPS,CW bills Azure DevOps backup; no matching vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_ONBOARDING,UNCONFIRMED_VENDOR_SKU,RCCONSULTSAASONBOARD,KEEPIT_CW_ONLY_ONBOARDING,Onboarding billing charge; no matching vendor usage SKU expected,,
+KeepIT,KEEPIT_CW_ONLY_POWER_BI,UNCONFIRMED_VENDOR_SKU,BC-3Y-PROMO-POWER-BI,KEEPIT_CW_ONLY_POWER_BI,CW bills Power BI backup; no matching vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_POWER_BI,UNCONFIRMED_VENDOR_SKU,CMS-UMM-SAAS-KPIT-BDR-3PBIRMM,KEEPIT_CW_ONLY_POWER_BI,CW bills Power BI backup; no matching vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_POWER_BI,UNCONFIRMED_VENDOR_SKU,CMS-UMM-SAAS-KPIT-BDR-3PWBISA,KEEPIT_CW_ONLY_POWER_BI,CW bills Power BI backup; no matching vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_POWER_BI,UNCONFIRMED_VENDOR_SKU,M2M-UMM-SAAS-KPIT-BDR-3PBIRMM,KEEPIT_CW_ONLY_POWER_BI,CW bills Power BI backup; no matching vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_POWER_BI,UNCONFIRMED_VENDOR_SKU,M2M-UMM-SAAS-KPIT-BDR-3PWBISA,KEEPIT_CW_ONLY_POWER_BI,CW bills Power BI backup; no matching vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_PROMO_BUNDLE,UNCONFIRMED_VENDOR_SKU,BB-3Y-PROMO-BUNDLE,KEEPIT_CW_ONLY_PROMO_BUNDLE,Catalog bundle SKU; Zuora charge-level rows map components where available,,
+KeepIT,KEEPIT_CW_ONLY_PROMO_SHORTAGE,UNCONFIRMED_VENDOR_SKU,BC-3Y-PROMO-SHORTAGE,KEEPIT_CW_ONLY_PROMO_SHORTAGE,Shortage SKU is a billing adjustment and should not be forced to vendor usage,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,CMS-3P-UMM-BCDR-SAAS-UNLIMTRT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,CMS-EG-BDR-SOLP-SAAS-SB-UNLTD,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,CU-LIC-SAAS200313MDS,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,CULCSAS200310OFFICEP,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,CULCSAS200311GSUITP,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,CULCSAS200312SALESFP,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,CW-3YPROMO-RETENTION,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,CW-RMM-SB-UNLTD,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,CWP-3P-UMM-BCDR-SAAS-UNLIMTRT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,CW_3YPROMO_RETENTION,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,M2M-RMM-SB-UNLTD,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,SWO-EG-UMM-BCDR-SAAS-UNLIMTRT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,SWO-EG-UMM-SOLP-SAAS-UNLTDRET,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,UNCONFIRMED_VENDOR_SKU,SwO-3P-UMM-SOLP-SAAS-UNLTDRET,KEEPIT_CW_ONLY_UNLIMITED_RETENTION,CW retention charge; no separate vendor usage SKU observed in current KeepIT summaries,,
+KeepIT,KEEPIT_POST_PROMO_USAGE,KEEPIT_POST_PROMO_USAGE,,KEEPIT_POST_PROMO_USAGE,Post-promo takeout blended partner amount; no SKU allocation in vendor file,,
+KeepIT,KI-AZUR-CSP,KI-AZUR-CSP,BB-3Y-PROMO-BUNDLE,KI-AZUR-CSP,Azure AD / Entra ID Advanced user backup,,
+KeepIT,KI-AZUR-CSP,KI-AZUR-CSP,BC-3Y-PROMO-AZURE-AD,KI-AZUR-CSP,Azure AD / Entra ID Advanced user backup,,
+KeepIT,KI-AZUR-CSP,KI-AZUR-CSP,CMS-3P-UMM-BCDR-SAAS-AZUREADA,KI-AZUR-CSP,Azure AD / Entra ID Advanced user backup,,
+KeepIT,KI-AZUR-CSP,KI-AZUR-CSP,CMS-EG-BDR-SOLP-SAAS-SB-AZADV,KI-AZUR-CSP,Azure AD / Entra ID Advanced user backup,,
+KeepIT,KI-AZUR-CSP,KI-AZUR-CSP,CU-AZURE-AD-ADV-USER,KI-AZUR-CSP,Azure AD / Entra ID Advanced user backup,,
+KeepIT,KI-AZUR-CSP,KI-AZUR-CSP,CW-RMM-SB-AZ-ADV,KI-AZUR-CSP,Azure AD / Entra ID Advanced user backup,,
+KeepIT,KI-AZUR-CSP,KI-AZUR-CSP,CWP-3P-UMM-BCDR-SAAS-AZUREADA,KI-AZUR-CSP,Azure AD / Entra ID Advanced user backup,,
+KeepIT,KI-AZUR-CSP,KI-AZUR-CSP,M2M-RMM-SB-AZ-ADV,KI-AZUR-CSP,Azure AD / Entra ID Advanced user backup,,
+KeepIT,KI-AZUR-CSP,KI-AZUR-CSP,SWO-EG-UMM-SOLP-SAAS-AZADUSRS,KI-AZUR-CSP,Azure AD / Entra ID Advanced user backup,,
+KeepIT,KI-AZUR-CSP,KI-AZUR-CSP,SwO-3P-UMM-SOLP-SAAS-AZADUSRS,KI-AZUR-CSP,Azure AD / Entra ID Advanced user backup,,
+KeepIT,KI-AZUR-CSP,KI-AZUR-CSP,,KI-AZUR-CSP,Entra ID / Azure AD Advanced backup,,
+KeepIT,KI-D365-FUL,KI-D365-FUL,BB-3Y-PROMO-BUNDLE,KI-D365-FUL,Dynamics 365 user backup,,
+KeepIT,KI-D365-FUL,KI-D365-FUL,BC-3Y-PROMO-DYNAMICS,KI-D365-FUL,Dynamics 365 user backup,,
+KeepIT,KI-D365-FUL,KI-D365-FUL,CMS-3P-UMM-BCDR-SAAS-DYNAMICS,KI-D365-FUL,Dynamics 365 user backup,,
+KeepIT,KI-D365-FUL,KI-D365-FUL,CU-LIC-SAAS200313MDS,KI-D365-FUL,Dynamics 365 user backup,,
+KeepIT,KI-D365-FUL,KI-D365-FUL,CW-RMM-SB-DYNMCS,KI-D365-FUL,Dynamics 365 user backup,,
+KeepIT,KI-D365-FUL,KI-D365-FUL,CWP-3P-UMM-BCDR-SAAS-DYNAMICS,KI-D365-FUL,Dynamics 365 user backup,,
+KeepIT,KI-D365-FUL,KI-D365-FUL,M2M-RMM-SB-DYNMCS,KI-D365-FUL,Dynamics 365 user backup,,
+KeepIT,KI-D365-FUL,KI-D365-FUL,M2MLIC-SAAS200313MDS,KI-D365-FUL,Dynamics 365 user backup,,
+KeepIT,KI-D365-FUL,KI-D365-FUL,SWO-EG-UMM-SOLP-SAAS-DYNMUSER,KI-D365-FUL,Dynamics 365 user backup,,
+KeepIT,KI-D365-FUL,KI-D365-FUL,SwO-3P-UMM-SOLP-SAAS-DYNMUSER,KI-D365-FUL,Dynamics 365 user backup,,
+KeepIT,KI-D365-FUL,KI-D365-FUL,,KI-D365-FUL,Dynamics 365 backup,,
+KeepIT,KI-D365-LGT,KI-D365-LGT,,KI-D365-LGT,Dynamics 365 Light backup,,
+KeepIT,KI-GOOG-FUL,KI-GOOG-FUL,BB-3Y-PROMO-BUNDLE,KI-GOOG-FUL,Google Workspace user backup,,
+KeepIT,KI-GOOG-FUL,KI-GOOG-FUL,BC-3Y-PROMO-GOOGLE,KI-GOOG-FUL,Google Workspace user backup,,
+KeepIT,KI-GOOG-FUL,KI-GOOG-FUL,CMS-3P-UMM-BCDR-SAAS-GOOGLEWS,KI-GOOG-FUL,Google Workspace user backup,,
+KeepIT,KI-GOOG-FUL,KI-GOOG-FUL,CMS-EG-BDR-SOLP-SAAS-RMM-SBGW,KI-GOOG-FUL,Google Workspace user backup,,
+KeepIT,KI-GOOG-FUL,KI-GOOG-FUL,CULCSAS200311GSUITP,KI-GOOG-FUL,Google Workspace user backup,,
+KeepIT,KI-GOOG-FUL,KI-GOOG-FUL,CW-RMM-SB-GW,KI-GOOG-FUL,Google Workspace user backup,,
+KeepIT,KI-GOOG-FUL,KI-GOOG-FUL,CWP-3P-UMM-BCDR-SAAS-GOOGLEWS,KI-GOOG-FUL,Google Workspace user backup,,
+KeepIT,KI-GOOG-FUL,KI-GOOG-FUL,M2M-RMM-SB-GW,KI-GOOG-FUL,Google Workspace user backup,,
+KeepIT,KI-GOOG-FUL,KI-GOOG-FUL,M2MLCSS200311GSUITP,KI-GOOG-FUL,Google Workspace user backup,,
+KeepIT,KI-GOOG-FUL,KI-GOOG-FUL,SWO-EG-UMM-SOLP-SAAS-GOOGLWSP,KI-GOOG-FUL,Google Workspace user backup,,
+KeepIT,KI-GOOG-FUL,KI-GOOG-FUL,SwO-3P-UMM-SOLP-SAAS-GOOGLWSP,KI-GOOG-FUL,Google Workspace user backup,,
+KeepIT,KI-GOOG-FUL,KI-GOOG-FUL,,KI-GOOG-FUL,Google Workspace backup,,
+KeepIT,KI-M365-FUL,KI-M365-FUL,BB-3Y-PROMO-BUNDLE,KI-M365-FUL,Microsoft 365 / Office 365 user backup,,
+KeepIT,KI-M365-FUL,KI-M365-FUL,BC-3Y-PROMO-OFC365UR,KI-M365-FUL,Microsoft 365 / Office 365 user backup,,
+KeepIT,KI-M365-FUL,KI-M365-FUL,CMS-3P-UMM-BCDR-SAAS-OFC365UR,KI-M365-FUL,Microsoft 365 / Office 365 user backup,,
+KeepIT,KI-M365-FUL,KI-M365-FUL,CMS-EG-BDR-SOLP-SAAS-RMSBM365,KI-M365-FUL,Microsoft 365 / Office 365 user backup,,
+KeepIT,KI-M365-FUL,KI-M365-FUL,CULCSAS200310OFFICEP,KI-M365-FUL,Microsoft 365 / Office 365 user backup,,
+KeepIT,KI-M365-FUL,KI-M365-FUL,CW-RMM-SB-M365,KI-M365-FUL,Microsoft 365 / Office 365 user backup,,
+KeepIT,KI-M365-FUL,KI-M365-FUL,CWP-3P-UMM-BCDR-SAAS-OFC365UR,KI-M365-FUL,Microsoft 365 / Office 365 user backup,,
+KeepIT,KI-M365-FUL,KI-M365-FUL,M2M-RMM-SB-M365,KI-M365-FUL,Microsoft 365 / Office 365 user backup,,
+KeepIT,KI-M365-FUL,KI-M365-FUL,M2MLCSS200310OFFICEP,KI-M365-FUL,Microsoft 365 / Office 365 user backup,,
+KeepIT,KI-M365-FUL,KI-M365-FUL,SwO-3P-BCDR-SOLP-SAAS-MSSBM365,KI-M365-FUL,Microsoft 365 / Office 365 user backup,,
+KeepIT,KI-M365-FUL,KI-M365-FUL,,KI-M365-FUL,Microsoft 365 mailbox / Exchange backup,,
+KeepIT,KI-SFDC-FUL,KI-SFDC-FUL,BB-3Y-PROMO-BUNDLE,KI-SFDC-FUL,Salesforce user backup,,
+KeepIT,KI-SFDC-FUL,KI-SFDC-FUL,BC-3Y-PROMO-SF-USER,KI-SFDC-FUL,Salesforce user backup,,
+KeepIT,KI-SFDC-FUL,KI-SFDC-FUL,CMS-3P-UMM-BCDR-SAAS-SALESFRC,KI-SFDC-FUL,Salesforce user backup,,
+KeepIT,KI-SFDC-FUL,KI-SFDC-FUL,CMS-EG-BDR-SOLP-SAAS-RMM-SBSF,KI-SFDC-FUL,Salesforce user backup,,
+KeepIT,KI-SFDC-FUL,KI-SFDC-FUL,CULCSAS200312SALESFP,KI-SFDC-FUL,Salesforce user backup,,
+KeepIT,KI-SFDC-FUL,KI-SFDC-FUL,CW-RMM-SB-SF,KI-SFDC-FUL,Salesforce user backup,,
+KeepIT,KI-SFDC-FUL,KI-SFDC-FUL,CWP-3P-UMM-BCDR-SAAS-SALESFRC,KI-SFDC-FUL,Salesforce user backup,,
+KeepIT,KI-SFDC-FUL,KI-SFDC-FUL,M2M-RMM-SB-SF,KI-SFDC-FUL,Salesforce user backup,,
+KeepIT,KI-SFDC-FUL,KI-SFDC-FUL,M2MLCSS200312SALESFP,KI-SFDC-FUL,Salesforce user backup,,
+KeepIT,KI-SFDC-FUL,KI-SFDC-FUL,SWO-EG-UMM-SOLP-SAAS-SF-USERS,KI-SFDC-FUL,Salesforce user backup,,
+KeepIT,KI-SFDC-FUL,KI-SFDC-FUL,SwO-3P-UMM-SOLP-SAAS-SF-USERS,KI-SFDC-FUL,Salesforce user backup,,
+KeepIT,KI-SFDC-FUL,KI-SFDC-FUL,,KI-SFDC-FUL,Salesforce backup,,
+Webroot,SECA,1000063234,3P-SAAS30022019FFSAT,SAT,OpenText Core Security Awareness Training | CW product=ConnectWise Webroot SAT-01-01-2015,1.25,1.25
+Webroot,SECA,1000063234,SEWRSSAT10,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 1-99,0.02,0.9
+Webroot,SECA,1000063234,SEWRSSAT100,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 100-249,0.02,0.75
+Webroot,SECA,1000063234,SEWRSSAT2500,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 2500-4999,0.02,0.54
+Webroot,SECA,1000063234,SEWRSSAT250,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 250-499,0.02,0.72
+Webroot,SECA,1000063234,SEWRSSAT500,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 500-749,0.02,0.7
+Webroot,SECA,1000063234,SEWRSSAT750,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 750-999,0.02,0.67
+Webroot,SECA,1000063234,WRS-USD-M02-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-USD-M02-TAWEBRTSAT,,
+Webroot,SECA,1000063234,SEWRSSAT1000,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 1000-2499,0.02,0.63
+Webroot,OTHER_WEBROOT_TAGGED,,SEWRSBMP100,OTHER_WEBROOT_TAGGED,CW product=Webroot SecureAnywhere BMP 100-249 End of Life; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,SEWRSBMP1000,OTHER_WEBROOT_TAGGED,CW product=Webroot SecureAnywhere BMP 1000+ End of Life; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,SEWRSBMP250,OTHER_WEBROOT_TAGGED,CW product=Webroot SecureAnywhere BMP 250-499 End of Life; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,SEWRSBMP500,OTHER_WEBROOT_TAGGED,CW product=Webroot SecureAnywhere BMP 500-749 End of Life; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,SEWRSBMP750,OTHER_WEBROOT_TAGGED,CW product=Webroot SecureAnywhere BMP 750-999 End of Life; not a direct one-to-one OpenText invoice line,,
+Auvik,EPRM-ANM-500 Auvik Essentials -- Committed,EPRM-ANM-500 Auvik Essentials -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,5.74,2.28
+Auvik,ANM Essentials,ANM Essentials,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.72,4.2
+Auvik,PARM-ANM-500 Auvik Performance Add On -- Overage,PARM-ANM-500 Auvik Performance Add On -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,2.94,2.28
+Auvik,PARM-ANM-10 Auvik Performance Add On,PARM-ANM-10 Auvik Performance Add On,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,7.0,2.28
+Auvik,CWANM-3 Committed Billable Devices,CWANM-3 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.62,4.2
+Auvik,CWANM-3 Committed Performance Add-Ons,CWANM-3 Committed Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.06,2.28
+Auvik,RM - ASM - 50 - Committed,RM - ASM - 50 - Committed,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,2.1,
+Auvik,COANM-5 Committed Billable Devices,COANM-5 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.025,4.2
+Auvik,ERM-ANM-75 Auvik Essentials -- Overage,ERM-ANM-75 Auvik Essentials -- Overage,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,8.65,4.2
+Auvik,PARM-ANM-40 Auvik Performance Add On -- Overage,PARM-ANM-40 Auvik Performance Add On -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,6.25,2.28
+Auvik,RM - ASM - 1000 - Committed,RM - ASM - 1000 - Committed,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,0.57,
+Auvik,CWANM-1 Committed Performance Add-Ons,CWANM-1 Committed Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,5.71,2.28
+Auvik,ERM-ANM-250 Auvik Essentials -- Overage,ERM-ANM-250 Auvik Essentials -- Overage,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.88,4.2
+Auvik,ANM Essentials - Evergreen,ANM Essentials - Evergreen,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,9.36,4.2
+Auvik,CWANM-5 Committed Performance Add-Ons,CWANM-5 Committed Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,3.43,2.28
+Auvik,CWANM-0 Additional Performance Add-Ons,CWANM-0 Additional Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,6.83,2.28
+Auvik,PARM-ANM-500 Auvik Performance Add On,PARM-ANM-500 Auvik Performance Add On,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,2.94,2.28
+Auvik,RM - ASM - 250 - Committed,RM - ASM - 250 - Committed,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,1.05,
+Auvik,PRM-ANM-250 Auvik Performance -- Overage,PRM-ANM-250 Auvik Performance -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,8.45,2.28
+Auvik,Billable Devices,Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,8.97,4.2
+Auvik,PARM-ANM-750 Auvik Performance Add On -- Overage,PARM-ANM-750 Auvik Performance Add On -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,2.77,2.28
+Auvik,PRM-ANM-40 Auvik Performance -- Overage,PRM-ANM-40 Auvik Performance -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,15.44,2.28
+Auvik,COANM-2 Additional Billable Devices,COANM-2 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,9.19,4.2
+Auvik,COANM-5 Additional Billable Devices,COANM-5 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.025,4.2
+Auvik,EPRM-ANM-175 Auvik Essentials -- Overage,EPRM-ANM-175 Auvik Essentials -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,7.38,2.28
+Auvik,PRM-ANM-10 Auvik Performance -- Overage,PRM-ANM-10 Auvik Performance -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,17.5,2.28
+Auvik,Billable Devices - Promo,Billable Devices - Promo,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.36,4.2
+Auvik,ERM-ANM-10 Auvik Essentials -- Overage,ERM-ANM-10 Auvik Essentials -- Overage,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,10.5,4.2
+Auvik,RM - ASM - 100 - Overage,RM - ASM - 100 - Overage,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,1.58,
+Auvik,ERM-ANM-500 Auvik Essentials -- Overage,ERM-ANM-500 Auvik Essentials -- Overage,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.88,4.2
+Auvik,EPRM-ANM-750 Auvik Essentials -- Overage,EPRM-ANM-750 Auvik Essentials -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.76,2.28
+Auvik,CWANM-7 Additional Billable Devices,CWANM-7 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,3.41,4.2
+Auvik,PARM-ANM-100 Auvik Performance Add On,PARM-ANM-100 Auvik Performance Add On,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.77,2.28
+Auvik,CWANM-0 Committed Billable Devices,CWANM-0 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,10.5,4.2
+Auvik,ANM Performance Add-on,ANM Performance Add-on,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,3.625,2.28
+Auvik,PARM-ANM-750 Auvik Performance Add On,PARM-ANM-750 Auvik Performance Add On,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,2.77,2.28
+Auvik,EPRM-ANM-75 Auvik Essentials -- Overage,EPRM-ANM-75 Auvik Essentials -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,8.64,2.28
+Auvik,Auvik MSP Monthly Plan Fee,Auvik MSP Monthly Plan Fee,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,156.8,4.2
+Auvik,ERM-ANM-250 Auvik Essentials -- Committed,ERM-ANM-250 Auvik Essentials -- Committed,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.88,4.2
+Auvik,EPRM-ANM-250 Auvik Essentials -- Committed,EPRM-ANM-250 Auvik Essentials -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,6.4,2.28
+Auvik,EPRM-ANM-750 Auvik Essentials -- Committed,EPRM-ANM-750 Auvik Essentials -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.76,2.28
+Auvik,PARM-ANM-10 Auvik Performance Add On -- Overage,PARM-ANM-10 Auvik Performance Add On -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,7.5,2.28
+Auvik,RM - ASM - 500 - Committed,RM - ASM - 500 - Committed,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,0.91,
+Auvik,CWANM-3 Additional Billable Devices,CWANM-3 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.62,4.2
+Auvik,CWANM-3 Additional Performance Add-Ons,CWANM-3 Additional Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.06,2.28
+Auvik,COANM-5 Additional Performance Add-Ons,COANM-5 Additional Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,3.515,2.28
+Auvik,PARM-ANM-75 Auvik Performance Add On -- Overage,PARM-ANM-75 Auvik Performance Add On -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,5.88,2.28
+Auvik,EPRM-ANM-500 Auvik Essentials -- Overage,EPRM-ANM-500 Auvik Essentials -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,5.74,2.28
+Auvik,EPRM-ANM-75 Auvik Essentials -- Committed,EPRM-ANM-75 Auvik Essentials -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,8.64,2.28
+Auvik,COANM-3 Committed Billable Devices,COANM-3 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,10.5,4.2
+Auvik,PRM-ANM-250 Auvik Performance -- Committed,PRM-ANM-250 Auvik Performance -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,8.45,2.28
+Auvik,ANM Performance Add-On Evergreen,ANM Performance Add-On Evergreen,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.79,2.28
+Auvik,EPRM-ANM-175 Auvik Essentials -- Committed,EPRM-ANM-175 Auvik Essentials -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,7.38,2.28
+Auvik,EPRM-ANM-1000 Auvik Essentials -- Committed,EPRM-ANM-1000 Auvik Essentials -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.2,2.28
+Auvik,PARM-ANM-40 Auvik Performance Add On,PARM-ANM-40 Auvik Performance Add On,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,6.25,2.28
+Auvik,COANM-4 Additional Performance Add-Ons,COANM-4 Additional Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,6.0,2.28
+Auvik,MSP Monthly Free Trial,MSP Monthly Free Trial,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.36,4.2
+Auvik,ANM Performance Add-Ons - Evergreen,ANM Performance Add-Ons - Evergreen,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.99,2.28
+Auvik,PRM-ANM-500 Auvik Performance -- Committed,PRM-ANM-500 Auvik Performance -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,7.095,2.28
+Auvik,COANM-1 Committed Billable Devices,COANM-1 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,9.19,4.2
+Auvik,PARM-ANM-250 Auvik Performance Add On -- Overage,PARM-ANM-250 Auvik Performance Add On -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,3.5,2.28
+Auvik,ANM Essentials Evergreen,ANM Essentials Evergreen,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,8.97,4.2
+Auvik,PRM-ANM-40 Auvik Performance -- Committed,PRM-ANM-40 Auvik Performance -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,15.44,2.28
+Auvik,ERM-ANM-500 Auvik Essentials -- Committed,ERM-ANM-500 Auvik Essentials -- Committed,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.88,4.2
+Auvik,COANM-4 Additional Billable Devices,COANM-4 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.88,4.2
+Auvik,EPRM-ANM-10 Auvik Essentials -- Overage,EPRM-ANM-10 Auvik Essentials -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,10.5,2.28
+Auvik,COANM-2 Committed Billable Devices,COANM-2 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,7.35,4.2
+Auvik,ERM-ANM-1000 Auvik Essentials -- Overage,ERM-ANM-1000 Auvik Essentials -- Overage,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,4.2,4.2
+Auvik,CWANM-4 Additional Performance Add-Ons,CWANM-4 Additional Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,3.85,2.28
+Auvik,Auvik SaaS Management - Evergreen,Auvik SaaS Management - Evergreen,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,1.26,
+Auvik,EPRM-ANM-1000 Auvik Essentials -- Overage,EPRM-ANM-1000 Auvik Essentials -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.2,2.28
+Auvik,ERM-ANM-40 Auvik Essentials -- Overage,ERM-ANM-40 Auvik Essentials -- Overage,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,9.19,4.2
+Auvik,COANM-0 Additional Performance Add-Ons,COANM-0 Additional Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,6.83,2.28
+Auvik,PRM-ANM-500 Auvik Performance -- Overage,PRM-ANM-500 Auvik Performance -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,7.095,2.28
+Auvik,PRM-ANM-100 Auvik Performance -- Overage,PRM-ANM-100 Auvik Performance -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,10.66,2.28
+Auvik,EPRM-ANM-100 Auvik Essentials -- Overage,EPRM-ANM-100 Auvik Essentials -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,7.35,2.28
+Auvik,ERM-ANM-100 Auvik Essentials -- Committed,ERM-ANM-100 Auvik Essentials -- Committed,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,7.175,4.2
+Auvik,PARM-ANM-175 Auvik Performance Add On,PARM-ANM-175 Auvik Performance Add On,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.04,2.28
+Auvik,RM - ASM - 100 - Committed,RM - ASM - 100 - Committed,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,1.575,
+Auvik,Auvik SaaS Management Evergreen,Auvik SaaS Management Evergreen,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,1.26,
+Auvik,Performance Add-On - Promo,Performance Add-On - Promo,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,3.44,2.28
+Auvik,CWANM-1 Additional Billable Devices,CWANM-1 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,9.19,4.2
+Auvik,CWANM-2 Additional Billable Devices,CWANM-2 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,7.35,4.2
+Auvik,PARM-ANM-250 Auvik Performance Add On,PARM-ANM-250 Auvik Performance Add On,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,3.33,2.28
+Auvik,Free of Charge,Free of Charge,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.36,4.2
+ESET,MSP - Full Disk Encryption,MSP - Full Disk Encryption,,ENCRYPTION,Full Disk Encryption,0.0266,
+ESET,MSP - Endpoint Antivirus,MSP - Endpoint Antivirus,,ENDPOINT_ANTIVIRUS,Endpoint Antivirus,0.017,
+ESET,MSP - PROTECT Entry,MSP - PROTECT Entry,,PROTECT_ENTRY,PROTECT Entry,0.02753,
+ESET,Protect Entry On-Prem,,EEPA,PROTECT_ENTRY_ONPREM,Protect Entry On-Prem,1.49,0.75
+ESET,Protect Advanced,,MSP2-PA,PROTECT_ADVANCED,Protect Advanced,1.26,1.02
+ESET,Protect Complete Internal IT,,MSP2-PC-IIT,PROTECT_COMPLETE,Protect Complete Internal IT,,
+ESET,Endpoint Antivirus ROW,,3PARTYONPREMESWWEPAV,ENDPOINT_ANTIVIRUS,Endpoint Antivirus ROW,,
+ESET,AV Business Ed for Mac OS,,EESX,ENDPOINT_ANTIVIRUS,AV Business Ed for Mac OS,,
+ESET,Endpoint Security,,EES,ENDPOINT_SECURITY,Endpoint Security,,
+ESET,File Security Win Svr Legacy,,3PARTYONPREMESETWSLP,SERVER_SECURITY,File Security Win Svr Legacy,,
+ESET,Protect Mail Plus,,MSP2-PMP,MAIL_SECURITY,Protect Mail Plus,0.44,0.5
+ESET,ESET Inspect,,MSP2-EI,INSPECT_EDR,ESET Inspect,0.83,0.94
+ESET,MSP - Mail Security,MSP - Mail Security,,MAIL_SECURITY,Mail Security,0.01,
+ESET,MSP - Endpoint Security,MSP - Endpoint Security,,ENDPOINT_SECURITY,Endpoint Security,0.03,
+ESET,MSP - PROTECT Entry On-Prem,MSP - PROTECT Entry On-Prem,,PROTECT_ENTRY_ONPREM,PROTECT Entry On-Prem,0.0286,
+ESET,MSP - PROTECT Enterprise,MSP - PROTECT Enterprise,,PROTECT_ENTERPRISE,PROTECT Enterprise,0.0725,
+ESET,MSP - Secure Authentication,MSP - Secure Authentication,,SECURE_AUTH,Secure Authentication,0.0216,
+ESET,Protect Entry On-Prem 3yr,,EEPA-N3-E,PROTECT_ENTRY_ONPREM,Protect Entry On-Prem 3yr,,
+ESET,Protect Advanced Internal IT,,MSP2-PA-IIT,PROTECT_ADVANCED,Protect Advanced Internal IT,,
+ESET,Protect Enterprise,,MSP2-PEN,PROTECT_ENTERPRISE,Protect Enterprise,2.48,2.2
+ESET,Endpoint AntiVirus,,3PARTYONPREMESETEPAV,ENDPOINT_ANTIVIRUS,Endpoint AntiVirus,,
+ESET,AV for Mac OS X,,EAVBM,ENDPOINT_ANTIVIRUS,AV for Mac OS X,,
+ESET,Endpoint Security,,3PARTYONPREMESETENDP,ENDPOINT_SECURITY,Endpoint Security,,
+ESET,File Security for MS Win Server,,3PARTYONPREMESETWFSS,SERVER_SECURITY,File Security for MS Win Server,,
+ESET,Mail Security Exchange Legacy,,3PARTYONPREMESETESLP,MAIL_SECURITY,Mail Security Exchange Legacy,,
+ESET,Cybersecurity Awareness Training,,MSP-ECAT-Y1,AWARENESS_TRAINING,Cybersecurity Awareness Training,5.63,17.5
+ESET,MSP - PROTECT Mail Plus,MSP - PROTECT Mail Plus,,MAIL_SECURITY,PROTECT Mail Plus,0.017419,
+ESET,MSP - PROTECT Complete,MSP - PROTECT Complete,,PROTECT_COMPLETE,PROTECT Complete,0.044357,
+ESET,Protect Entry,,MSP2-PE,PROTECT_ENTRY,Protect Entry,0.97,0.79
+ESET,Protect Entry On-Prem G/E/N,,EEPA-GE-N3-E,PROTECT_ENTRY_ONPREM,Protect Entry On-Prem G/E/N,,
+ESET,Endpoint Protection Advanced legacy,,3PARTYONPREMEPPROADV,PROTECT_ADVANCED,Endpoint Protection Advanced legacy,,
+ESET,Endpoint Antivirus,,EEA,ENDPOINT_ANTIVIRUS,Endpoint Antivirus,,
+ESET,AV Business Edition,,EAVB,ENDPOINT_ANTIVIRUS,AV Business Edition,,
+ESET,NOD32 AV Business Ed Mac,,RMM-EAVBM,ENDPOINT_ANTIVIRUS,NOD32 AV Business Ed Mac,,
+ESET,Endpoint Security macOS Per Device,,ITN-EESX,ENDPOINT_SECURITY,Endpoint Security macOS Per Device,,
+ESET,WW File Server,,3PARTYONPREMESWWFSVR,SERVER_SECURITY,WW File Server,,
+ESET,DESlock / Endpoint Encryption,,DSLP,ENCRYPTION,DESlock / Endpoint Encryption,2.15,1.33
+ESET,MSP - Endpoint Encryption Pro,MSP - Endpoint Encryption Pro,,ENCRYPTION,Endpoint Encryption Pro,1.33,
+ESET,MSP - ESET Inspect,MSP - ESET Inspect,,INSPECT_EDR,ESET Inspect,0.0313,
+ESET,MSP - PROTECT Advanced,MSP - PROTECT Advanced,,PROTECT_ADVANCED,PROTECT Advanced,0.03575,
+ESET,MSP - Server Security,MSP - Server Security,,SERVER_SECURITY,Server Security,0.028333,
+ESET,Protect Entry Internal IT,,MSP2-PE-IIT,PROTECT_ENTRY,Protect Entry Internal IT,,
+ESET,Protect Entry On-Prem 1yr,,EPA-Y1-GEN,PROTECT_ENTRY_ONPREM,Protect Entry On-Prem 1yr,,
+ESET,Protect Complete,,MSP2-PC,PROTECT_COMPLETE,Protect Complete,1.55,1.26
+ESET,Endpoint AV Legacy Partners,,3PARTYONPREMESETAVLP,ENDPOINT_ANTIVIRUS,Endpoint AV Legacy Partners,,
+ESET,NOD32 AV Business Edition,,RMM-EAVB,ENDPOINT_ANTIVIRUS,NOD32 AV Business Edition,,
+ESET,AV Business Ed Mac Legacy,,LEGACYSKUESETMOLP,ENDPOINT_ANTIVIRUS,AV Business Ed Mac Legacy,,
+ESET,File Security for MS Win Server,,WFS,SERVER_SECURITY,File Security for MS Win Server,,
+ESET,Mail Security for MS Exchange,,EXCH,MAIL_SECURITY,Mail Security for MS Exchange,,
+ESET,Full Disk Encryption,,MSP2FDE1,ENCRYPTION,Full Disk Encryption,,
+Bitdefender,"Bitdefender Patch Management, 1 - 99 ep",DL17108A00A-EN-D,DL17108A00A-EN-D,PATCH,Pattern-matched from royalties product_description.,0.62,0.95
+Bitdefender,"Bitdefender Patch Management, 500 - 999 ep",DL17108A00C-EN-D,DL17108A00C-EN-D,PATCH,Pattern-matched from royalties product_description.,0.62,0.77
+Bitdefender,Bitdefender GravityZone Email Security,CU-BITDF-GZ-EMAILSEC,CU-BITDF-GZ-EMAILSEC,EMAIL,Email Security.,0.82,
+Bitdefender,Bitdefender Cloud Sec GravityZone 1000-2499 ep,BTS-AUD-M06-TBBTCDSCCW,BTS-AUD-M06-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,"Bitdefender ATS & EDR, 1000-4999 ep",DL17107A00D-EN-D,DL17107A00D-EN-D,ATS_EDR,Pattern-matched from royalties product_description.,1.05,1.05
+Bitdefender,"Bitdefender Patch Management, 100 - 499 ep",DL17108A00B-EN-D,DL17108A00B-EN-D,PATCH,Pattern-matched from royalties product_description.,0.62,0.85
+Bitdefender,"Bitdefender Patch Management, 1000 - 4999 ep",DL17108A00D-EN-D,DL17108A00D-EN-D,PATCH,Pattern-matched from royalties product_description.,0.62,0.69
+Bitdefender,Bitdefender Advanced Threat Security 1000-4999 ep,BTS-USD-M04-TADL17106A,BTS-USD-M04-TADL17106A,ATS,Pattern-matched from royalties product_description.,0.55,
+Bitdefender,"Bitdefender ATS & EDR, 5000+ ep",DL17107A00E-EN-D,DL17107A00E-EN-D,ATS_EDR,Pattern-matched from royalties product_description.,1.05,1.05
+Bitdefender,Bitdefender Cloud Sec GravityZone 250 to 499 ep,BTS-AUD-M03-TBBTCDSCCW,BTS-AUD-M03-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Advanced Threat Security,CU-BITDF-ADV-THREAT,CU-BITDF-ADV-THREAT,ATS,Advanced Threat Security standalone.,0.55,
+Bitdefender,Bitdefender Cloud Encryption,3PARTYONPREMBTCDENCP,3PARTYONPREMBTCDENCP,ENCRYPTION,Cloud Encryption contract.,0.4,
+Bitdefender,Bitdefender Advanced Threat Security 1-99 ep,BTS-AUD-M01-TADL17106A,BTS-AUD-M01-TADL17106A,ATS,Pattern-matched from royalties product_description.,0.55,
+Bitdefender,Bitdefender Cloud Sec GravityZone 100 to 249 ep,BTS-UKD-M02-TBBTCDSCCW,BTS-UKD-M02-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Security TSP CW Automate,3PARTYONPREMBTCDSCLT,3PARTYONPREMBTCDSCLT,TSP_AUTOMATE,TSP CW Automate.,0.46,
+Bitdefender,Bitdefender Advanced Threat Security 100-499 ep,BTS-USD-M02-TADL17106A,BTS-USD-M02-TADL17106A,ATS,Pattern-matched from royalties product_description.,0.55,
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep",BTS-CAD-M01-TADL17107A,BTS-CAD-M01-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.,1.05,
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep",DL17107A00A-EN-D,DL17107A00A-EN-D,ATS_EDR,Pattern-matched from royalties product_description.,1.05,1.05
+Bitdefender,Bitdefender ATS & EDR,CU-BITDF-ATS-AND-EDR,CU-BITDF-ATS-AND-EDR,ATS_EDR,ATS & EDR usage overage.,1.05,
+Bitdefender,Bitdefender Advanced Threat Security 1-99 ep,BTS-CAD-M01-TADL17106A,BTS-CAD-M01-TADL17106A,ATS,Pattern-matched from royalties product_description.,0.55,
+Bitdefender,Bitdefender Advanced Threat Security 1-99 ep,BTS-USD-M01-TADL17106A,BTS-USD-M01-TADL17106A,ATS,Pattern-matched from royalties product_description.,0.55,
+Bitdefender,SwO Bitdefender Cloud Security Gravity Zone,SwO-3P-CYBR-SOLP-SAAS-GRAVZONE,SwO-3P-CYBR-SOLP-SAAS-GRAVZONE,GRAVITYZONE,SwO GravityZone.,0.42,
+Bitdefender,Bitdefender Cloud Security Gravity Zone,3PARTYONPREMBTCDSCCW,3PARTYONPREMBTCDSCCW,GRAVITYZONE,Contract GravityZone.,0.42,0.4
+Bitdefender,Bitdefender Advanced Threat Security 100-499 ep,DL17106A00B-EN-D,DL17106A00B-EN-D,ATS,Pattern-matched from royalties product_description.,0.55,0.55
+Bitdefender,Bitdefender Cloud Sec GravityZone 250 to 499 ep,BTS-USD-M03-TBBTCDSCCW,BTS-USD-M03-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Cloud Sec GravityZone 1 to 99 ep,BTS-EUD-M01-TBBTCDSCCW,BTS-EUD-M01-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender XDR - Identity,CMS-SEC-SAAS-SEC-CYB-XDRIDEN,CMS-SEC-SAAS-SEC-CYB-XDRIDEN,XDR,XDR Identity.,0.58,0.65
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep",DL17107A00B-EN-D,DL17107A00B-EN-D,ATS_EDR,Pattern-matched from royalties product_description.,1.05,1.05
+Bitdefender,Bitdefender Cloud Encryption 100-249,AL1795A00B-EN,AL1795A00B-EN,ENCRYPTION,Pattern-matched from royalties product_description.,0.4,0.4
+Bitdefender,"Bitdefender ATS & EDR, 500-999 ep",BTS-USD-M03-TADL17107A,BTS-USD-M03-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.,1.05,
+Bitdefender,Bitdefender 1YR Cloud Security Gravity Zone,3PARTYONPREMCLDSECGZ,3PARTYONPREMCLDSECGZ,GRAVITYZONE,1YR Cloud Security variant.,0.42,
+Bitdefender,Bitdefender EDR (MSP Secure),CU-BITDFEDRMSPSECURE,CU-BITDFEDRMSPSECURE,MSP_SECURE,MSP Secure EDR.,1.47,1.47
+Bitdefender,Bitdefender Cloud Encryption (1-99 ep),AL1795A00A-EN,AL1795A00A-EN,ENCRYPTION,Pattern-matched from royalties product_description.,0.4,0.4
+Bitdefender,TA-Bitdefender EDR (MSP Secure),TA-BITDEFENDER-EDR-MSP-SECURE,TA-BITDEFENDER-EDR-MSP-SECURE,MSP_SECURE,TA MSP Secure EDR.,1.47,0.6
+Bitdefender,SA-ConnectWise MDR with Bitdefender,MDR-BITDF,MDR-BITDF,MDR_BITDEFENDER,SA MDR bundle.,1.47,
+Bitdefender,ConnectWise MDR with Bitdefender,CW-EPSEC-BITDEFENDER,CW-EPSEC-BITDEFENDER,MDR_BITDEFENDER,MDR bundle.,1.47,
+Bitdefender,M2M-ConnectWise MDR with Bitdefender,M2MEPSEC-BITDEFENDER,M2MEPSEC-BITDEFENDER,MDR_BITDEFENDER,M2M MDR bundle.,1.47,
+Acronis,SBATFNLOS,SBATFNLOS,APP-SA-SBATFNLOS,SBATFNLOS,Zuora PRODUCT_SKU maps to vendor code SBATFNLOS,0.6745,0.71
+Acronis,SBATFNLOS,SBATFNLOS,SBATFNLOS,SBATFNLOS,Zuora PRODUCT_SKU maps to vendor code SBATFNLOS,0.6745,
+Acronis,SCVAMSENS,SCVAMSENS,APP-SA-SCVAMSENS,SCVAMSENS,Zuora PRODUCT_SKU maps to vendor code SCVAMSENS,0.02,0.008
+Acronis,SCVAMSENS,SCVAMSENS,SCVAMSENS,SCVAMSENS,Zuora PRODUCT_SKU maps to vendor code SCVAMSENS,,
+Acronis,SEDAMSENS,SEDAMSENS,APP-BC-SEDAMSENS,SEDAMSENS,Zuora PRODUCT_SKU maps to vendor code SEDAMSENS,1.3775,1.75
+Acronis,SEDAMSENS,SEDAMSENS,M2M-APP-BC-SEDAMSENS,SEDAMSENS,Zuora PRODUCT_SKU maps to vendor code SEDAMSENS,1.3775,
+Acronis,SEDAMSENS,SEDAMSENS,SEDAMSENS,SEDAMSENS,Zuora PRODUCT_SKU maps to vendor code SEDAMSENS,1.3775,
+Acronis,SO4AMSENS,SO4AMSENS,SO4AMSENS,SO4AMSENS,Zuora PRODUCT_SKU maps to vendor code SO4AMSENS,1.3348,
+Acronis,SO4AMSENS,SO4AMSENS,APP-BC-SO4AMSENS,SO4AMSENS,Zuora PRODUCT_SKU maps to vendor code SO4AMSENS,1.3348,1.45
+Acronis,SO4AMSENS,SO4AMSENS,M2M-APP-BC-SO4AMSENS,SO4AMSENS,Zuora PRODUCT_SKU maps to vendor code SO4AMSENS,1.3348,
+Acronis,SO6AMSENS,SO6AMSENS,SO6AMSENS,SO6AMSENS,Zuora PRODUCT_SKU maps to vendor code SO6AMSENS,0.7243,
+Acronis,SO6AMSENS,SO6AMSENS,APP-SA-SO6AMSENS,SO6AMSENS,Zuora PRODUCT_SKU maps to vendor code SO6AMSENS,0.7243,0.7
+Acronis,SP1AMSENS,SP1AMSENS,SP1AMSENS,SP1AMSENS,Zuora PRODUCT_SKU maps to vendor code SP1AMSENS,0.0545,0.0
+Acronis,SP1AMSENS,SP1AMSENS,SP1AMSENS BY GB,SP1AMSENS,Zuora PRODUCT_SKU maps to vendor code SP1AMSENS,0.0545,
+Acronis,SP1AMSENS,SP1AMSENS,APP-BC-SP1AMSENS,SP1AMSENS,Zuora PRODUCT_SKU maps to vendor code SP1AMSENS,0.0545,0.0351
+Acronis,SP1AMSENS,SP1AMSENS,M2M-APP-BC-SP1AMSENS,SP1AMSENS,Zuora PRODUCT_SKU maps to vendor code SP1AMSENS,0.0545,
+Acronis,SP1AMSENS,SP1AMSENS,APP-SA-SP1AMSENS,SP1AMSENS,Zuora PRODUCT_SKU maps to vendor code SP1AMSENS,0.0545,0.0504
+Acronis,SP1AMSENS,SP1AMSENS,LEGACYSKUTASP1AMSEN,SP1AMSENS,Zuora PRODUCT_SKU maps to vendor code SP1AMSENS,0.0545,
+Acronis,SP3AMSENS,SP3AMSENS,SP3AMSENS PER GB,SP3AMSENS,Zuora PRODUCT_SKU maps to vendor code SP3AMSENS,0.0646,
+Acronis,SP3AMSENS,SP3AMSENS,SP3AMSENS PER TB,SP3AMSENS,Zuora PRODUCT_SKU maps to vendor code SP3AMSENS,0.0646,
+Acronis,SP3AMSENS,SP3AMSENS,APP-BC-SP3AMSENS,SP3AMSENS,Zuora PRODUCT_SKU maps to vendor code SP3AMSENS,0.0646,0.0371
+Acronis,SP3AMSENS,SP3AMSENS,SP3AMSENS,SP3AMSENS,Zuora PRODUCT_SKU maps to vendor code SP3AMSENS,0.0646,
+Acronis,SP4BMSENS,SP4BMSENS,APP-BC-SP4BMSENS,SP4BMSENS,Zuora PRODUCT_SKU maps to vendor code SP4BMSENS,0.0264,0.015
+Acronis,SP4BMSENS,SP4BMSENS,SP4BMSENS,SP4BMSENS,Zuora PRODUCT_SKU maps to vendor code SP4BMSENS,0.0264,
+Acronis,SP4BMSENS,SP4BMSENS,M2M-APP-BC-SP4BMSENS,SP4BMSENS,Zuora PRODUCT_SKU maps to vendor code SP4BMSENS,0.0264,
+Acronis,SP4BMSENS,SP4BMSENS,APP-SA-SP4BMSENS,SP4BMSENS,Zuora PRODUCT_SKU maps to vendor code SP4BMSENS,0.0264,0.0259
+Acronis,SP4BMSENS,SP4BMSENS,TBBUHYBRID,SP4BMSENS,Zuora PRODUCT_SKU maps to vendor code SP4BMSENS,0.0264,
+Acronis,SP4BMSENS,SP4BMSENS,3PARTYONPREMSP4BMSE2,SP4BMSENS,Zuora PRODUCT_SKU maps to vendor code SP4BMSENS,0.0264,
+Acronis,SP4BMSENS,SP4BMSENS,3PARTYONPREMSP4BMSE1,SP4BMSENS,Zuora PRODUCT_SKU maps to vendor code SP4BMSENS,0.0264,
+Acronis,SP5AMSENS,SP5AMSENS,SP5AMSENS,SP5AMSENS,Zuora PRODUCT_SKU maps to vendor code SP5AMSENS,0.0113,
+Acronis,SP5AMSENS,SP5AMSENS,APP-SA-SP5AMSENS,SP5AMSENS,Zuora PRODUCT_SKU maps to vendor code SP5AMSENS,0.0113,0.0105
+Acronis,SP5AMSENS,SP5AMSENS,M2M-APP-SA-SP5AMSENS,SP5AMSENS,Zuora PRODUCT_SKU maps to vendor code SP5AMSENS,0.0113,
+Acronis,SPBAMSENS,SPBAMSENS,MP-SPBAMSENS,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SPBAMSENS,SPBAMSENS,3PARTYONPREMCLOUDCAP,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SPBAMSENS,SPBAMSENS,3PARTYONPREMACCLDDKT,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SPBAMSENS,SPBAMSENS,SPBAMSENS,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SPBAMSENS,SPBAMSENS,APP-BC-SPBAMSENS,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,0.0351
+Acronis,SPBAMSENS,SPBAMSENS,M2M-APP-BC-SPBAMSENS,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SPBAMSENS,SPBAMSENS,ACRONISCLOUDHOSTSTND,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SPBAMSENS,SPBAMSENS,3PARTYONPREMACCLDSV4,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SPBBMSENS,SPBBMSENS,SPBBMSENS,SPBBMSENS,Zuora PRODUCT_SKU maps to vendor code SPBBMSENS,0.0313,
+Acronis,SPBBMSENS,SPBBMSENS,APP-BC-SPBBMSENS,SPBBMSENS,Zuora PRODUCT_SKU maps to vendor code SPBBMSENS,0.0313,0.0338
+Acronis,SPBBMSENS,SPBBMSENS,M2M-APP-BC-SPBBMSENS,SPBBMSENS,Zuora PRODUCT_SKU maps to vendor code SPBBMSENS,0.0313,
+Acronis,SPBBMSENS,SPBBMSENS,SELFPROVIDEDSTORAGE,SPBBMSENS,Zuora PRODUCT_SKU maps to vendor code SPBBMSENS,0.0313,
+Acronis,SPD5MSENS,SPD5MSENS,APP-SA-SPD5MSENS,SPD5MSENS,Zuora PRODUCT_SKU maps to vendor code SPD5MSENS,7.06,8.0
+Acronis,SPD5MSENS,SPD5MSENS,SPD5MSENS,SPD5MSENS,Zuora PRODUCT_SKU maps to vendor code SPD5MSENS,7.06,
+Acronis,SPD5MSENS,SPD5MSENS,M2M-APP-SA-SPD5MSENS,SPD5MSENS,Zuora PRODUCT_SKU maps to vendor code SPD5MSENS,7.06,
+Acronis,SPDAMSENS,SPDAMSENS,APP-BC-SPDAMSENS,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,0.011
+Acronis,SPDAMSENS,SPDAMSENS,M2M-APP-BC-SPDAMSENS,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,
+Acronis,SPDAMSENS,SPDAMSENS,SPDAMSENS,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,
+Acronis,SPDAMSENS,SPDAMSENS,SPDAMSENSBUCLD1TB,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,
+Acronis,SPDAMSENS,SPDAMSENS,SPDAMSENS1GB,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,
+Acronis,SPDAMSENS,SPDAMSENS,SPDAMSENSOverage,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,
+Acronis,SPDCMSENS,SPDCMSENS,SPDCMSENS,SPDCMSENS,Zuora PRODUCT_SKU maps to vendor code SPDCMSENS,,
+Acronis,SPDCMSENS,SPDCMSENS,APP-SA-SPDCMSENS,SPDCMSENS,Zuora PRODUCT_SKU maps to vendor code SPDCMSENS,,
+Acronis,SPDCMSENS,SPDCMSENS,M2M-APP-SA-SPDCMSENS,SPDCMSENS,Zuora PRODUCT_SKU maps to vendor code SPDCMSENS,,
+Acronis,SPEAMSENS,SPEAMSENS,MP-SPEAMSENS,SPEAMSENS,Zuora PRODUCT_SKU maps to vendor code SPEAMSENS,10.3731,
+Acronis,SPEAMSENS,SPEAMSENS,APP-BC-SPEAMSENS,SPEAMSENS,Zuora PRODUCT_SKU maps to vendor code SPEAMSENS,10.3731,8.7467
+Acronis,SPEAMSENS,SPEAMSENS,M2M-APP-BC-SPEAMSENS,SPEAMSENS,Zuora PRODUCT_SKU maps to vendor code SPEAMSENS,10.3731,
+Acronis,SPEAMSENS,SPEAMSENS,SPEAMSENS,SPEAMSENS,Zuora PRODUCT_SKU maps to vendor code SPEAMSENS,10.3731,
+Acronis,SPFAMSENS,SPFAMSENS,MP-SPFAMSENS,SPFAMSENS,Zuora PRODUCT_SKU maps to vendor code SPFAMSENS,3.6565,
+Acronis,SPFAMSENS,SPFAMSENS,APP-BC-SPFAMSENS,SPFAMSENS,Zuora PRODUCT_SKU maps to vendor code SPFAMSENS,3.6565,3.4125
+Acronis,SPFAMSENS,SPFAMSENS,M2M-APP-BC-SPFAMSENS,SPFAMSENS,Zuora PRODUCT_SKU maps to vendor code SPFAMSENS,3.6565,
+Acronis,SPFAMSENS,SPFAMSENS,SPFAMSENS,SPFAMSENS,Zuora PRODUCT_SKU maps to vendor code SPFAMSENS,3.6565,
+Acronis,SPGAMSENS,SPGAMSENS,MP-SPGAMSENS,SPGAMSENS,Zuora PRODUCT_SKU maps to vendor code SPGAMSENS,1.704,
+Acronis,SPGAMSENS,SPGAMSENS,APP-BC-SPGAMSENS,SPGAMSENS,Zuora PRODUCT_SKU maps to vendor code SPGAMSENS,1.704,1.6458
+Acronis,SPGAMSENS,SPGAMSENS,M2M-APP-BC-SPGAMSENS,SPGAMSENS,Zuora PRODUCT_SKU maps to vendor code SPGAMSENS,1.704,
+Acronis,SPGAMSENS,SPGAMSENS,SPGAMSENS,SPGAMSENS,Zuora PRODUCT_SKU maps to vendor code SPGAMSENS,1.704,
+Acronis,SPIAMSENS,SPIAMSENS,APP-BC-SPIAMSENS,SPIAMSENS,Zuora PRODUCT_SKU maps to vendor code SPIAMSENS,0.6319,0.4873
+Acronis,SPIAMSENS,SPIAMSENS,M2M-APP-BC-SPIAMSENS,SPIAMSENS,Zuora PRODUCT_SKU maps to vendor code SPIAMSENS,0.6319,
+Acronis,SPIAMSENS,SPIAMSENS,SPIAMSENS,SPIAMSENS,Zuora PRODUCT_SKU maps to vendor code SPIAMSENS,0.6319,
+Acronis,SPXAMSENS,SPXAMSENS,MP-SPXAMSENS,SPXAMSENS,Zuora PRODUCT_SKU maps to vendor code SPXAMSENS,0.0239,
+Acronis,SPXAMSENS,SPXAMSENS,APP-BC-SPXAMSENS,SPXAMSENS,Zuora PRODUCT_SKU maps to vendor code SPXAMSENS,0.0239,0.0154
+Acronis,SPXAMSENS,SPXAMSENS,M2M-APP-BC-SPXAMSENS,SPXAMSENS,Zuora PRODUCT_SKU maps to vendor code SPXAMSENS,0.0239,
+Acronis,SPXAMSENS,SPXAMSENS,SPXAMSENS,SPXAMSENS,Zuora PRODUCT_SKU maps to vendor code SPXAMSENS,0.0239,
+Acronis,SPZBMSENS,SPZBMSENS,APP-SPZBMSENS,SPZBMSENS,Zuora PRODUCT_SKU maps to vendor code SPZBMSENS,0.0593,0.0923
+Acronis,SPZBMSENS,SPZBMSENS,SPZBMSENS,SPZBMSENS,Zuora PRODUCT_SKU maps to vendor code SPZBMSENS,0.0593,
+Acronis,SQ1AMSENS,SQ1AMSENS,APP-BC-SQ1AMSENS,SQ1AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ1AMSENS,0.0239,0.0154
+Acronis,SQ1AMSENS,SQ1AMSENS,M2M-APP-BC-SQ1AMSENS,SQ1AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ1AMSENS,0.0239,
+Acronis,SQ1AMSENS,SQ1AMSENS,SQ1AMSENS,SQ1AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ1AMSENS,0.0239,
+Acronis,SQ2AMSENS,SQ2AMSENS,SQ2AMSENS PER GB,SQ2AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ2AMSENS,0.0646,
+Acronis,SQ2AMSENS,SQ2AMSENS,SQ2AMSENS PER TB,SQ2AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ2AMSENS,0.0646,
+Acronis,SQ2AMSENS,SQ2AMSENS,APP-BC-SQ2AMSENS,SQ2AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ2AMSENS,0.0646,0.0371
+Acronis,SQ2AMSENS,SQ2AMSENS,SQ2AMSENS,SQ2AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ2AMSENS,0.0646,
+Acronis,SQ2AMSENS,SQ2AMSENS,M2M-APP-BC-SQ2AMSENS,SQ2AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ2AMSENS,0.0646,
+Acronis,SQ6AMSENS,SQ6AMSENS,APP-BC-SQ6AMSENS,SQ6AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ6AMSENS,0.04,0.018
+Acronis,SQ6AMSENS,SQ6AMSENS,M2M-APP-BC-SQ6AMSENS,SQ6AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ6AMSENS,,
+Acronis,SQ6AMSENS,SQ6AMSENS,SQ6AMSENS,SQ6AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ6AMSENS,,
+Acronis,SQ7AMSENS,SQ7AMSENS,APP-BC-SQ7AMSENS,SQ7AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ7AMSENS,1.87,1.782
+Acronis,SQ7AMSENS,SQ7AMSENS,M2M-APP-BC-SQ7AMSENS,SQ7AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ7AMSENS,1.87,
+Acronis,SQ7AMSENS,SQ7AMSENS,SQ7AMSENS,SQ7AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ7AMSENS,1.87,
+Acronis,SQ8AMSENS,SQ8AMSENS,APP-BC-SQ8AMSENS,SQ8AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ8AMSENS,1.1502,0.63
+Acronis,SQ8AMSENS,SQ8AMSENS,M2M-APP-BC-SQ8AMSENS,SQ8AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ8AMSENS,1.1502,
+Acronis,SQ8AMSENS,SQ8AMSENS,SQ8AMSENS,SQ8AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ8AMSENS,1.1502,
+Acronis,SQACMSENS,SQACMSENS,SQACMSENS,SQACMSENS,Zuora PRODUCT_SKU maps to vendor code SQACMSENS,28.4,
+Acronis,SQACMSENS,SQACMSENS,APP-SA-SQACMSENS,SQACMSENS,Zuora PRODUCT_SKU maps to vendor code SQACMSENS,28.4,21.0
+Acronis,SQBPMSENS,SQBPMSENS,APP-SA-SQBPMSENS,SQBPMSENS,Zuora PRODUCT_SKU maps to vendor code SQBPMSENS,0.535,0.5075
+Acronis,SQBPMSENS,SQBPMSENS,SQBPMSENS,SQBPMSENS,Zuora PRODUCT_SKU maps to vendor code SQBPMSENS,0.535,
+Acronis,SQYAMSENS,SQYAMSENS,APP-BC-SQYAMSENS,SQYAMSENS,Zuora PRODUCT_SKU maps to vendor code SQYAMSENS,0.0275,0.03
+Acronis,SQYAMSENS,SQYAMSENS,M2M-APP-BC-SQYAMSENS,SQYAMSENS,Zuora PRODUCT_SKU maps to vendor code SQYAMSENS,0.0275,
+Acronis,SQYAMSENS,SQYAMSENS,SQYAMSENS,SQYAMSENS,Zuora PRODUCT_SKU maps to vendor code SQYAMSENS,0.0275,
+Acronis,SR3AMSENS,SR3AMSENS,SR3AMSENS,SR3AMSENS,Zuora PRODUCT_SKU maps to vendor code SR3AMSENS,1.115,
+Acronis,SR3AMSENS,SR3AMSENS,APP-BC-SR3AMSENS,SR3AMSENS,Zuora PRODUCT_SKU maps to vendor code SR3AMSENS,1.115,1.57
+Acronis,SR3AMSENS,SR3AMSENS,M2M-APP-BC-SR3AMSENS,SR3AMSENS,Zuora PRODUCT_SKU maps to vendor code SR3AMSENS,1.115,
+Acronis,SRAAMSENS,SRAAMSENS,MP-SRAAMSENS,SRAAMSENS,Zuora PRODUCT_SKU maps to vendor code SRAAMSENS,0.5332,
+Acronis,SRAAMSENS,SRAAMSENS,APP-BC-SRAAMSENS,SRAAMSENS,Zuora PRODUCT_SKU maps to vendor code SRAAMSENS,0.5332,0.56
+Acronis,SRAAMSENS,SRAAMSENS,M2M-APP-BC-SRAAMSENS,SRAAMSENS,Zuora PRODUCT_SKU maps to vendor code SRAAMSENS,0.5332,
+Acronis,SRAAMSENS,SRAAMSENS,SRAAMSENS,SRAAMSENS,Zuora PRODUCT_SKU maps to vendor code SRAAMSENS,0.5332,
+Acronis,SRBAMSENS,SRBAMSENS,APP-BC-SRBAMSENS,SRBAMSENS,Zuora PRODUCT_SKU maps to vendor code SRBAMSENS,0.37,0.4
+Acronis,SRBAMSENS,SRBAMSENS,M2M-APP-BC-SRBAMSENS,SRBAMSENS,Zuora PRODUCT_SKU maps to vendor code SRBAMSENS,0.37,
+Acronis,SRBAMSENS,SRBAMSENS,SRBAMSENS,SRBAMSENS,Zuora PRODUCT_SKU maps to vendor code SRBAMSENS,0.37,
+Acronis,SRHAMSENS,SRHAMSENS,APP-BC-SRHAMSENS,SRHAMSENS,Zuora PRODUCT_SKU maps to vendor code SRHAMSENS,0.7313,0.36
+Acronis,SRHAMSENS,SRHAMSENS,M2M-APP-BC-SRHAMSENS,SRHAMSENS,Zuora PRODUCT_SKU maps to vendor code SRHAMSENS,0.7313,
+Acronis,SRHAMSENS,SRHAMSENS,SRHAMSENS,SRHAMSENS,Zuora PRODUCT_SKU maps to vendor code SRHAMSENS,0.7313,
+Acronis,SRI5MSENS,SRI5MSENS,SRI5MSENS,SRI5MSENS,Zuora PRODUCT_SKU maps to vendor code SRI5MSENS,1.15,
+Acronis,SRI5MSENS,SRI5MSENS,APP-SA-SRI5MSENS,SRI5MSENS,Zuora PRODUCT_SKU maps to vendor code SRI5MSENS,1.15,1.45
+Acronis,SRI5MSENS,SRI5MSENS,M2M-APP-SA-SRI5MSENS,SRI5MSENS,Zuora PRODUCT_SKU maps to vendor code SRI5MSENS,1.15,
+Acronis,SRIAMSENS,SRIAMSENS,APP-BC-SRIAMSENS,SRIAMSENS,Zuora PRODUCT_SKU maps to vendor code SRIAMSENS,0.1725,0.55
+Acronis,SRIAMSENS,SRIAMSENS,M2M-APP-BC-SRIAMSENS,SRIAMSENS,Zuora PRODUCT_SKU maps to vendor code SRIAMSENS,0.1725,
+Acronis,SRIAMSENS,SRIAMSENS,SRIAMSENS,SRIAMSENS,Zuora PRODUCT_SKU maps to vendor code SRIAMSENS,0.1725,
+Acronis,SRJAMSENS,SRJAMSENS,SRJAMSENS,SRJAMSENS,Zuora PRODUCT_SKU maps to vendor code SRJAMSENS,1.1502,
+Acronis,SRJAMSENS,SRJAMSENS,APP-BC-SRJAMSENS,SRJAMSENS,Zuora PRODUCT_SKU maps to vendor code SRJAMSENS,1.1502,1.24
+Acronis,SRJAMSENS,SRJAMSENS,M2M-APP-BC-SRJAMSENS,SRJAMSENS,Zuora PRODUCT_SKU maps to vendor code SRJAMSENS,1.1502,
+Acronis,SRJGMSENS,SRJGMSENS,APP-SA-SRJGMSENS,SRJGMSENS,Zuora PRODUCT_SKU maps to vendor code SRJGMSENS,0.831,0.7455
+Acronis,SRJGMSENS,SRJGMSENS,SRJGMSENS,SRJGMSENS,Zuora PRODUCT_SKU maps to vendor code SRJGMSENS,0.831,
+Acronis,SRJGMSENS,SRJGMSENS,M2M-APP-SA-SRJGMSENS,SRJGMSENS,Zuora PRODUCT_SKU maps to vendor code SRJGMSENS,0.831,
+Acronis,SRMAMSENS,SRMAMSENS,APP-SRMAMSENS,SRMAMSENS,Zuora PRODUCT_SKU maps to vendor code SRMAMSENS,0.6674,0.6
+Acronis,SRMAMSENS,SRMAMSENS,SRMAMSENS,SRMAMSENS,Zuora PRODUCT_SKU maps to vendor code SRMAMSENS,0.6674,
+Acronis,SRXAMSENS,SRXAMSENS,APP-SA-SRXAMSENS,SRXAMSENS,Zuora PRODUCT_SKU maps to vendor code SRXAMSENS,0.2575,0.6745
+Acronis,SRXAMSENS,SRXAMSENS,SRXAMSENS,SRXAMSENS,Zuora PRODUCT_SKU maps to vendor code SRXAMSENS,0.2575,
+Acronis,SUVAMSENS,SUVAMSENS,APP-BC-SUVAMSENS,SUVAMSENS,Zuora PRODUCT_SKU maps to vendor code SUVAMSENS,0.0149,0.018
+Acronis,SUVAMSENS,SUVAMSENS,M2M-APP-BC-SUVAMSENS,SUVAMSENS,Zuora PRODUCT_SKU maps to vendor code SUVAMSENS,0.0149,
+Acronis,SUVAMSENS,SUVAMSENS,SUVAMSENS,SUVAMSENS,Zuora PRODUCT_SKU maps to vendor code SUVAMSENS,0.0149,
+Acronis,SVEAMSENS,SVEAMSENS,LEGACYSKUTASPBAMSEN,SVEAMSENS,Zuora PRODUCT_SKU maps to vendor code SVEAMSENS,0.0272,
+Acronis,SVEAMSENS,SVEAMSENS,3PARTYONPREMHOSTEDDR,SVEAMSENS,Zuora PRODUCT_SKU maps to vendor code SVEAMSENS,0.0272,
+Acronis,SVEAMSENS,SVEAMSENS,MP-SVEAMSENS,SVEAMSENS,Zuora PRODUCT_SKU maps to vendor code SVEAMSENS,0.0272,
+Acronis,SVEAMSENS,SVEAMSENS,SVEAMSENS,SVEAMSENS,Zuora PRODUCT_SKU maps to vendor code SVEAMSENS,0.0272,
+Acronis,SVVAMSENS,SVVAMSENS,BC-SVVAMSENS,SVVAMSENS,Zuora PRODUCT_SKU maps to vendor code SVVAMSENS,,
+Acronis,SVVAMSENS,SVVAMSENS,SVVAMSENS,SVVAMSENS,Zuora PRODUCT_SKU maps to vendor code SVVAMSENS,,
+Acronis,SVVAMSENS,SVVAMSENS,APP-BC-SVVAMSENS,SVVAMSENS,Zuora PRODUCT_SKU maps to vendor code SVVAMSENS,10.4,4.2131
+Acronis,SVVAMSENS,SVVAMSENS,M2M-APP-BC-SVVAMSENS,SVVAMSENS,Zuora PRODUCT_SKU maps to vendor code SVVAMSENS,,
+Acronis,SPDAMSENS,SPDAMSENS,TASPDAMSEN,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,
+Acronis,SPEAMSENS,SPEAMSENS,TASPEAMSEN,SPEAMSENS,Zuora PRODUCT_SKU maps to vendor code SPEAMSENS,10.3731,
+Acronis,SPGAMSENS,SPGAMSENS,TASPGAMSEN,SPGAMSENS,Zuora PRODUCT_SKU maps to vendor code SPGAMSENS,1.704,
+Acronis,SPIAMSENS,SPIAMSENS,TASPIAMSEN,SPIAMSENS,Zuora PRODUCT_SKU maps to vendor code SPIAMSENS,0.6319,
+Acronis,SRIAMSENS,SRIAMSENS,TASRIAMSEN,SRIAMSENS,Zuora PRODUCT_SKU maps to vendor code SRIAMSENS,0.1725,
+Acronis,SPFAMSENS,SPFAMSENS,TASPFAMSEN,SPFAMSENS,Zuora PRODUCT_SKU maps to vendor code SPFAMSENS,3.6565,
+Acronis,SRHAMSENS,SRHAMSENS,TASRHAMSEN,SRHAMSENS,Zuora PRODUCT_SKU maps to vendor code SRHAMSENS,0.7313,
+Acronis,SRJAMSENS,SRJAMSENS,TASRJAMSEN,SRJAMSENS,Zuora PRODUCT_SKU maps to vendor code SRJAMSENS,1.1502,
+Acronis,SPBAMSENS,SPBAMSENS,TASPBAMSEN,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SPD5MSENS,SPD5MSENS,TASPD5MSEN,SPD5MSENS,Zuora PRODUCT_SKU maps to vendor code SPD5MSENS,7.06,
+Acronis,SP5AMSENS,SP5AMSENS,TASP5AMSEN,SP5AMSENS,Zuora PRODUCT_SKU maps to vendor code SP5AMSENS,0.0113,
+Acronis,SP3AMSENS,SP3AMSENS,TASP3AMSEN,SP3AMSENS,Zuora PRODUCT_SKU maps to vendor code SP3AMSENS,0.0646,
+Acronis,SO4AMSENS,SO4AMSENS,TASO4AMSEN,SO4AMSENS,Zuora PRODUCT_SKU maps to vendor code SO4AMSENS,1.3348,
+Acronis,SQ8AMSENS,SQ8AMSENS,TASQ8AMSEN,SQ8AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ8AMSENS,1.1502,
+Acronis,SRI5MSENS,SRI5MSENS,TASRI5MSEN,SRI5MSENS,Zuora PRODUCT_SKU maps to vendor code SRI5MSENS,1.15,
+Acronis,SVEAMSENS,SVEAMSENS,TASVEAMSEN,SVEAMSENS,Zuora PRODUCT_SKU maps to vendor code SVEAMSENS,0.0272,
+Acronis,SRBAMSENS,SRBAMSENS,TASRBAMSEN,SRBAMSENS,Zuora PRODUCT_SKU maps to vendor code SRBAMSENS,0.37,
+Acronis,SUVAMSENS,SUVAMSENS,TASUVAMSEN,SUVAMSENS,Zuora PRODUCT_SKU maps to vendor code SUVAMSENS,0.0149,
+Acronis,SQYAMSENS,SQYAMSENS,TASQYAMSEN,SQYAMSENS,Zuora PRODUCT_SKU maps to vendor code SQYAMSENS,0.0275,
+Acronis,SPDAMSENS,SPDAMSENS,ACB-USD-M00-TASPDAMSEN,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,
+Acronis,SPEAMSENS,SPEAMSENS,ACB-USD-M00-TASPEAMSEN,SPEAMSENS,Zuora PRODUCT_SKU maps to vendor code SPEAMSENS,10.3731,
+Acronis,SPGAMSENS,SPGAMSENS,ACB-USD-M00-TASPGAMSEN,SPGAMSENS,Zuora PRODUCT_SKU maps to vendor code SPGAMSENS,1.704,
+Acronis,SPFAMSENS,SPFAMSENS,ACB-USD-M00-TASPFAMSEN,SPFAMSENS,Zuora PRODUCT_SKU maps to vendor code SPFAMSENS,3.6565,
+Acronis,SRHAMSENS,SRHAMSENS,ACB-USD-M00-TASRHAMSEN,SRHAMSENS,Zuora PRODUCT_SKU maps to vendor code SRHAMSENS,0.7313,
+Acronis,SRJAMSENS,SRJAMSENS,ACB-USD-M00-TASRJAMSEN,SRJAMSENS,Zuora PRODUCT_SKU maps to vendor code SRJAMSENS,1.1502,
+Acronis,SPIAMSENS,SPIAMSENS,ACB-USD-M00-TASPIAMSEN,SPIAMSENS,Zuora PRODUCT_SKU maps to vendor code SPIAMSENS,0.6319,
+Acronis,SPBAMSENS,SPBAMSENS,ACB-USD-M00-TASPBAMSEN,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SPD5MSENS,SPD5MSENS,ACB-USD-M00-TASPD5MSEN,SPD5MSENS,Zuora PRODUCT_SKU maps to vendor code SPD5MSENS,7.06,
+Acronis,SRIAMSENS,SRIAMSENS,ACB-CAD-M00-TASRIAMSEN,SRIAMSENS,Zuora PRODUCT_SKU maps to vendor code SRIAMSENS,0.1725,
+Acronis,SPBAMSENS,SPBAMSENS,ACB-CAD-M00-TASPBAMSEN,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SP3AMSENS,SP3AMSENS,ACB-CAD-M00-TASP3AMSEN,SP3AMSENS,Zuora PRODUCT_SKU maps to vendor code SP3AMSENS,0.0646,
+Acronis,SRIAMSENS,SRIAMSENS,ACB-USD-M00-TASRIAMSEN,SRIAMSENS,Zuora PRODUCT_SKU maps to vendor code SRIAMSENS,0.1725,
+Acronis,SO4AMSENS,SO4AMSENS,ACB-USD-M00-TASO4AMSEN,SO4AMSENS,Zuora PRODUCT_SKU maps to vendor code SO4AMSENS,1.3348,
+Acronis,SQ8AMSENS,SQ8AMSENS,ACB-USD-M00-TASQ8AMSEN,SQ8AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ8AMSENS,1.1502,
+Acronis,SRI5MSENS,SRI5MSENS,ACB-USD-M00-TASRI5MSEN,SRI5MSENS,Zuora PRODUCT_SKU maps to vendor code SRI5MSENS,1.15,
+Acronis,SVEAMSENS,SVEAMSENS,ACB-USD-M00-TASVEAMSEN,SVEAMSENS,Zuora PRODUCT_SKU maps to vendor code SVEAMSENS,0.0272,
+Acronis,SRBAMSENS,SRBAMSENS,ACB-USD-M00-TASRBAMSEN,SRBAMSENS,Zuora PRODUCT_SKU maps to vendor code SRBAMSENS,0.37,
+Acronis,SPGAMSENS,SPGAMSENS,ACB-EUD-M00-TASPGAMSEN,SPGAMSENS,Zuora PRODUCT_SKU maps to vendor code SPGAMSENS,1.704,
+Acronis,SPEAMSENS,SPEAMSENS,ACB-EUD-M00-TASPEAMSEN,SPEAMSENS,Zuora PRODUCT_SKU maps to vendor code SPEAMSENS,10.3731,
+Acronis,SPDAMSENS,SPDAMSENS,ACB-EUD-M00-TASPDAMSEN,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,
+Acronis,SPGAMSENS,SPGAMSENS,ACB-UKD-M00-TASPGAMSEN,SPGAMSENS,Zuora PRODUCT_SKU maps to vendor code SPGAMSENS,1.704,
+Acronis,SPFAMSENS,SPFAMSENS,ACB-UKD-M00-TASPFAMSEN,SPFAMSENS,Zuora PRODUCT_SKU maps to vendor code SPFAMSENS,3.6565,
+Acronis,SPDAMSENS,SPDAMSENS,ACB-UKD-M00-TASPDAMSEN,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,
+Acronis,SQYAMSENS,SQYAMSENS,ACB-USD-M00-TASQYAMSEN,SQYAMSENS,Zuora PRODUCT_SKU maps to vendor code SQYAMSENS,0.0275,
+Acronis,SPDCMSENS,SPDCMSENS,ACB-USD-M00-TASPDCMSEN,SPDCMSENS,Zuora PRODUCT_SKU maps to vendor code SPDCMSENS,,
+Acronis,SVEAMSENS,SVEAMSENS,APP-BC-SVEAMSENS,SVEAMSENS,Zuora PRODUCT_SKU maps to vendor code SVEAMSENS,0.0272,0.032
+Acronis,SPEAMSENS,SPEAMSENS,ACB-UKD-M00-TASPEAMSEN,SPEAMSENS,Zuora PRODUCT_SKU maps to vendor code SPEAMSENS,10.3731,
+Acronis,SRHAMSENS,SRHAMSENS,ACB-UKD-M00-TASRHAMSEN,SRHAMSENS,Zuora PRODUCT_SKU maps to vendor code SRHAMSENS,0.7313,
+Acronis,SRIAMSENS,SRIAMSENS,ACB-UKD-M00-TASRIAMSEN,SRIAMSENS,Zuora PRODUCT_SKU maps to vendor code SRIAMSENS,0.1725,
+Acronis,SVEAMSENS,SVEAMSENS,ACB-UKD-M00-TASVEAMSEN,SVEAMSENS,Zuora PRODUCT_SKU maps to vendor code SVEAMSENS,0.0272,
+Acronis,SPDAMSENS,SPDAMSENS,SPDAMSENS1GB / SPDAMSENSBUCLD1TB,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,
+Acronis,SPDAMSENS,SPDAMSENS,SPDAMSENS1GB/SPDAMSENSBUCLD1TB,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,
+Acronis,SPBAMSENS,SPBAMSENS,3PARTYONPREMCLOUDCAP / ACRONISCLOUDHOSTSTND,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SQ2AMSENS,SQ2AMSENS,SQ2AMSENS / 3PARTYONPREMSEFPRVSG,SQ2AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ2AMSENS,0.0646,
+Acronis,SPBAMSENS,SPBAMSENS,SPBAMSENS / 3PARTYONPREMCLOUDCAP,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SVEAMSENS,SVEAMSENS,SVEAMSENS / 3PARTYONPREMHOSTEDDR,SVEAMSENS,Zuora PRODUCT_SKU maps to vendor code SVEAMSENS,0.0272,
+Acronis,SPBAMSENS,SPBAMSENS,SPBAMSENS / 3PARTYONPREMCLOUDCAP / ACRONISCLOUDHOSTSTND,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SP4BMSENS,SP4BMSENS,SP4BMSENS / 3PARTYONPREMSP4BMSE1,SP4BMSENS,Zuora PRODUCT_SKU maps to vendor code SP4BMSENS,0.0264,
+Acronis,SQ2AMSENS,SQ2AMSENS,SQ2AMSENS PER TB / 3PARTYONPREMSEFPRVSG,SQ2AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ2AMSENS,0.0646,
+Acronis,SPBAMSENS,SPBAMSENS,SPBAMSENS/3PARTYONPREMCLOUDCAP,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SPBAMSENS,SPBAMSENS,TBBUHYBRID,SPBAMSENS,Zuora PRODUCT_SKU maps to vendor code SPBAMSENS,0.0545,
+Acronis,SPIAMSENS,SPIAMSENS,0,SPIAMSENS,Zuora PRODUCT_SKU maps to vendor code SPIAMSENS,0.6319,
+Acronis,SRI5MSENS,SRI5MSENS,0,SRI5MSENS,Zuora PRODUCT_SKU maps to vendor code SRI5MSENS,1.15,
+Acronis,SRIAMSENS,SRIAMSENS,SP4BMSENS,SRIAMSENS,Zuora PRODUCT_SKU maps to vendor code SRIAMSENS,0.1725,
+Acronis,SP5AMSENS,SP5AMSENS,ACB-USD-M00-TASP5AMSEN,SP5AMSENS,Zuora PRODUCT_SKU maps to vendor code SP5AMSENS,0.0113,
+Acronis,SVEAMSENS,SVEAMSENS,ACB-CAD-M00-TASVEAMSEN,SVEAMSENS,Zuora PRODUCT_SKU maps to vendor code SVEAMSENS,0.0272,
+Acronis,SRJAMSENS,SRJAMSENS,369.8,SRJAMSENS,Zuora PRODUCT_SKU maps to vendor code SRJAMSENS,1.1502,
+Acronis,SPGAMSENS,SPGAMSENS,SP4BMSENS,SPGAMSENS,Zuora PRODUCT_SKU maps to vendor code SPGAMSENS,1.704,
+Acronis,SPEAMSENS,SPEAMSENS,SPGAMSENS,SPEAMSENS,Zuora PRODUCT_SKU maps to vendor code SPEAMSENS,10.3731,
+Acronis,SPDCMSENS,SPDCMSENS,ST5AMSENS,SPDCMSENS,Zuora PRODUCT_SKU maps to vendor code SPDCMSENS,,
+Acronis,SPDAMSENS,SPDAMSENS,SPIAMSENS,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS,0.0148,
+Acronis,SPEAMSENS,SPEAMSENS,SPFAMSENS,SPEAMSENS,Zuora PRODUCT_SKU maps to vendor code SPEAMSENS,10.3731,
+Exium,EX-CGW,EX-CGW,EXIUM_CGW,EX-CGW,CyberGateway(CGW),22.5,50.0
+Exium,EX-CGW-NEW,EX-CGW-NEW,,EX-CGW-NEW,Exium Cyber Gateway,50.0,
+Exium,EX-SIA,EX-SIA,EXIUM_SIA,EX-SIA,Secure Internet Access(SIA),5.5,
+Exium,EX-SPA,EX-SPA,EXIUM_SPA,EX-SPA,Secure Private Access(SPA),5.5,
+Exium,EX-SASE-PRO,EX-SASE-PRO,EX-SASE-PRO,EX-SASE-PRO,Exium SASE Pro,8.75,8.75
+Exium,EX-SASE-ESSENTIALS,EX-SASE-ESSENTIALS,EX-SASE-ESSENTIALS,EX-SASE-ESSENTIALS,Exium SASE Essentials,5.5,5.5
+Webroot,SECA,1000063234,WRS-AUD-M04-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-AUD-M04-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-CAD-M03-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-CAD-M03-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-CAD-M04-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-CAD-M04-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-CAD-M05-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-CAD-M05-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-EUD-M01-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-EUD-M01-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-EUD-M03-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-EUD-M03-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-EUD-M06-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-EUD-M06-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-UKD-M01-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-UKD-M01-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-UKD-M02-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-UKD-M02-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-UKD-M03-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-UKD-M03-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-USD-M03-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-USD-M03-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-USD-M04-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-USD-M04-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-USD-M05-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-USD-M05-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-USD-M06-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-USD-M06-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-USD-M07-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-USD-M07-TAWEBRTSAT,,
+Webroot,SAEP,1000062533,WRSECGSM1000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 1000+,0.52,1.09
+Webroot,SAEP,1000062533,SEWRSGSM1000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 1000-2499  EPs,,
+Webroot,SAEP,1000062533,SEWRSGSM2500,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 2500-4999  EPs,,
+Webroot,SAEP,1000062533,SEWRSGSM250,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 250-499  EPs,,
+Webroot,SAEP,1000062533,SEWRSGSM500,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 500-749  EPs,,
+Webroot,SAEP,1000062533,SEWRSGSM100,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 100-249  EPs,,
+Webroot,SAEP,1000062533,WRSECGSM250,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 250-499,0.52,1.32
+Webroot,SAEP,1000062533,3RDPARTYSAASIITBUEPP,GSM,OpenText Core Endpoint Protection | CW product=Webroot Internal IT BEP or GSM,,
+Webroot,SAEP,1000062533,WRSECGSM500,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 500-749,0.52,1.24
+Webroot,SAEP,1000062533,SEWRSGSM10,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 1-99  EPs,,
+Webroot,SAEP,1000062533,SEWRSGSM750,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 750-999  EPs,,
+Webroot,SAEP,1000062533,CMS-IH-CYBR-SOLP-SAAS-MDRSERVR,GSM,OpenText Core Endpoint Protection | CW product=CMS Webroot Endpoint Protection-(MDR) Server,0.52,2.1
+Webroot,SAEP,1000062533,SEWRSGSM10000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 10000-19999 Eps,,
+Webroot,SAEP,1000062533,WRSECGSM750,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 750-999,0.52,1.14
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2M-CULICSAAS1003002000B,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise RMM Server Elite-01-01-2000; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2MLISAS20030200DKTP,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise Continuity Backup Fixed Cloud Complete-Elite-2000-Desktop Elite; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULISAAS20030200DKTP,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Continuity Backup Fixed Cloud Complete-Elite-2000-Desktop Elite; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULICSAS20030300SVRT,NON_WEBROOT_PRODUCT_TAGGED,CW product=Continuity Fixed Cloud Complete Essential-2000-Svr TC; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2MLISAS200303000100,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise Continuity Backup Fixed Cloud Complete Essential-2000-Svrs upto 100; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2MSAS200401000NOSB,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise Continuity Backup No Cloud - Essential 2000 Server; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULISAAS200302001025,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Continuity Backup Fixed Cloud Complete-Elite-2000-Server 1024GB; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULIC-SAAS1007020003,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise RMM Networks Performance; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULISAAS200302000256,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Continuity Backup Fixed Cloud Complete-Elite-2000-Server 100-256GB; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULCSAS100301ELITET,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise RMM Servers Elite (Total Cost); not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULCSAS100703-750ADD,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise RMM Networks Package-MSP 750 (Additional Units); not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULCSAS100703-750BAS,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise RMM Networks Package-MSP 750; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULIC-SAAS100702004T,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Command Networks Performance (Total Cost); not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULICSAAS1002002015T,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise RMM Server Preferred-11-01-2015 (Total Cost); not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULICSAAS1003002000B,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise RMM Server Elite-01-01-2000; not a direct one-to-one OpenText invoice line,,
+Webroot,SAEP,1000062533,WRS-AUD-M02-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-AUD-M02-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-AUD-M03-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-AUD-M03-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-AUD-M04-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-AUD-M04-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-AUD-M06-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-AUD-M06-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-AUD-M07-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-AUD-M07-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-CAD-M02-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-CAD-M02-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-CAD-M03-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-CAD-M03-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-CAD-M05-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-CAD-M05-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-CAD-M06-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-CAD-M06-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-CAD-M07-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-CAD-M07-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-EUD-M01-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-EUD-M01-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-EUD-M02-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-EUD-M02-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-EUD-M03-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-EUD-M03-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-EUD-M04-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-EUD-M04-TASEWRSGSM,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-UKD-M06-TBGSMDNSSA,BUNDLE,CW product=WRS-UKD-M06-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-USD-M02-TBGSMDNSSA,BUNDLE,CW product=WRS-USD-M02-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-USD-M04-TBGSMDNSSA,BUNDLE,CW product=WRS-USD-M04-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-USD-M05-TBGSMDNSSA,BUNDLE,CW product=WRS-USD-M05-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-USD-M06-TBGSMDNSSA,BUNDLE,CW product=WRS-USD-M06-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-USD-M07-TBGSMDNSSA,BUNDLE,CW product=WRS-USD-M07-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRSBEPWSADNSPWRSSAT,BUNDLE,"CW product=Webroot Bundle of EP, DNS and SAT; not a direct one-to-one OpenText invoice line",,
+Webroot,SAEP,1000062533,WRS-EUD-M05-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-EUD-M05-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-EUD-M06-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-EUD-M06-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-UKD-M01-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-UKD-M01-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-UKD-M02-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-UKD-M02-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-UKD-M03-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-UKD-M03-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-UKD-M04-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-UKD-M04-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-UKD-M05-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-UKD-M05-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-UKD-M06-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-UKD-M06-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-UKD-M07-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-UKD-M07-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-USD-M06-TBWRSECGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-USD-M06-TBWRSECGSM,,
+Webroot,SAEP,1000062533,WRS-USD-M08-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-USD-M08-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-USD-M09-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-USD-M09-TASEWRSGSM,,
+Webroot,SAEP,1000062533,3PARTYONPREMWRTEPP2Y,GSM,OpenText Core Endpoint Protection | CW product=Webroot Internal IT BEP or GSM 2Yr,,
+Webroot,SAEP,1000062533,3PARTYONPREMWRTEPP3Y,GSM,OpenText Core Endpoint Protection | CW product=Webroot Internal IT BEP or GSM 3Yr,,
+Webroot,SAEP,1000062533,3RPSAAS30020000DESKT,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection-01-01-2000 -  (MDR) Desktop,,
+Webroot,SAEP,1000062533,3RPSAAS30020000PARNT,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection 01-01-2000 (MDR),,
+Webroot,SAEP,1000062533,3RPSAAS30020000SEVER,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection-01-01-2000 - (MDR) Server,,
+Webroot,SAEP,1000062533,3RPSAAS30020015DESKT,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection-(MDR) Desktop,,
+Webroot,SAEP,1000062533,3RPSAAS30020015PARNT,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection  (MDR Parent),,
+Webroot,SAEP,1000062533,LEGACYSKUGSMSTNRD,GSM,OpenText Core Endpoint Protection | CW product=Webrt GSM - Monthly Subscription,,
+Webroot,SAEP,1000062533,LEGACYSKUTBWRSECGS,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key,,
+Webroot,SAEP,1000062533,M2M-3P-CYBR-SOLP-SAAS-MDRDSKTP,GSM,OpenText Core Endpoint Protection | CW product=M2M Webroot Endpoint Protection-(MDR) Desktop,,
+Webroot,SAEP,1000062533,M2M-3P-CYBR-SOLP-SAAS-MDRSERVR,GSM,OpenText Core Endpoint Protection | CW product=M2M Webroot Endpoint Protection-(MDR) Server,,
+Webroot,SAEP,1000062533,M2M-3P-SAAS3002300EPPRMM,GSM,OpenText Core Endpoint Protection | CW product=M2M-Webroot Endpoint Protection-(MDR) non-RMM-01-01-2000,,
+Webroot,SAEP,1000062533,M2MRMM-WR-EEP-OVERAG,GSM,OpenText Core Endpoint Protection | CW product=M2M-Webroot Endpoint Protection - Overage for CW RMM,,
+Webroot,SAEP,1000062533,M2MSAAS3002315EPPRMM,GSM,OpenText Core Endpoint Protection | CW product=M2M-Webroot Endpoint Protection non-RMM-11-01-2015,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULICSAAS20040019STC,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Recover Continuity No Cloud Elite-Server TC; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULICSAS200303000100,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Continuity Backup Fixed Cloud Complete Essential-2000-Svrs upto 100; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULICSAS200303000512,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Continuity Backup Fixed Cloud Complete Essential-2000-Svr 256-512GB; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULICSAS200303000768,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Continuity Backup Fixed Cloud Complete Essential-2000-Svr 512-768GB; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULICSAS200303001024,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Continuity Backup Fixed Cloud Complete Essential-2000-Svr 768-1024; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULISAAS20030200DTTC,NON_WEBROOT_PRODUCT_TAGGED,CW product=Continuity Fixed Cloud Complete-Elite-2000-Desktop Elite TC; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULSAAS20040100NOSVT,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Recover Continuity No Cloud - Essential 2000 Server TC; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULSAS200401000NODT,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Recover Continuity No Cloud Essential 2000 Desktop TC; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULSAS200401000NOSB,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Continuity Backup No Cloud - Essential 2000 Server; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULSAS200401019NODB,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Continuity Backup No Cloud - Essential; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULSAS200401019NOPB,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise Continuity Backup No Cloud Essential; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2M-LIC-SAAS1007020003,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise RMM Networks Performance; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2MLISAS200302000256,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise Continuity Backup Fixed Cloud Complete-Elite-2000-Server 100-256GB; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2MLISAS200302001025,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise Continuity Backup Fixed Cloud Complete-Elite-2000-Server 1024GB; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2MLISAS200303000512,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise Continuity Fixed Cloud Complete Essential-2000-Svr 256-512GB; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2MLISAS200303000768,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise Continuity Fixed Cloud Complete Essential-2000-Svr 512-768GB; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2MLISAS200303001024,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise Continuity Fixed Cloud Complete Essential-2000-Svr 768-1024; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2MSAS200401019NODB,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise Continuity Backup No Cloud - Essential; not a direct one-to-one OpenText invoice line,,
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2MSAS200401019NOPB,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise Continuity Backup No Cloud - Essential Parent; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,3RDPARTYSAASIITBUMBP,OTHER_WEBROOT_TAGGED,CW product=Webroot Internal IT BMP; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,3PARTYONPREMWRSECHTG,OTHER_WEBROOT_TAGGED,CW product=Webroot SecureAnywhereGSMKey HTG Pricing; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,3PARTYONPREMWRTBMP1Y,OTHER_WEBROOT_TAGGED,CW product=Webroot Internal IT BMP 1 Year; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,3PARTYONPREMWRTBMP2Y,OTHER_WEBROOT_TAGGED,CW product=Webroot Internal IT BMP 2 Year; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,3PARTYONPREMWRTBMP3Y,OTHER_WEBROOT_TAGGED,CW product=Webroot Internal IT BMP 3 Year; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,Discount-Webroot,OTHER_WEBROOT_TAGGED,CW product=Discount Code - Webroot - WW Direct; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,LEGACYDSSDODNADISC,OTHER_WEBROOT_TAGGED,CW product=Discount Code - Webroot - NA Direct; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,MP-SECUREANYWHEREBMP,OTHER_WEBROOT_TAGGED,CW product=Webroot SecureAnywhere Business Mobile Protection EOL; not a direct one-to-one OpenText invoice line,,
+Webroot,OTHER_WEBROOT_TAGGED,,SEWRSBMP10,OTHER_WEBROOT_TAGGED,CW product=Webroot SecureAnywhere BMP 10-99 End of Life; not a direct one-to-one OpenText invoice line,,
+Webroot,SAEP,1000062533,3PARTYONPREMWRSECBEP,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere BEP,,
+Webroot,SAEP,1000062533,WRS-USD-M02-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-USD-M02-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-USD-M04-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-USD-M04-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-USD-M01-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-USD-M01-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-USD-M03-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-USD-M03-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-CAD-M04-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-CAD-M04-TASEWRSGSM,,
+Webroot,SAEP,1000062533,SEWRSBEP00,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere Business Endpoint,,
+Webroot,SAEP,1000062533,WRS-AUD-M05-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-AUD-M05-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-USD-M05-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-USD-M05-TASEWRSGSM,,
+Webroot,SAEP,1000062533,SEWSABEP,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere Business End Point,,
+Webroot,SAEP,1000062533,3RPSAAS30020015SEVER,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection-(MDR)  Server,,
+Webroot,SAEP,1000062533,WRS-AUD-M01-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-AUD-M01-TASEWRSGSM,,
+Webroot,SAEP,1000062533,WRS-CAD-M01-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-CAD-M01-TASEWRSGSM,,
+Webroot,SAEP,1000062533,3P-SAAS30020015DESKT,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection-11-01-2015  - Desktop,,
+Webroot,SAEP,1000062533,3P-SAAS30020015PARNT,GSM,OpenText Core Endpoint Protection | CW product=Security Webroot Endpoint Protection,,
+Webroot,SAEP,1000062533,WRSECGSM100,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 100-249,0.52,1.43
+Webroot,SAEP,1000062533,SEWRSGSM5000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 5000-9999  EPs,,
+Webroot,SAEP,1000062533,CMS-EG-CYBR-SOLP-SAAS-MDRDSKTP,GSM,OpenText Core Endpoint Protection | CW product=CMS EVG Webroot Endpoint Protection-(MDR) Desktop,0.52,2.1
+Webroot,SAEP,1000062533,3P-SAAS3002315EPPRMM,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection-(MDR) non-RMM-11-01-2015,,
+Webroot,SAEP,1000062533,WRSECGSM10,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 10-99,0.52,1.54
+Webroot,SAEP,1000062533,CMS-IH-CYBR-SOLP-SAAS-MDRDSKTP,GSM,OpenText Core Endpoint Protection | CW product=CMS Webroot Endpoint Protection-(MDR) Desktop,0.52,2.1
+Webroot,SAEP,1000062533,3P-SAAS3002300EPPRMM,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection-(MDR) non-RMM-01-01-2000,,
+Webroot,SAEP,1000062533,3P-SAAS30020015SEVER,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection-11-01-2015  - Server,,
+Webroot,SAEP,1000062533,SEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key Channel Distribution,,
+Webroot,SAEP,1000062533,CW-RMM-WR-EEP-OVERAG,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection-(MDR)- Overage for CW RMM,0.52,1.35
+Webroot,SAEP,1000062533,CMS-EG-CYBR-SOLP-SAAS-MDRSERVR,GSM,OpenText Core Endpoint Protection | CW product=CMS EVG Webroot Endpoint Protection-(MDR) Server,0.52,2.1
+Webroot,SAEP,1000062533,WRS-USD-M06-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-USD-M06-TASEWRSGSM,,
+Webroot,SAEP,1000062533,3PARTYONPREMWRTEPP1Y,GSM,OpenText Core Endpoint Protection | CW product=Webroot Internal IT BEP or GSM 1Yr,,
+Webroot,SAEP,1000062533,WRS-USD-M07-TASEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=WRS-USD-M07-TASEWRSGSM,,
+Webroot,SECA,1000063234,WRS-CAD-M02-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-CAD-M02-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-CAD-M01-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-CAD-M01-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-USD-M01-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-USD-M01-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-AUD-M01-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-AUD-M01-TAWEBRTSAT,,
+Webroot,SECA,1000063234,3P-SAAS30022100FFSAT,SAT,OpenText Core Security Awareness Training | CW product=ConnectWise Webroot SAT-01-01-2000,,
+Webroot,SECA,1000063234,M2M-3P-SAAS30022100FFSAT,SAT,OpenText Core Security Awareness Training | CW product=M2M-ConnectWise Webroot SAT-01-01-2000,,
+Webroot,SECA,1000063234,M2MSAAS30022019FFSAT,SAT,OpenText Core Security Awareness Training | CW product=M2M-ConnectWise SIEM Webroot SAT,,
+Webroot,SECA,1000063234,SEWRSSAT,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere Sec Awareness Training,,
+Webroot,SECA,1000063234,SEWRSSAT10000,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 10K-19999,0.02,0.44
+Webroot,SECA,1000063234,SEWRSSAT20000,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 20000+,0.02,0.41
+Webroot,SECA,1000063234,SEWRSSAT5000,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 5000-9999,0.02,0.5
+Webroot,SECA,1000063234,SwO-3P-CYBR-SOLP-SAAS-SEWRSSAT,SAT,OpenText Core Security Awareness Training | CW product=SwO Webroot Security Awareness Training,,
+Webroot,SECA,1000063234,WRS-AUD-M02-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-AUD-M02-TAWEBRTSAT,,
+Webroot,SECA,1000063234,WRS-AUD-M03-TAWEBRTSAT,SAT,OpenText Core Security Awareness Training | CW product=WRS-AUD-M03-TAWEBRTSAT,,
+Webroot,SAEP,1000062533,SEWRSBEP10,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere BEP 1-99,,
+Webroot,SAEP,1000062533,SEWRSBEP100,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere BEP 100-249,,
+Webroot,SAEP,1000062533,SEWRSBEP1000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere BEP 1000-2499,,
+Webroot,SAEP,1000062533,SEWRSBEP10000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere BEP 10000-19999,,
+Webroot,SAEP,1000062533,SEWRSBEP20000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere BEP 20000+,,
+Webroot,SAEP,1000062533,SEWRSBEP250,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere BEP 250-499,,
+Webroot,SAEP,1000062533,SEWRSBEP2500,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere BEP 2500-4999,,
+Webroot,SAEP,1000062533,SEWRSBEP500,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere BEP 500-749,,
+Webroot,SAEP,1000062533,SEWRSBEP5000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere BEP 5000-9999,,
+Webroot,SAEP,1000062533,SEWRSBEP750,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere BEP 750-999,,
+Webroot,SAEP,1000062533,SEWRSGSM20000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 20000+  EPs,,
+Webroot,SAEP,1000062533,SEWSABEP-PROMO,GSM,OpenText Core Endpoint Protection | CW product=Webroot: SecureAnywhere Business Endpoint,,
+Webroot,SAEP,1000062533,SWO-EG-CYBR-SOLP-SAAS-ENDPPRMM,GSM,OpenText Core Endpoint Protection | CW product=EVG Webroot Endpoint Protection- for CW RMM,,
+Webroot,SAEP,1000062533,SwO-IH-CYBR-SOLP-SAAS-ENDPPRMM,GSM,OpenText Core Endpoint Protection | CW product=SwO Webroot Endpoint Protection- for CW RMM,0.41,0.63
+Webroot,SDNS,1000063236,3P-SAAS30021010FFDNS,DNS,OpenText Core DNS Protection | CW product=Webroot DNS,,
+Webroot,SDNS,1000063236,WSADNSP-STAND-ALONE,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS,0.42,0.59
+Webroot,SDNS,1000063236,WSADNSPSTANDAL-02500,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 2500-4999 EPs,0.42,0.83
+Webroot,SDNS,1000063236,WSADNSPSTANDAL-00500,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 500-749 EPs,0.42,1.0
+Webroot,SDNS,1000063236,WSADNSPSTANDAL-00250,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 250-499 EPs,0.42,1.11
+Webroot,SDNS,1000063236,WSADNSPSTANDALONEIIT,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS IIT,,
+Webroot,SDNS,1000063236,WSADNSPSTANDAL-00100,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 100-249 EPs,0.42,1.24
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,CULCSAS100301ELITEB,NON_WEBROOT_PRODUCT_TAGGED,CW product=ConnectWise RMM Servers Elite; not a direct one-to-one OpenText invoice line,,30.62
+Webroot,NON_WEBROOT_PRODUCT_TAGGED,,M2MLCSS100301ELITEB,NON_WEBROOT_PRODUCT_TAGGED,CW product=M2M-ConnectWise RMM Servers Elite; not a direct one-to-one OpenText invoice line,,31.48
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-USD-M03-TBGSMDNSSA,BUNDLE,CW product=WRS-USD-M03-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-USD-M01-TBGSMDNSSA,BUNDLE,CW product=WRS-USD-M01-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-CAD-M01-TBGSMDNSSA,BUNDLE,CW product=WRS-CAD-M01-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-AUD-M01-TBGSMDNSSA,BUNDLE,CW product=WRS-AUD-M01-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-AUD-M02-TBGSMDNSSA,BUNDLE,CW product=WRS-AUD-M02-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-AUD-M03-TBGSMDNSSA,BUNDLE,CW product=WRS-AUD-M03-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-CAD-M02-TBGSMDNSSA,BUNDLE,CW product=WRS-CAD-M02-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-CAD-M05-TBGSMDNSSA,BUNDLE,CW product=WRS-CAD-M05-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-CAD-M06-TBGSMDNSSA,BUNDLE,CW product=WRS-CAD-M06-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-UKD-M01-TBGSMDNSSA,BUNDLE,CW product=WRS-UKD-M01-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-UKD-M02-TBGSMDNSSA,BUNDLE,CW product=WRS-UKD-M02-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-UKD-M03-TBGSMDNSSA,BUNDLE,CW product=WRS-UKD-M03-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-UKD-M04-TBGSMDNSSA,BUNDLE,CW product=WRS-UKD-M04-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Webroot,BUNDLE,1000062533|1000063236|1000063234,WRS-UKD-M05-TBGSMDNSSA,BUNDLE,CW product=WRS-UKD-M05-TBGSMDNSSA; not a direct one-to-one OpenText invoice line,,
+Acronis,SVEAMSENS,SVEAMSENS,BB-ACRONIS-ADV-PROTECTION-BUNDLE,SVEAMSENS,"BB-ACRONIS-ADV-PROTECTION-BUNDLE + charge like ""Disaster Recovery - Hosted Storage"" -> SVEAMSENS",0.0272,
+Acronis,SPDAMSENS,SPDAMSENS,BB-ACRONIS-WORKLOAD-BUNDLE,SPDAMSENS,"BB-ACRONIS-WORKLOAD-BUNDLE + charge like ""Acronis Hosted Storage for (per Workload)"" -> SPDAMSENS",0.0148,
+Acronis,SPBAMSENS,SPBAMSENS,BB-ACRONIS-PER-GB-BUNDLE,SPBAMSENS,"BB-ACRONIS-PER-GB-BUNDLE + charge like ""Hosted Storage (per GB)"" -> SPBAMSENS",0.0545,
+Acronis,SPFAMSENS,SPFAMSENS,BB-ACRONIS-WORKLOAD-BUNDLE,SPFAMSENS,"WORKLOAD + ""VM"" -> SPFAMSENS",3.6565,
+Acronis,SRIAMSENS,SRIAMSENS,BB-ACRONIS-ADV-PROTECTION-BUNDLE,SRIAMSENS,"ADV-PROTECTION + ""Advanced Security"" -> SRIAMSENS",0.1725,
+Acronis,SRJAMSENS,SRJAMSENS,BB-ACRONIS-WORKLOAD-BUNDLE,SRJAMSENS,"WORKLOAD + ""Microsoft 365 seat (with unlimited storage)"" -> SRJAMSENS",1.1502,
+Acronis,SP4BMSENS,SP4BMSENS,BB-ACRONIS-PER-GB-BUNDLE,SP4BMSENS,"BB-ACRONIS-PER-GB-BUNDLE + charge like ""Local Storage (per GB)"" -> SP4BMSENS",0.0264,
+Acronis,SPGAMSENS,SPGAMSENS,BB-ACRONIS-WORKLOAD-BUNDLE,SPGAMSENS,"WORKLOAD + ""Workstation"" -> SPGAMSENS",1.704,
+Acronis,SO4AMSENS,SO4AMSENS,BB-ACRONIS-ADV-PROTECTION-BUNDLE,SO4AMSENS,"ADV-PROTECTION + ""Advanced Email Security / Perception Point"" -> SO4AMSENS",1.3348,
+Acronis,SPEAMSENS,SPEAMSENS,BB-ACRONIS-WORKLOAD-BUNDLE,SPEAMSENS,"WORKLOAD + ""Server"" -> SPEAMSENS",10.3731,
+Acronis,SPIAMSENS,SPIAMSENS,BB-ACRONIS-WORKLOAD-BUNDLE,SPIAMSENS,"WORKLOAD + ""Cyber Files Cloud - User"" -> SPIAMSENS",0.6319,
+Acronis,SQYAMSENS,SQYAMSENS,BB-ACRONIS-ADV-PROTECTION-BUNDLE,SQYAMSENS,"ADV-PROTECTION + ""1 compute point"" -> SQYAMSENS",0.0275,
+Auvik,COANM-1 Additional Billable Devices,COANM-1 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,9.19,4.2
+Auvik,CWANM-2 Committed Billable Devices,CWANM-2 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,7.175,4.2
+Auvik,EPRM-ANM-100 Auvik Essentials -- Committed,EPRM-ANM-100 Auvik Essentials -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,7.35,2.28
+Auvik,CWANM-1 Committed Billable Devices,CWANM-1 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,9.19,4.2
+Auvik,EPRM-ANM-40 Auvik Essentials -- Committed,EPRM-ANM-40 Auvik Essentials -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,9.19,2.28
+Auvik,COANM-0 Committed Billable Devices,COANM-0 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.88,4.2
+Auvik,COANM-3 Additional Performance Add-Ons,COANM-3 Additional Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.48,2.28
+Auvik,CWANM-2 Additional Performance Add-Ons,CWANM-2 Additional Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.66,2.28
+Auvik,Auvik Flow Devices,Auvik Flow Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.36,4.2
+Auvik,PRM-ANM-10 Auvik Performance -- Committed,PRM-ANM-10 Auvik Performance -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,17.5,2.28
+Auvik,Billable Devices - Additional,Billable Devices - Additional,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.36,4.2
+Auvik,RM - ASM - 1000 - Overage,RM - ASM - 1000 - Overage,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,0.57,
+Auvik,ANM Performance Add-Ons,ANM Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,3.5,2.28
+Auvik,PARM-ANM-1000 Auvik Performance Add On -- Overage,PARM-ANM-1000 Auvik Performance Add On -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,2.02,2.28
+Auvik,ERM-ANM-40 Auvik Essentials -- Committed,ERM-ANM-40 Auvik Essentials -- Committed,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,9.19,4.2
+Auvik,ERM-ANM-100 Auvik Essentials -- Overage,ERM-ANM-100 Auvik Essentials -- Overage,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,7.175,4.2
+Auvik,EPRM-ANM-40 Auvik Essentials -- Overage,EPRM-ANM-40 Auvik Essentials -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,9.19,2.28
+Auvik,PARM-ANM-175 Auvik Performance Add On -- Overage,PARM-ANM-175 Auvik Performance Add On -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.04,2.28
+Auvik,RM - ASM - 250 - Overage,RM - ASM - 250 - Overage,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,1.05,
+Auvik,SRM - ASM - MSP - Committed,SRM - ASM - MSP - Committed,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,1.05,
+Auvik,CWANM-7 Committed Billable Devices,CWANM-7 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,3.41,4.2
+Auvik,ANM Full Performance - Evergreen,ANM Full Performance - Evergreen,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,11.4,2.28
+Auvik,RM - ASM - 500 - Overage,RM - ASM - 500 - Overage,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,0.91,
+Auvik,CWANM-1 Additional Performance Add-Ons,CWANM-1 Additional Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,5.71,2.28
+Auvik,EPRM-ANM-10 Auvik Essentials -- Committed,EPRM-ANM-10 Auvik Essentials -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,10.5,2.28
+Auvik,Usage - Billable Devices,Usage - Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,9.66,4.2
+Auvik,CWANM-4 Additional Billable Devices,CWANM-4 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.6,4.2
+Auvik,ANM Full Performance Evergreen,ANM Full Performance Evergreen,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,11.4,2.28
+Auvik,ERM-ANM-10 Auvik Essentials -- Committed,ERM-ANM-10 Auvik Essentials -- Committed,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,10.5,4.2
+Auvik,CWANM-0 Additional Billable Devices,CWANM-0 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,10.5,4.2
+Auvik,SRM - ASM - MSP - Overage,SRM - ASM - MSP - Overage,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,1.05,
+Auvik,Auvik SaaS Management,Auvik SaaS Management,AUVIK-SRM-SAM-MSP,ASM,Pattern-matched from vendor product name.,1.58,
+Auvik,Billable Devices Added to Plan,Billable Devices Added to Plan,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.36,4.2
+Auvik,PARM-ANM-100 Auvik Performance Add On -- Overage,PARM-ANM-100 Auvik Performance Add On -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.78,2.28
+Auvik,EPRM-ANM-250 Auvik Essentials -- Overage,EPRM-ANM-250 Auvik Essentials -- Overage,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,6.4,2.28
+Auvik,Continuum Monthly Plan,Continuum Monthly Plan,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.36,4.2
+Auvik,CWANM-4 Committed Billable Devices,CWANM-4 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.6,4.2
+Auvik,PRM-ANM-100 Auvik Performance -- Committed,PRM-ANM-100 Auvik Performance -- Committed,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,10.66,2.28
+Auvik,ERM-ANM-75 Auvik Essentials -- Committed,ERM-ANM-75 Auvik Essentials -- Committed,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,8.65,4.2
+Auvik,COANM-0 Additional Billable Devices,COANM-0 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,10.5,4.2
+Auvik,PARM-ANM-1000 Auvik Performance Add On,PARM-ANM-1000 Auvik Performance Add On,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,1.76,2.28
+Auvik,Licenses,Licenses,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,10.5,4.2
+Auvik,Usage - Licenses,Usage - Licenses,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,10.5,4.2
+Auvik,ERM-ANM-175 Auvik Essentials -- Committed,ERM-ANM-175 Auvik Essentials -- Committed,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.3,4.2
+Auvik,CWANM-5 Additional Billable Devices,CWANM-5 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.15,4.2
+Auvik,COANM-3 Additional Billable Devices,COANM-3 Additional Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.62,4.2
+Auvik,CWANM-5 Committed Billable Devices,CWANM-5 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.15,4.2
+Auvik,CWANM-2 Committed Performance Add-Ons,CWANM-2 Committed Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,4.66,2.28
+Auvik,CWANM-0 Committed Performance Add-Ons,CWANM-0 Committed Performance Add-Ons,AUVIKPERFORMANCADDON,PERFORMANCE,Pattern-matched from vendor product name.,6.83,2.28
+Auvik,ERM-ANM-1000 Auvik Essentials -- Committed,ERM-ANM-1000 Auvik Essentials -- Committed,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,4.2,4.2
+Auvik,ERM-ANM-175 Auvik Essentials -- Overage,ERM-ANM-175 Auvik Essentials -- Overage,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,6.3,4.2
+Auvik,COANM-4 Committed Billable Devices,COANM-4 Committed Billable Devices,AUVIK-ESSENTIALS,ESSENTIALS,Pattern-matched from vendor product name.,5.88,4.2
+Bitdefender,Bitdefender PHASR,2765PHMSN012AAZZ,2765PHMSN012AAZZ,PHASR,PHASR.,1.11,1.11
+Bitdefender,Bitdefender Cloud Sec GravityZone 750 to 999 ep,BTS-USD-M05-TBBTCDSCCW,BTS-USD-M05-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep",BTS-USD-M01-TADL17107A,BTS-USD-M01-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.,1.05,
+Bitdefender,SwO Bitdefender Advanced Threat Security,SwO-3P-CYBR-SOLP-SAAS-ADVTHRET,SwO-3P-CYBR-SOLP-SAAS-ADVTHRET,ATS,Pattern-matched from royalties product_description.,0.55,
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep",BTS-UKD-M02-TADL17107A,BTS-UKD-M02-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.,1.05,
+Bitdefender,SwO Bitdefender ATS & EDR,SwO-3P-CYBR-SOLP-BDATSEDR,SwO-3P-CYBR-SOLP-BDATSEDR,ATS_EDR,SwO ATS & EDR.,1.05,
+Bitdefender,Bitdefender Cloud Encryption,CU-BITDF-CLD-ENCRYP,CU-BITDF-CLD-ENCRYP,ENCRYPTION,Cloud Encryption.,0.4,0.4
+Bitdefender,"Bitdefender GravityZone Email Security, 100-499",2765EMMSN012BLZZ,2765EMMSN012BLZZ,EMAIL,Pattern-matched from royalties product_description.,0.82,
+Bitdefender,Bitdefender Cloud Sec GravityZone 500 to 749 ep,BTS-UKD-M04-TBBTCDSCCW,BTS-UKD-M04-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Advanced Threat Security 500-999 ep,DL17106A00C-EN-D,DL17106A00C-EN-D,ATS,Pattern-matched from royalties product_description.,0.55,0.55
+Bitdefender,Bitdefender Cloud Sec GravityZone 250 to 499 ep,BTS-UKD-M03-TBBTCDSCCW,BTS-UKD-M03-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Cloud Encryption 250-499,BTS-UKD-M03-TBBTCDENCP,BTS-UKD-M03-TBBTCDENCP,ENCRYPTION,Pattern-matched from royalties product_description.,0.4,
+Bitdefender,Bitdefender Advanced Threat Security 1-99 ep,BTS-UKD-M01-TADL17106A,BTS-UKD-M01-TADL17106A,ATS,Pattern-matched from royalties product_description.,0.55,
+Bitdefender,Bitdefender Cloud Encryption 1000+,AL1795A00D-EN,AL1795A00D-EN,ENCRYPTION,Pattern-matched from royalties product_description.,0.4,0.4
+Bitdefender,Bitdefender Cloud Security Gravity Zone (Usage),CU-BITDF-GRAVITYZONE,CU-BITDF-GRAVITYZONE,GRAVITYZONE,GravityZone usage overage.,0.42,0.42
+Bitdefender,Bitdefender Cloud Sec GravityZone 500 to 749 ep,BTS-CAD-M04-TBBTCDSCCW,BTS-CAD-M04-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,"Bitdefender GravityZone Email Security, 1-99",2765EMMSN012ALZZ,2765EMMSN012ALZZ,EMAIL,Pattern-matched from royalties product_description.,0.82,
+Bitdefender,"Bitdefender GravityZone Email Security, 500-999",2765EMMSN012CLZZ,2765EMMSN012CLZZ,EMAIL,Pattern-matched from royalties product_description.,0.82,
+Bitdefender,Bitdefender Cloud Sec GravityZone 500 to 749 ep,BTS-AUD-M04-TBBTCDSCCW,BTS-AUD-M04-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Cloud Sec GravityZone 1 to 99 ep,BTS-UKD-M01-TBBTCDSCCW,BTS-UKD-M01-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,"Bitdefender ATS & EDR, 500-999 ep",DL17107A00C-EN-D,DL17107A00C-EN-D,ATS_EDR,Pattern-matched from royalties product_description.,1.05,1.05
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep",BTS-UKD-M01-TADL17107A,BTS-UKD-M01-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.,1.05,
+Bitdefender,Bitdefender Advanced Threat Security 500-999 ep,BTS-USD-M03-TADL17106A,BTS-USD-M03-TADL17106A,ATS,Pattern-matched from royalties product_description.,0.55,
+Bitdefender,Bitdefender Advanced Threat Security 1-99 ep,DL17106A00A-EN-D,DL17106A00A-EN-D,ATS,Pattern-matched from royalties product_description.,0.55,0.55
+Bitdefender,BitDefender Security for Virtualized Environments VS,AL1775A00A-EN-D,AL1775A00A-EN-D,VS,Virtualized Security.,3.14,3.69
+Bitdefender,Bitdefender Secure Extra,2765SEESN012AAZZ0,2765SEESN012AAZZ0,MSP_SECURE_EXTRA,Secure Extra.,3.3,3.3
+Bitdefender,Bitdefender Cloud Sec GravityZone 1 to 99 ep,BTS-AUD-M01-TBBTCDSCCW,BTS-AUD-M01-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Cloud Sec GravityZone 1 to 99 ep,BTS-USD-M01-TBBTCDSCCW,BTS-USD-M01-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,"Bitdefender ATS & EDR, 1000-4999 ep",BTS-USD-M04-TADL17107A,BTS-USD-M04-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.,1.05,
+Bitdefender,"Bitdefender Patch Management, 1 - 99 ep",BTS-USD-M01-TADL17108A,BTS-USD-M01-TADL17108A,PATCH,Pattern-matched from royalties product_description.,0.62,
+Bitdefender,Bitdefender Cloud Sec GravityZone 1000-2499 ep,BTS-USD-M06-TBBTCDSCCW,BTS-USD-M06-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Cloud Sec GravityZone 100 to 249 ep,BTS-USD-M02-TBBTCDSCCW,BTS-USD-M02-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Cloud Sec GravityZone 1 to 99 ep,BTS-CAD-M01-TBBTCDSCCW,BTS-CAD-M01-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Cloud Sec GravityZone 2500 to 4999 ep,BTS-USD-M07-TBBTCDSCCW,BTS-USD-M07-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep",BTS-AUD-M01-TADL17107A,BTS-AUD-M01-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.,1.05,
+Bitdefender,Bitdefender Cloud Sec GravityZone 500 to 749 ep,BTS-USD-M04-TBBTCDSCCW,BTS-USD-M04-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Cloud Sec GravityZone 1000-2499 ep,BTS-CAD-M06-TBBTCDSCCW,BTS-CAD-M06-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Secure Plus,2765SEPSN012AAZZ,2765SEPSN012AAZZ,MSP_SECURE_PLUS,Secure Plus.,2.3,2.3
+Bitdefender,"Bitdefender Patch Management, 100 - 499 ep",BTS-USD-M02-TADL17108A,BTS-USD-M02-TADL17108A,PATCH,Pattern-matched from royalties product_description.,0.62,
+Bitdefender,Bitdefender Cloud Sec GravityZone 100 to 249 ep,BTS-AUD-M02-TBBTCDSCCW,BTS-AUD-M02-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.,0.42,
+Bitdefender,Bitdefender Security for Mobile,CUBITDFEDSEC-4-MOBIL,CUBITDFEDSEC-4-MOBIL,MOBILE,Mobile Security.,0.72,0.72
+Bitdefender,Bitdefender Cloud Encryption (1-99 ep),BTS-USD-M01-TBBTCDENCP,BTS-USD-M01-TBBTCDENCP,ENCRYPTION,Pattern-matched from royalties product_description.,0.4,
+Bitdefender,Bitdefender Cloud Encryption 500-749,AL1795A00C-EN500-749,AL1795A00C-EN500-749,ENCRYPTION,Pattern-matched from royalties product_description.,0.4,0.4
+Bitdefender,Bitdefender Patch Management,CU-BITDF-PATCH-MNGT,CU-BITDF-PATCH-MNGT,PATCH,Patch Management.,0.62,0.95
+Bitdefender,CW Bitdefender EDR (MSP Secure),CW-BITDFEDRMSPSECURE,CW-BITDFEDRMSPSECURE,MSP_SECURE,CW MSP Secure EDR.,1.47,1.47
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep",BTS-USD-M02-TADL17107A,BTS-USD-M02-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.,1.05,
+Auvik,Auvik Transfer - Essentials,UNMAPPED,3PARTYSAASAUVIKTRFMO,,CW SKU from PowerBI export; no vendor-side match yet,6.3,5.04
+Bitdefender,Bitdefender Provisioning Pack for MSP Service - Large,UNMAPPED,3PTYPROVISIONPACKLRG,,CW SKU from PowerBI export; no vendor-side match yet,1400.0,1120.0
+Bitdefender,Bitdefender Provisioning Pack for MSP Service - Medium,UNMAPPED,3PTYPROVISIONPACKMED,,CW SKU from PowerBI export; no vendor-side match yet,700.0,560.0
+Bitdefender,Bitdefender Provisioning Pack for MSP Service - Small,UNMAPPED,3PTYPROVISIONPACKSML,,CW SKU from PowerBI export; no vendor-side match yet,350.0,280.0
+Auvik,Auvik Transfer - Essentials Annual,UNMAPPED,3RDPARTYSAASAUVIKTRF,,CW SKU from PowerBI export; no vendor-side match yet,189.66,144.0
+Bitdefender,BitDefender Security for VE VS 100-999 EndPnts,UNMAPPED,AL1775A00B-EN-D,,CW SKU from PowerBI export; no vendor-side match yet,4.3,3.14
+Bitdefender,"BitDefender Security for VE VS 1,000-9,999 EndPnts",UNMAPPED,AL1775A00C-EN-D,,CW SKU from PowerBI export; no vendor-side match yet,3.8,2.77
+Bitdefender,"BitDefender Security for VE VS 10,000+ EndPnts",UNMAPPED,AL1775A00D-EN-D,,CW SKU from PowerBI export; no vendor-side match yet,3.05,2.23
+Bitdefender,Bitdefender Cloud Security Exchange (1-99 ep),UNMAPPED,AL1778A00A-EN,,CW SKU from PowerBI export; no vendor-side match yet,1.35,0.42
+Bitdefender,Bitdefender Cloud Security Exchange 100-249,UNMAPPED,AL1778A00B-EN,,CW SKU from PowerBI export; no vendor-side match yet,1.25,0.42
+Bitdefender,Bitdefender Cloud Security Exchange (750-999 ep),UNMAPPED,AL1778A00C-EN,,CW SKU from PowerBI export; no vendor-side match yet,1.0,0.42
+Bitdefender,Bitdefender Cloud Security Exchange (250-499 ep),UNMAPPED,AL1778A00C-EN250-499,,CW SKU from PowerBI export; no vendor-side match yet,1.15,0.42
+Bitdefender,Bitdefender Cloud Security Exchange (500-749 ep),UNMAPPED,AL1778A00C-EN500-749,,CW SKU from PowerBI export; no vendor-side match yet,1.1,0.42
+Bitdefender,Bitdefender Cloud Security Exchange 1000+,UNMAPPED,AL1778A00D-EN,,CW SKU from PowerBI export; no vendor-side match yet,0.9,0.42
+Bitdefender,Bitdefender Cloud Encryption 750-999,UNMAPPED,AL1795A00C-EN,,CW SKU from PowerBI export; no vendor-side match yet,0.7,0.4
+Bitdefender,Bitdefender Cloud Encryption 250-499,UNMAPPED,AL1795A00C-EN250-499,,CW SKU from PowerBI export; no vendor-side match yet,0.85,0.4
+Proofpoint,APP-Acronis Cyber Protect Cloud - Website,UNMAPPED,APP-BC-SEAAMSENS,,CW SKU from PowerBI export; no vendor-side match yet,1.95,0.5
+Proofpoint,APP-Acronis Omnivoice (virtual phone system) Seat,UNMAPPED,APP-BC-SO1AMSENS,,CW SKU from PowerBI export; no vendor-side match yet,11.65,9.75
+Proofpoint,APP-Acronis Omnivoice (virtual phone system) 300 minutes,UNMAPPED,APP-BC-SO2AMSENS,,CW SKU from PowerBI export; no vendor-side match yet,6.2,5.2
+Proofpoint,APP-Acronis Omnivoice (virtual phone system) 100 SMS,UNMAPPED,APP-BC-SO3AMSENS,,CW SKU from PowerBI export; no vendor-side match yet,3.1,2.6
+Proofpoint,APP-Acronis Cyber Files Cloud - Hybrid Storage (per GB),UNMAPPED,APP-BC-SP2AMSENS,,CW SKU from PowerBI export; no vendor-side match yet,0.1,0.036
+Proofpoint,APP-Acronis Cyber Notary Cloud - Notarization (per notarization),UNMAPPED,APP-BC-SQ4AMSENS,,CW SKU from PowerBI export; no vendor-side match yet,0.03,0.015
+Proofpoint,APP-Acronis Cyber Notary Cloud - eSignature (per file),UNMAPPED,APP-BC-SQ5AMSENS,,CW SKU from PowerBI export; no vendor-side match yet,0.04,0.18
+Proofpoint,APP-Advanced File Sync & Share - eSignature (per file),UNMAPPED,APP-BC-SR1AMSENS,,CW SKU from PowerBI export; no vendor-side match yet,1.17,0.18
+Proofpoint,APP-Advanced File Sync & Share - Notarization (per notarization),UNMAPPED,APP-BC-SR2AMSENS,,CW SKU from PowerBI export; no vendor-side match yet,0.04,0.015
+Proofpoint,APP-Acronis Advanced Backup - Server,UNMAPPED,APP-BC-SRDAMSENS,,CW SKU from PowerBI export; no vendor-side match yet,13.0,5.25
+Proofpoint,APP-Acronis Advanced Backup - VM,UNMAPPED,APP-BC-SREAMSENS,,CW SKU from PowerBI export; no vendor-side match yet,5.2,2.25
+Proofpoint,APP-Acronis Advanced Backup - Workstation,UNMAPPED,APP-BC-SRFAMSENS,,CW SKU from PowerBI export; no vendor-side match yet,1.3,0.45
+Proofpoint,APP-Advanced Backup - Hosting Server,UNMAPPED,APP-BC-SRGAMSENS,,CW SKU from PowerBI export; no vendor-side match yet,1.3,0.45
+Proofpoint,APP-Acronis Cyber Protect Cloud - Microsoft Hosted Exchange,UNMAPPED,APP-BC-ST6AMSENS,,CW SKU from PowerBI export; no vendor-side match yet,1.3,0.45
+Proofpoint,APP-Advanced Disaster Recovery - Hybrid Storage (per GB),UNMAPPED,APP-BC-SVFAMSENS,,CW SKU from PowerBI export; no vendor-side match yet,0.05,0.018
+Proofpoint,APP-Acronis Advanced Backup - Google Workspace seat,UNMAPPED,APP-SA-SQBBMSENS,,CW SKU from PowerBI export; no vendor-side match yet,0.52,0.26
+Proofpoint,APP-Acronis Cyber Protect Cloud Backup-Geo-redundant-WL-Google Workspace seat,UNMAPPED,APP-SA-SQBGMSENS,,CW SKU from PowerBI export; no vendor-side match yet,2.15,0.7455
+Proofpoint,APP-Acronis Advanced Backup - Microsoft 365 seat,UNMAPPED,APP-SA-SQKBMSENS,,CW SKU from PowerBI export; no vendor-side match yet,0.52,0.26
+Proofpoint,APP-Acronis Cyber Protect Cloud Advanced Backup-WL-Hosting Server,UNMAPPED,APP-SA-SRGAMSENS,,CW SKU from PowerBI export; no vendor-side match yet,1.3,0.315
+Proofpoint,CU-Acronis Advanced Security + EDR,UNMAPPED,APP-SA-SRI1MSENS,,CW SKU from PowerBI export; no vendor-side match yet,2.8,1.7
+Proofpoint,APP-Managed Detection and Response - Standard - WL,UNMAPPED,APP-SA-SRI6MSENS,,CW SKU from PowerBI export; no vendor-side match yet,4.16,0.6745
+Proofpoint,APP-Managed Detection and Response - Advanced - WL,UNMAPPED,APP-SA-SRI7MSENS,,CW SKU from PowerBI export; no vendor-side match yet,8.32,1.9525
+Proofpoint,APP-Acronis Archiving GB Google Hosted Storage Acronis Cyber Protect Cloud,UNMAPPED,APP-SH3AMSENS,,CW SKU from PowerBI export; no vendor-side match yet,0.16,0.0575
+Proofpoint,APP-Acronis Cyber Protect Cloud - Archiving Acronis Hosted Storage (per GB) - G1,UNMAPPED,APP-SHBAMSENS,,CW SKU from PowerBI export; no vendor-side match yet,0.16,0.0511
+Proofpoint,APP-Acronis Cyber Protect Cloud - Acronis Archiving Partner Storage (per GB),UNMAPPED,APP-SHBBMSENS,,CW SKU from PowerBI export; no vendor-side match yet,0.09,0.0291
+Auvik,Auvik ANM - Full Performance - Committed,UNMAPPED,AUVIK-PRM-ANM-NEW-BUSSINESS,,CW SKU from PowerBI export; no vendor-side match yet,24.82,17.37
+Auvik,Auvik ANM - Full Performance - Committed (Transfer),UNMAPPED,AUVIK-PRM-ANM-TRANSFER,,CW SKU from PowerBI export; no vendor-side match yet,24.84,19.87
+Bitdefender,Bitdefender XDR - Cloud,UNMAPPED,CMS-SEC-SAAS-SEC-CYB-XDRCLOD,,CW SKU from PowerBI export; no vendor-side match yet,2.5,0.65
+Bitdefender,Bitdefender XDR - Network,UNMAPPED,CMS-SEC-SAAS-SEC-CYB-XDRNTWK,,CW SKU from PowerBI export; no vendor-side match yet,2.5,0.65
+Bitdefender,Bitdefender XDR - Productivity Apps,UNMAPPED,CMS-SEC-SAAS-SEC-CYB-XDRPROD,,CW SKU from PowerBI export; no vendor-side match yet,2.5,0.65
+Bitdefender,Bitdefender Cloud Security Exchange,UNMAPPED,CU-BITDF-CLDSECEXCH,,CW SKU from PowerBI export; no vendor-side match yet,1.35,0.42
+Bitdefender,Bitdefender Security for Virtualized Environments VS,UNMAPPED,CU-BITDF-VITENVIR-VS,,CW SKU from PowerBI export; no vendor-side match yet,5.05,3.69
+Auvik,ConnectWise RMM Network - Auvik Performance Unmapped,UNMAPPED,CULICSAAS1007200003,,CW SKU from PowerBI export; no vendor-side match yet,5.2,0.0
+Auvik,Auvik ASM - Standard - Committed,UNMAPPED,CW-AUVIK-MRM-ASM,,CW SKU from PowerBI export; no vendor-side match yet,0.8,0.52
+Bitdefender,Bitdefender Advanced Threat Security 1000-4999 ep,UNMAPPED,DL17106A00D-EN-D,,CW SKU from PowerBI export; no vendor-side match yet,0.87,0.55
+Bitdefender,Bitdefender Advanced Threat Security 5000+ ep,UNMAPPED,DL17106A00E-EN-D,,CW SKU from PowerBI export; no vendor-side match yet,0.8,0.55
+Bitdefender,"Bitdefender Patch Management, 5000+ ep",UNMAPPED,DL17108A00E-EN-D,,CW SKU from PowerBI export; no vendor-side match yet,0.85,0.62
+ESET,ESET PROTECT Essential On-Prem,UNMAPPED,EEPS,,CW SKU from PowerBI export; no vendor-side match yet,1.1,0.51
+Exium,Exium XDR with 30-day Retention,UNMAPPED,EX-XDR-30DAY,,CW SKU from PowerBI export; no vendor-side match yet,8.0,4.0
+Exium,Exium XDR with 7-day Retention,UNMAPPED,EX-XDR-7DAY,,CW SKU from PowerBI export; no vendor-side match yet,4.0,2.0
+ESET,ESET Full Disk Encryption 500-749,UNMAPPED,MSP2FDE4,,CW SKU from PowerBI export; no vendor-side match yet,1.22,0.75
+Bitdefender,SwO Bitdefender EDR - MSP Secure,UNMAPPED,SwO-3P-CYBR-MDR-SAAS-EDR-MSPS,,CW SKU from PowerBI export; no vendor-side match yet,3.2,1.47
+Bitdefender,SwO Bitdefender Cloud Encryption,UNMAPPED,SwO-3P-CYBR-SOLP-SAAS-CLDENCRY,,CW SKU from PowerBI export; no vendor-side match yet,1.05,0.4
+Bitdefender,SwO Bitdefender Cloud Security Exchange,UNMAPPED,SwO-3P-CYBR-SOLP-SAAS-CLDSECEX,,CW SKU from PowerBI export; no vendor-side match yet,1.35,0.42
+Bitdefender,SwO Bitdefender Patch Management,UNMAPPED,SwO-3P-CYBR-SOLP-SAAS-PATCHMGT,,CW SKU from PowerBI export; no vendor-side match yet,1.3,0.95
+Bitdefender,SwO Bitdefender Security for Mobile,UNMAPPED,SwO-3P-CYBR-SOLP-SAAS-SECMOBIL,,CW SKU from PowerBI export; no vendor-side match yet,1.75,0.72
