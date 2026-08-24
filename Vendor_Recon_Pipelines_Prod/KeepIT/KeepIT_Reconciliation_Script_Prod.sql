@@ -18,6 +18,12 @@ WITH vendor_sku_map AS (
     WHERE vendor = 'KeepIT'
     GROUP BY 1
 ),
+-- 2026-08-23 fix: KEEPIT_PARTNER_CMS_CROSSWALK_V5 has ~23 rows per
+-- vendor_partner_name on average (keyed by vendor_partner_guid + cms_id).
+-- Joining KEEPIT_USAGE to that raw table by name alone fanned out every
+-- usage row by ~23x, inflating VENDOR_AMOUNT from ~$7M to ~$182M.
+-- Dedupe to one row per name, choosing the highest-evidence mapping so
+-- SF_ID and CMS_ID are deterministic.
 partner_bridge AS (
     SELECT
         vendor_partner_guid,
@@ -28,6 +34,12 @@ partner_bridge AS (
         review_flag AS partner_review_flag,
         mapping_source AS partner_mapping_source
     FROM KEEPIT_PARTNER_CMS_CROSSWALK_V5
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY UPPER(TRIM(vendor_partner_name))
+        ORDER BY COALESCE(evidence_row_count, 0) DESC,
+                 COALESCE(account_match_count, 0) DESC,
+                 sf_id NULLS LAST
+    ) = 1
 )
 SELECT
     u.*,
