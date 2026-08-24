@@ -166,20 +166,13 @@ mapped_sf_ids AS (
 ),
 
 partner_map_monthly AS (
-    -- Monthly seed sf_ids are canonicalized at query time (the seed itself is
-    -- raw from XLSX and may still hold merged-away sf_ids). Date-aware:
-    -- only apply the canonical id for billing months on/after the merge
-    -- effective month; earlier months keep the seed's original sf_id so the
-    -- partner map reflects who was actually mapped at the time of billing.
+    -- Unified partner map (no billing_month dimension — RECON_PARTNER_MAP is
+    -- partner-level). Canonicalize merged sf_ids via SENTINELONE_SF_ID_RESOLVER.
     SELECT
-        TRIM(s.VENDOR_PARTNER_NAME) AS partner_name,
-        s.BILLING_MONTH::DATE AS billing_month,
-        COALESCE(
-            CASE WHEN s.BILLING_MONTH::DATE >= mr.merge_effective_month
-                 THEN mr.canonical_sf_id END,
-            s.sf_id
-        ) AS sf_id,
-        s.zuora_name
+        TRIM(s.PARTNER_NAME)  AS partner_name,
+        NULL::DATE            AS billing_month,   -- not applicable in unified map
+        COALESCE(mr.canonical_sf_id, s.sf_id)    AS sf_id,
+        s.ZUORA_NAME          AS zuora_name
     FROM RECON_PARTNER_MAP s
     LEFT JOIN merged_account_resolver mr
         ON mr.old_sf_id = s.sf_id
@@ -187,7 +180,7 @@ partner_map_monthly AS (
       AND s.PARTNER_NAME IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY UPPER(TRIM(s.PARTNER_NAME))
-        ORDER BY s.zuora_name DESC NULLS LAST
+        ORDER BY s.ZUORA_NAME DESC NULLS LAST
     ) = 1
 ),
 
