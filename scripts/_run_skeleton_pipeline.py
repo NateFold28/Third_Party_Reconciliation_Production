@@ -79,17 +79,9 @@ VENDOR_ROUTING: dict[str, tuple[str, str]] = {
 
 # If a vendor's live path fails, fall back to this snapshot so the app still
 # has data for that vendor. Set to None to disable fallback (fail hard).
-VENDOR_FALLBACK: dict[str, str] = {
-    "Acronis":     "THIRD_PARTY_STANDALONE_RECON_DETAIL__ACRONIS_SNAPSHOT_20260823",
-    "Auvik":       "THIRD_PARTY_STANDALONE_RECON_DETAIL__AUVIK_SNAPSHOT_20260823",
-    "Bitdefender": "THIRD_PARTY_STANDALONE_RECON_DETAIL__BITDEFENDER_SNAPSHOT_20260823",
-    "ESET":        "THIRD_PARTY_STANDALONE_RECON_DETAIL__ESET_SNAPSHOT_20260823",
-    "Exium":       "THIRD_PARTY_STANDALONE_RECON_DETAIL__EXIUM_SNAPSHOT_20260823",
-    "KeepIT":      "THIRD_PARTY_STANDALONE_RECON_DETAIL__KEEPIT_SNAPSHOT_20260823",
-    "Proofpoint":  "THIRD_PARTY_STANDALONE_RECON_DETAIL__PROOFPOINT_SNAPSHOT_20260823",
-    "SentinelOne": "THIRD_PARTY_STANDALONE_RECON_DETAIL__SENTINELONE_SNAPSHOT_20260823",
-    "Webroot":     "THIRD_PARTY_STANDALONE_RECON_DETAIL__WEBROOT_SNAPSHOT_20260823",
-}
+# 2026-08-23: All 9 vendors run live. Fallback disabled so any live-path
+# regression surfaces loudly instead of being silently masked by snapshot data.
+VENDOR_FALLBACK: dict[str, str] = {}
 
 # ---------------------------------------------------------------------------
 # CANONICAL EMIT: every vendor uses this exact shape. 34 columns, in the
@@ -259,7 +251,25 @@ def live_emit_block(vendor: str, live_table: str) -> str:
     This is intentionally kept in one function so every "live" vendor uses
     the same mapping. When new vendors go live, they only need to expose the
     columns referenced in this SELECT.
+
+    Per-vendor overrides:
+      - Auvik's live table names the vendor product column AUVIK_PRODUCT
+        (not VENDOR_PRODUCT). Alias it.
+      - KeepIT's live table does not emit a MARKETPLACE_SKUS array (KeepIT
+        marketplace billing is folded into ZUORA billing). Substitute NULL.
+      - Webroot's live table does not emit a separate CW_SKUS array; CW SKUs
+        are carried in ZUORA_SKUS since Webroot bills directly via CW SKU.
     """
+    vendor_product_expr = {
+        "Auvik": "AUVIK_PRODUCT",
+        "Exium": "EXIUM_PRODUCT",
+    }.get(vendor, "VENDOR_PRODUCT")
+    marketplace_skus_expr = {
+        "KeepIT": "NULL::VARCHAR",
+    }.get(vendor, "ARRAY_TO_STRING(MARKETPLACE_SKUS, ',')")
+    cw_skus_expr = {
+        "Webroot": "NULL::VARCHAR",
+    }.get(vendor, "ARRAY_TO_STRING(CW_SKUS, ',')")
     return f"""{USE}
 
 -- Idempotent: remove any prior rows for this vendor.
@@ -285,11 +295,11 @@ SELECT
     NULL::VARCHAR                                                              AS INV_ID,
     NULL::VARCHAR                                                              AS BILLING_TYPE,
     VENDOR_PARTNER_NAME                                                        AS VENDOR_PARTNER_NAME,
-    VENDOR_PRODUCT                                                             AS VENDOR_PRODUCT,
+    {vendor_product_expr}                                                     AS VENDOR_PRODUCT,
     NULL::VARCHAR                                                              AS SKU_MATCH_GROUP,
-    ARRAY_TO_STRING(CW_SKUS, ',')                                              AS CW_SKUS,
+    {cw_skus_expr}                                                             AS CW_SKUS,
     ARRAY_TO_STRING(ZUORA_SKUS, ',')                                           AS ZUORA_SKUS,
-    ARRAY_TO_STRING(MARKETPLACE_SKUS, ',')                                     AS MARKETPLACE_SKUS,
+    {marketplace_skus_expr}                                                    AS MARKETPLACE_SKUS,
     BILLING_SOURCE_MIX                                                         AS BILLING_SOURCE_MIX,
     NULL::FLOAT                                                                AS API_QUANTITY,
     NULL::FLOAT                                                                AS AVG_API_QUANTITY,
