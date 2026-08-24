@@ -1,0 +1,23 @@
+Exium Ingestion Audit
+====================================================================================================
+
+Source file: Billing Report April-2026-lat.csv
+Reporting period: 2026-04
+Service window: 2026-03-20 00:00:00 â†’ 2026-04-16 00:00:00
+  (Duration: 27 days)
+
+Row counts:
+  Raw rows: 597
+  Chargeable (Amount â‰  0): 319
+  Non-chargeable (Amount = 0): 278
+
+Dimensions:
+  Distinct partners: 58
+  Distinct clients: 248
+  Distinct SKUs: 6
+
+Aggregates:
+  Total Agent Count: 5,442
+  Total Amount: $35,818.75
+
+Ingested at: 2026-08-24T13:37:48.999015

@@ -52,6 +52,8 @@ import pandas as pd
 SENTINELONE_ROOT = Path(__file__).resolve().parents[2]
 WORKSPACE_ROOT = SENTINELONE_ROOT.parents[2]
 OUTPUT_DIR = SENTINELONE_ROOT / "outputs"
+# Note: SKU_INVOICE_RATES_PATH kept for legacy reference only — rates are now loaded
+# dynamically from THIRD_PARTY_RECON_VENDOR_INVOICES at runtime.
 SKU_INVOICE_RATES_PATH = (
     SENTINELONE_ROOT
     / "seeds"
@@ -165,21 +167,59 @@ def _sku_rate_key(vendor_product_sku: object) -> str:
 
 
 def load_invoice_rate_map(seed_path: Path = SKU_INVOICE_RATES_PATH) -> dict[str, float]:
-    """Return sku_match_group -> vendor invoice unit price from the governed seed."""
-    if not seed_path.exists():
-        raise FileNotFoundError(seed_path)
+    """Return sku_match_group -> vendor invoice unit price from THIRD_PARTY_RECON_VENDOR_INVOICES.
 
-    rates: dict[str, float] = {}
+    Looks up rates dynamically from the invoice table (exact month first, then
+    carry-forward to most recent prior month). Falls back to the on-disk CSV seed
+    only if the Snowflake query fails, so the pipeline never hard-stalls.
+
+    The VENDOR_PRODUCT_SKU in the invoice table is the vendor invoice SKU code
+    (e.g. S1ES-CMP-EN-T8-SA). The usage workbook uses product labels (e.g.
+    'Complete'). _sku_rate_key() normalises both to the same upper-case key.
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(WORKSPACE_ROOT))
+    try:
+        from TEMPLATES.Python.connection import get_snowflake_connection as _conn
+        conn = _conn(role="DEVELOPER", warehouse="REPORTING_WH",
+                     database="ANALYTICS_DEV", schema="DBT_NFOLD_TRANSFORMATION")
+        inv_df = conn.cursor().execute("""
+            SELECT VENDOR_PRODUCT_SKU, BILLING_MONTH, AVG(UNIT_PRICE) AS UNIT_PRICE
+            FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES
+            WHERE VENDOR ILIKE '%sentinelone%'
+              AND UNIT_PRICE IS NOT NULL AND UNIT_PRICE > 0
+            GROUP BY 1, 2
+            ORDER BY BILLING_MONTH DESC
+        """)
+        rows = inv_df.fetchall()
+        conn.close()
+        if rows:
+            # Build sku_match_group -> most recent unit price (carry-forward = latest available)
+            rates: dict[str, float] = {}
+            for sku, _month, price in rows:
+                key = _sku_rate_key(sku)
+                if key and key not in rates:  # sorted DESC so first seen = most recent
+                    rates[key] = float(price)
+            print(f"[INFO] Loaded {len(rates)} SentinelOne invoice rates from VENDOR_INVOICES.", flush=True)
+            return rates
+        print("[WARN] No SentinelOne rows found in VENDOR_INVOICES.", flush=True)
+    except Exception as e:
+        print(f"[WARN] Could not load SentinelOne rates from VENDOR_INVOICES ({e}). "
+              "Falling back to CSV seed.", flush=True)
+
+    # Fallback: read on-disk seed CSV (stale but better than nothing)
+    if not seed_path.exists():
+        print(f"[WARN] No seed CSV at {seed_path}. SentinelOne UNIT_PRICE will be NULL.", flush=True)
+        return {}
+    rates = {}
     with open(seed_path, "r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         for row in reader:
             key = (row.get("SKU_MATCH_GROUP") or "").strip().upper()
-            if not key:
-                continue
             raw_rate = (row.get("VENDOR_INVOICE_UNIT_PRICE") or "").strip()
-            if raw_rate:
+            if key and raw_rate:
                 rates[key] = float(raw_rate)
-
+    print(f"[WARN] Using stale CSV seed ({len(rates)} rates). Update VENDOR_INVOICES ASAP.", flush=True)
     return rates
 
 

@@ -33,8 +33,8 @@ ACRONIS_ROOT = Path(__file__).resolve().parents[2]
 PROJECT_ROOT = ACRONIS_ROOT.parent
 WORKSPACE_ROOT = PROJECT_ROOT.parents[1]
 OUTPUT_DIR = ACRONIS_ROOT / "outputs"
-PRICE_SEED_FILE = OUTPUT_DIR / "acronis_sku_price_seed_latest_invoice.csv"
-INVOICE_RATE_SEED_FILE = OUTPUT_DIR / "acronis_invoice_rate_seed.csv"
+# CSV seed files are no longer used. Unit prices are loaded dynamically from
+# THIRD_PARTY_RECON_VENDOR_INVOICES via load_price_seed() below.
 
 DEFAULT_SOURCE_ROOT = Path(
     r"C:\Users\Nate.Fold\OneDrive - ConnectWise, Inc"
@@ -726,21 +726,9 @@ def amount_from_invoice_line(line: object) -> float | None:
 
 
 def recover_invoice_line_rates() -> pd.DataFrame:
-    observations_path = OUTPUT_DIR / "acronis_invoice_rate_observations.csv"
-    if not observations_path.exists():
-        return pd.DataFrame(columns=["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "INVOICE_QUANTITY", "INVOICE_AMOUNT"])
-    obs = pd.read_csv(observations_path)
-    required = {"BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "SOURCE_LINE"}
-    if not required.issubset(obs.columns):
-        return pd.DataFrame(columns=["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "INVOICE_QUANTITY", "INVOICE_AMOUNT"])
-    obs = obs[list(required)].copy()
-    obs["BILLING_MONTH"] = pd.to_datetime(obs["BILLING_MONTH"], errors="coerce").dt.date
-    obs["VENDOR_SKU"] = obs["VENDOR_SKU"].astype(str).str.strip().str.upper()
-    obs["UNIT_PRICE"] = pd.to_numeric(obs["UNIT_PRICE"], errors="coerce")
-    obs["INVOICE_AMOUNT"] = obs["SOURCE_LINE"].map(amount_from_invoice_line)
-    obs = obs.dropna(subset=["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "INVOICE_AMOUNT"])
-    obs["INVOICE_QUANTITY"] = obs["INVOICE_AMOUNT"] / obs["UNIT_PRICE"]
-    return obs[["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "INVOICE_QUANTITY", "INVOICE_AMOUNT"]]
+    """Formerly read a stale CSV seed. Now always returns empty \u2014 unit prices
+    come from load_price_seed() which queries THIRD_PARTY_RECON_VENDOR_INVOICES."""
+    return pd.DataFrame(columns=["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "INVOICE_QUANTITY", "INVOICE_AMOUNT"])
 
 
 def derive_entity_rates_from_invoice(raw_usage: pd.DataFrame) -> pd.DataFrame:
