@@ -169,13 +169,11 @@ def _sku_rate_key(vendor_product_sku: object) -> str:
 def load_invoice_rate_map(seed_path: Path = SKU_INVOICE_RATES_PATH) -> dict[str, float]:
     """Return sku_match_group -> vendor invoice unit price from THIRD_PARTY_RECON_VENDOR_INVOICES.
 
-    Looks up rates dynamically from the invoice table (exact month first, then
-    carry-forward to most recent prior month). Falls back to the on-disk CSV seed
-    only if the Snowflake query fails, so the pipeline never hard-stalls.
-
-    The VENDOR_PRODUCT_SKU in the invoice table is the vendor invoice SKU code
-    (e.g. S1ES-CMP-EN-T8-SA). The usage workbook uses product labels (e.g.
-    'Complete'). _sku_rate_key() normalises both to the same upper-case key.
+    Joins VENDOR_INVOICES through SENTINELONE_SKU_INVOICE_RATE_MAP so the
+    invoice SKU codes (e.g. S1ES-CMP-EN-T8-SA) are resolved to the product
+    group labels (e.g. 'Complete') that the usage workbook uses.
+    This mirrors 00b_backfill_invoice_prices.sql Block A exactly.
+    Falls back to the on-disk CSV seed only if the Snowflake query fails.
     """
     import sys as _sys
     _sys.path.insert(0, str(WORKSPACE_ROOT))
@@ -183,24 +181,26 @@ def load_invoice_rate_map(seed_path: Path = SKU_INVOICE_RATES_PATH) -> dict[str,
         from TEMPLATES.Python.connection import get_snowflake_connection as _conn
         conn = _conn(role="DEVELOPER", warehouse="REPORTING_WH",
                      database="ANALYTICS_DEV", schema="DBT_NFOLD_TRANSFORMATION")
-        inv_df = conn.cursor().execute("""
-            SELECT VENDOR_PRODUCT_SKU, BILLING_MONTH, AVG(UNIT_PRICE) AS UNIT_PRICE
-            FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES
-            WHERE VENDOR ILIKE '%sentinelone%'
-              AND UNIT_PRICE IS NOT NULL AND UNIT_PRICE > 0
-            GROUP BY 1, 2
-            ORDER BY BILLING_MONTH DESC
-        """)
-        rows = inv_df.fetchall()
+        # JOIN through the SKU map to get SKU_MATCH_GROUP -> unit_price
+        rows = conn.cursor().execute("""
+            SELECT m.SKU_MATCH_GROUP,
+                   AVG(NULLIF(i.UNIT_PRICE, 0)) AS UNIT_PRICE
+            FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES i
+            JOIN ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.SENTINELONE_SKU_INVOICE_RATE_MAP m
+              ON m.VENDOR_INVOICE_SKU = i.VENDOR_PRODUCT_SKU
+            WHERE i.VENDOR ILIKE '%sentinelone%'
+              AND i.UNIT_PRICE IS NOT NULL AND i.UNIT_PRICE > 0
+            GROUP BY 1
+        """).fetchall()
         conn.close()
         if rows:
-            # Build sku_match_group -> most recent unit price (carry-forward = latest available)
             rates: dict[str, float] = {}
-            for sku, _month, price in rows:
-                key = _sku_rate_key(sku)
-                if key and key not in rates:  # sorted DESC so first seen = most recent
+            for sku_group, price in rows:
+                key = _sku_rate_key(sku_group)
+                if key and price is not None:
                     rates[key] = float(price)
-            print(f"[INFO] Loaded {len(rates)} SentinelOne invoice rates from VENDOR_INVOICES.", flush=True)
+            print(f"[INFO] Loaded {len(rates)} SentinelOne rates from VENDOR_INVOICES "
+                  f"(via SENTINELONE_SKU_INVOICE_RATE_MAP).", flush=True)
             return rates
         print("[WARN] No SentinelOne rows found in VENDOR_INVOICES.", flush=True)
     except Exception as e:
