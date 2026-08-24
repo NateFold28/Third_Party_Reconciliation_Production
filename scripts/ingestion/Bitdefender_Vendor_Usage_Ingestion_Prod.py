@@ -239,7 +239,7 @@ def main() -> None:
     finally:
         conn.close()
 
-    print(f"Built BITDEFENDER_USAGE_PROD from royalty workbooks in {format_seconds(time.perf_counter() - start)}.", flush=True)
+    print(f"Loaded Bitdefender into {TARGET_TABLE} from royalty workbooks in {format_seconds(time.perf_counter() - start)}.", flush=True)
 
 
 if __name__ == "__main__":

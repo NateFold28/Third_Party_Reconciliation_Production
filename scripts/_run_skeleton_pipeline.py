@@ -270,6 +270,9 @@ def live_emit_block(vendor: str, live_table: str) -> str:
     cw_skus_expr = {
         "Webroot": "NULL::VARCHAR",
     }.get(vendor, "ARRAY_TO_STRING(CW_SKUS, ',')")
+    sku_match_group_expr = {
+        "ESET": "SKU_MATCH_GROUP",
+    }.get(vendor, "NULL::VARCHAR")
     return f"""{USE}
 
 -- Idempotent: remove any prior rows for this vendor.
@@ -296,7 +299,7 @@ SELECT
     NULL::VARCHAR                                                              AS BILLING_TYPE,
     VENDOR_PARTNER_NAME                                                        AS VENDOR_PARTNER_NAME,
     {vendor_product_expr}                                                     AS VENDOR_PRODUCT,
-    NULL::VARCHAR                                                              AS SKU_MATCH_GROUP,
+    {sku_match_group_expr}                                                     AS SKU_MATCH_GROUP,
     {cw_skus_expr}                                                             AS CW_SKUS,
     ARRAY_TO_STRING(ZUORA_SKUS, ',')                                           AS ZUORA_SKUS,
     {marketplace_skus_expr}                                                    AS MARKETPLACE_SKUS,

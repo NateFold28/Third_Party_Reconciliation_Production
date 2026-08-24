@@ -23,7 +23,7 @@ All 15 source columns are ingested, including ones empty in current months, beca
 an empty column is a fact worth tracking. Three quantity columns are retained
 deliberately to surface provisioning-vs-consumption mismatches.
 
-Target table: ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.EXIUM_USAGE_PROD
+Target table: ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_USAGE_PROD
 """
 
 from __future__ import annotations
@@ -335,7 +335,7 @@ def process_billing_csv(file_path: Path, billing_month: str) -> Tuple[pd.DataFra
 
 
 def ensure_table_schema(conn, reset: bool) -> None:
-    """Create or validate schema for EXIUM_USAGE_PROD table."""
+    """Create or validate schema for THIRD_PARTY_RECON_VENDOR_USAGE_PROD."""
     create_sql = f"""
     CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
       BILLING_MONTH DATE,
@@ -584,7 +584,7 @@ def main() -> None:
                 TABLE_NAME,
                 replace_month=args.replace_month or args.reset,
             )
-            print(f"Loaded {rows_loaded:,} rows for {month} into EXIUM_USAGE_PROD")
+            print(f"Loaded {rows_loaded:,} rows for {month} into THIRD_PARTY_RECON_VENDOR_USAGE_PROD")
     
     finally:
         conn.close()

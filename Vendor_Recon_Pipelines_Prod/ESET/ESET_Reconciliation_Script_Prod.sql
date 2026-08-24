@@ -151,13 +151,28 @@ joined AS (
     LEFT JOIN mp_agg2  m ON m.sf_id = k.sf_id AND m.billing_month = k.billing_month AND m.sku_match_group = k.sku_match_group
 ),
 
+contract_rates AS (
+    SELECT
+        sku_match_group,
+        currency,
+        valid_from,
+        valid_to,
+        CASE
+            WHEN COUNT(DISTINCT contract_cost_rate) = 1 THEN MAX(contract_cost_rate)
+            ELSE NULL
+        END AS contract_cost_rate,
+        LISTAGG(DISTINCT source_doc, ' | ') WITHIN GROUP (ORDER BY source_doc) AS source_doc
+    FROM ESET_CONTRACT_RATES
+    WHERE currency = 'USD'
+    GROUP BY 1, 2, 3, 4
+),
+
 with_rate AS (
     SELECT j.*, cr.contract_cost_rate, cr.source_doc AS contract_rate_source_docs
     FROM joined j
-    LEFT JOIN ESET_CONTRACT_RATES cr
+    LEFT JOIN contract_rates cr
         ON cr.sku_match_group = j.sku_match_group
        AND j.billing_month BETWEEN cr.valid_from AND cr.valid_to
-       AND cr.currency = 'USD'
 ),
 
 scored AS (
@@ -191,6 +206,7 @@ SELECT
     s.sf_id,
     s.vendor_partner_name,
     s.vendor_product,
+    s.sku_match_group,
     s.cw_skus,
     s.zuora_skus,
     s.marketplace_skus,
