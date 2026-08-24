@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Ingest ESET regional license usage CSVs into Snowflake.
 
@@ -225,55 +225,76 @@ def invoice_partner_from_description(partner: object, invoice_sku: object) -> st
 
 
 def load_invoice_rates(conn) -> Tuple[Dict[Tuple[str, str, str], float], Dict[Tuple[str, str, str], float]]:
-    """Load invoice-visible ESET unit prices.
+    """Load ESET unit prices from THIRD_PARTY_RECON_VENDOR_INVOICES.
 
-    Returns:
-      - partner_rates keyed by (billing_month, partner, vendor_product_sku)
-      - parent_rates keyed by (billing_month, parent/entity, vendor_product_sku)
+    ESET invoices have no per-partner pricing (PARTNER is NULL) - rates are SKU-level only.
+    Strategy: 1. Exact (billing_month, sku) match.  2. Carry-forward most recent prior month.
+    Wildcards partner key '*' so assign_invoice_rate finds it for any partner.
+    Returns empty dicts gracefully if the table does not exist yet.
     """
     query = """
-    SELECT BILLING_MONTH, PARTNER, VENDOR_PRODUCT_SKU, UNIT_PRICE
+    SELECT BILLING_MONTH, VENDOR_PRODUCT_SKU, AVG(UNIT_PRICE) AS UNIT_PRICE
     FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES
     WHERE VENDOR ILIKE '%eset%'
-      AND UNIT_PRICE IS NOT NULL
+      AND UNIT_PRICE IS NOT NULL AND UNIT_PRICE > 0
+    GROUP BY 1, 2
+    ORDER BY 1, 2
     """
     invoice_df = pd.DataFrame()
     try:
         invoice_df = pd.read_sql(query, conn)
     except Exception as e:
-        print(f"WARNING: could not load ESET invoice rates ({type(e).__name__}: {e}). "
-              "Unit prices will be filled by sql/00b_backfill_invoice_prices.sql.", flush=True)
+        print(f"WARNING: could not load ESET invoice rates ({type(e).__name__}: {e}). Unit prices will be NULL.", flush=True)
     partner_rates: Dict[Tuple[str, str, str], float] = {}
     parent_rates: Dict[Tuple[str, str, str], float] = {}
     if invoice_df.empty:
         return partner_rates, parent_rates
 
+    invoice_df["BILLING_MONTH"] = pd.to_datetime(invoice_df["BILLING_MONTH"])
+    invoice_df["VENDOR_PRODUCT_SKU"] = invoice_df["VENDOR_PRODUCT_SKU"].astype(str).str.strip()
+    invoice_df["UNIT_PRICE"] = pd.to_numeric(invoice_df["UNIT_PRICE"], errors="coerce")
+    invoice_df = invoice_df.dropna(subset=["UNIT_PRICE"])
+    sku_latest: dict = {}
     for _, row in invoice_df.iterrows():
-        billing_month = pd.to_datetime(row["BILLING_MONTH"]).strftime("%Y-%m-%d")
-        vendor_product_sku = repair_hyphen_corruption(str(row["VENDOR_PRODUCT_SKU"])).replace("â€“", "-").strip()
-        unit_price = to_numeric(row["UNIT_PRICE"])
-        partner_name = invoice_partner_from_description(row["PARTNER"], vendor_product_sku)
-        key = (billing_month, normalize_key(partner_name), normalize_key(vendor_product_sku))
-        partner_rates[key] = unit_price
-        if normalize_key(partner_name).startswith("CONNECTWISE"):
-            parent_rates[key] = unit_price
+        sku = repair_hyphen_corruption(str(row["VENDOR_PRODUCT_SKU"])).replace("\u00e2\u0080\u0093", "-").strip()
+        price = float(row["UNIT_PRICE"])
+        month_str = row["BILLING_MONTH"].strftime("%Y-%m-%d")
+        sku_key = normalize_key(sku)
+        sku_latest[sku_key] = price
+        key = (month_str, "*", sku_key)
+        partner_rates[key] = price
+        parent_rates[key] = price
+    for sku_key, price in sku_latest.items():
+        partner_rates[("latest", "*", sku_key)] = price
+        parent_rates[("latest", "*", sku_key)] = price
+    print(f"Loaded {len(invoice_df)} ESET invoice rates "
+          f"({invoice_df['BILLING_MONTH'].nunique()} months, {invoice_df['VENDOR_PRODUCT_SKU'].nunique()} SKUs).", flush=True)
     return partner_rates, parent_rates
 
 
-def assign_invoice_rate(row: pd.Series, partner_rates: Dict[Tuple[str, str, str], float], parent_rates: Dict[Tuple[str, str, str], float]) -> float | None:
-    """Use partner-specific invoice rates first, then ConnectWise parent invoice rates."""
+def assign_invoice_rate(row: pd.Series, partner_rates: Dict[Tuple[str, str, str], float], parent_rates: Dict[Tuple[str, str, str], float]) -> "float | None":
+    """Assign ESET unit price: exact month match, carry-forward, then latest fallback."""
     billing_month = pd.to_datetime(row["BILLING_MONTH"]).strftime("%Y-%m-%d")
-    product_key = normalize_key(row["VENDOR_PRODUCT_SKU"])
-    partner_key = normalize_key(row["VENDOR_PARTNER_NAME"])
-    parent_key = normalize_key(row["PARENT_COMPANY_NAME"])
-    direct_key = (billing_month, partner_key, product_key)
-    parent_lookup_key = (billing_month, parent_key, product_key)
-    if direct_key in partner_rates:
-        return partner_rates[direct_key]
-    if parent_lookup_key in parent_rates:
-        return parent_rates[parent_lookup_key]
-    return None
-
+    product_key = normalize_key(repair_hyphen_corruption(str(row["VENDOR_PRODUCT_SKU"])).replace("\u00e2\u0080\u0093", "-").strip())
+    exact_key = (billing_month, "*", product_key)
+    if exact_key in partner_rates:
+        return partner_rates[exact_key]
+    target_dt = pd.to_datetime(billing_month)
+    best_price = None
+    best_dt = None
+    for (m, p, s), price in partner_rates.items():
+        if m == "latest" or p != "*" or s != product_key:
+            continue
+        try:
+            m_dt = pd.to_datetime(m)
+        except Exception:
+            continue
+        if m_dt <= target_dt and (best_dt is None or m_dt > best_dt):
+            best_price = price
+            best_dt = m_dt
+    if best_price is not None:
+        return best_price
+    return partner_rates.get(("latest", "*", product_key))
 
 def locate_regional_file(month_folder: Path, region: str) -> Path | None:
     """Find the regional CSV file in the month folder.

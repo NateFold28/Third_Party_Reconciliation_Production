@@ -650,58 +650,61 @@ def parse_month(source_root: Path, month: str) -> tuple[pd.DataFrame, pd.DataFra
 
 
 def load_price_seed() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    if not PRICE_SEED_FILE.exists():
-        print(
-            f"[WARN] Price seed not found at {PRICE_SEED_FILE}. "
-            "Run load_mapping_and_invoice_seeds.py before ingestion to populate UNIT_PRICE/AMOUNT."
-        )
-        latest = pd.DataFrame(columns=["VENDOR_SKU", "UNIT_PRICE", "CURRENCY"])
-    else:
-        latest = pd.read_csv(PRICE_SEED_FILE)
-        for col in ("VENDOR_SKU", "UNIT_PRICE", "CURRENCY"):
-            if col not in latest.columns:
-                raise RuntimeError(f"Price seed {PRICE_SEED_FILE} is missing required column {col}")
-        latest = latest[["VENDOR_SKU", "UNIT_PRICE", "CURRENCY"]].copy()
-        latest["VENDOR_SKU"] = latest["VENDOR_SKU"].astype(str).str.strip().str.upper()
-        latest["UNIT_PRICE"] = pd.to_numeric(latest["UNIT_PRICE"], errors="coerce")
-        latest["CURRENCY"] = latest["CURRENCY"].fillna("USD").astype(str).str.strip().str.upper()
-        latest = latest.dropna(subset=["VENDOR_SKU"]).drop_duplicates(subset=["VENDOR_SKU"], keep="first")
+    """Load Acronis unit prices from THIRD_PARTY_RECON_VENDOR_INVOICES.
 
-    if not INVOICE_RATE_SEED_FILE.exists():
-        monthly = pd.DataFrame(columns=["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "CURRENCY"])
-    else:
-        monthly = pd.read_csv(INVOICE_RATE_SEED_FILE)
-        for col in ("BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE"):
-            if col not in monthly.columns:
-                raise RuntimeError(f"Invoice rate seed {INVOICE_RATE_SEED_FILE} is missing required column {col}")
-        keep_cols = ["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE"]
-        if "ENTITY" in monthly.columns:
-            keep_cols.append("ENTITY")
-        monthly = monthly[keep_cols].copy()
-        monthly["BILLING_MONTH"] = pd.to_datetime(monthly["BILLING_MONTH"]).dt.date
-        monthly["VENDOR_SKU"] = monthly["VENDOR_SKU"].astype(str).str.strip().str.upper()
-        monthly["UNIT_PRICE"] = pd.to_numeric(monthly["UNIT_PRICE"], errors="coerce")
-        monthly["CURRENCY"] = "USD"
-        monthly = monthly.dropna(subset=["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE"])
-        if "ENTITY" in monthly.columns:
-            monthly["ENTITY"] = monthly["ENTITY"].map(_clean_text)
-            monthly = monthly.drop_duplicates(subset=["BILLING_MONTH", "VENDOR_SKU", "ENTITY"], keep="first")
-        else:
-            monthly = monthly.drop_duplicates(subset=["BILLING_MONTH", "VENDOR_SKU"], keep="first")
+    Priority (matching 00b_backfill_invoice_prices.sql logic):
+      1. Exact (billing_month, sku) match from invoices table.
+      2. Most-recent prior-month rate for same SKU (carry-forward via LAST_VALUE IGNORE NULLS).
+      3. Returns empty DataFrames if the invoice table doesn't exist yet.
 
-    if "ENTITY" in monthly.columns:
-        monthly_entity = monthly[["BILLING_MONTH", "VENDOR_SKU", "ENTITY", "UNIT_PRICE", "CURRENCY"]].dropna(
-            subset=["ENTITY"]
-        )
-        monthly_sku = (
-            monthly.sort_values(["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE"])
-            .drop_duplicates(subset=["BILLING_MONTH", "VENDOR_SKU"], keep="first")
-            [["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "CURRENCY"]]
-        )
-    else:
-        monthly_entity = pd.DataFrame(columns=["BILLING_MONTH", "VENDOR_SKU", "ENTITY", "UNIT_PRICE", "CURRENCY"])
-        monthly_sku = monthly
-    return monthly_entity, monthly_sku, latest
+    Returns (monthly_entity_df, monthly_sku_df, latest_fallback_df) matching the
+    shape the rest of the pipeline expects.
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(WORKSPACE_ROOT))
+    try:
+        from TEMPLATES.Python.connection import get_snowflake_connection as _conn
+        conn = _conn(role="DEVELOPER", warehouse="REPORTING_WH",
+                     database="ANALYTICS_DEV", schema="DBT_NFOLD_TRANSFORMATION")
+        inv = pd.read_sql("""
+            SELECT BILLING_MONTH, VENDOR_PRODUCT_SKU AS VENDOR_SKU, AVG(UNIT_PRICE) AS UNIT_PRICE
+            FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES
+            WHERE VENDOR ILIKE '%acronis%' AND UNIT_PRICE IS NOT NULL AND UNIT_PRICE > 0
+            GROUP BY 1, 2
+        """, conn)
+        conn.close()
+    except Exception as e:
+        print(f"[WARN] Could not load Acronis invoice rates from Snowflake ({e}). UNIT_PRICE will be NULL.", flush=True)
+        empty = pd.DataFrame(columns=["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "CURRENCY"])
+        fallback = pd.DataFrame(columns=["VENDOR_SKU", "UNIT_PRICE", "CURRENCY"])
+        return empty, empty, fallback
+
+    if inv.empty:
+        print("[WARN] No Acronis rows found in THIRD_PARTY_RECON_VENDOR_INVOICES. UNIT_PRICE will be NULL.", flush=True)
+        empty = pd.DataFrame(columns=["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "CURRENCY"])
+        fallback = pd.DataFrame(columns=["VENDOR_SKU", "UNIT_PRICE", "CURRENCY"])
+        return empty, empty, fallback
+
+    inv["BILLING_MONTH"] = pd.to_datetime(inv["BILLING_MONTH"]).dt.date
+    inv["VENDOR_SKU"] = inv["VENDOR_SKU"].astype(str).str.strip().str.upper()
+    inv["UNIT_PRICE"] = pd.to_numeric(inv["UNIT_PRICE"], errors="coerce")
+    inv["CURRENCY"] = "USD"
+    inv = inv.dropna(subset=["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE"])
+
+    monthly_sku = inv[["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "CURRENCY"]].drop_duplicates(
+        subset=["BILLING_MONTH", "VENDOR_SKU"], keep="first"
+    )
+    # Carry-forward fallback: most recent unit price per SKU (for months not yet in invoices)
+    latest_fallback = (
+        inv.sort_values("BILLING_MONTH", ascending=False)
+        .drop_duplicates(subset=["VENDOR_SKU"], keep="first")
+        [["VENDOR_SKU", "UNIT_PRICE", "CURRENCY"]]
+    )
+    # No entity-level split for Acronis invoices (they don't have per-partner pricing)
+    monthly_entity = pd.DataFrame(columns=["BILLING_MONTH", "VENDOR_SKU", "ENTITY", "UNIT_PRICE", "CURRENCY"])
+    print(f"[INFO] Loaded {len(monthly_sku):,} Acronis invoice rates from VENDOR_INVOICES "
+          f"({monthly_sku['BILLING_MONTH'].nunique()} months, {monthly_sku['VENDOR_SKU'].nunique()} SKUs).", flush=True)
+    return monthly_entity, monthly_sku, latest_fallback
 
 
 def parse_money(value: object) -> float | None:
