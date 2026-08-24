@@ -66,15 +66,29 @@ USE = (
 # ---------------------------------------------------------------------------
 VENDOR_ROUTING: dict[str, tuple[str, str]] = {
     # vendor        : (mode, source)
-    "Proofpoint":  ("live",     "PROOFPOINT_RECON_DETAIL"),
-    "Bitdefender": ("live",     "BITDEFENDER_RECON_DETAIL"),
-    "Acronis":     ("live",     "ACRONIS_RECON_DETAIL"),
-    "Auvik":       ("snapshot", "THIRD_PARTY_STANDALONE_RECON_DETAIL__AUVIK_SNAPSHOT_20260823"),
-    "ESET":        ("snapshot", "THIRD_PARTY_STANDALONE_RECON_DETAIL__ESET_SNAPSHOT_20260823"),
-    "Exium":       ("snapshot", "THIRD_PARTY_STANDALONE_RECON_DETAIL__EXIUM_SNAPSHOT_20260823"),
-    "KeepIT":      ("snapshot", "THIRD_PARTY_STANDALONE_RECON_DETAIL__KEEPIT_SNAPSHOT_20260823"),
-    "SentinelOne": ("snapshot", "THIRD_PARTY_STANDALONE_RECON_DETAIL__SENTINELONE_SNAPSHOT_20260823"),
-    "Webroot":     ("snapshot", "THIRD_PARTY_STANDALONE_RECON_DETAIL__WEBROOT_SNAPSHOT_20260823"),
+    "Proofpoint":  ("live", "PROOFPOINT_RECON_DETAIL"),
+    "Bitdefender": ("live", "BITDEFENDER_RECON_DETAIL"),
+    "Acronis":     ("live", "ACRONIS_RECON_DETAIL"),
+    "Auvik":       ("live", "AUVIK_RECON_DETAIL"),
+    "ESET":        ("live", "ESET_RECON_DETAIL"),
+    "Exium":       ("live", "EXIUM_RECON_DETAIL"),
+    "KeepIT":      ("live", "KEEPIT_RECON_DETAIL"),
+    "SentinelOne": ("live", "SENTINELONE_RECON_DETAIL"),
+    "Webroot":     ("live", "WEBROOT_RECON_DETAIL"),
+}
+
+# If a vendor's live path fails, fall back to this snapshot so the app still
+# has data for that vendor. Set to None to disable fallback (fail hard).
+VENDOR_FALLBACK: dict[str, str] = {
+    "Acronis":     "THIRD_PARTY_STANDALONE_RECON_DETAIL__ACRONIS_SNAPSHOT_20260823",
+    "Auvik":       "THIRD_PARTY_STANDALONE_RECON_DETAIL__AUVIK_SNAPSHOT_20260823",
+    "Bitdefender": "THIRD_PARTY_STANDALONE_RECON_DETAIL__BITDEFENDER_SNAPSHOT_20260823",
+    "ESET":        "THIRD_PARTY_STANDALONE_RECON_DETAIL__ESET_SNAPSHOT_20260823",
+    "Exium":       "THIRD_PARTY_STANDALONE_RECON_DETAIL__EXIUM_SNAPSHOT_20260823",
+    "KeepIT":      "THIRD_PARTY_STANDALONE_RECON_DETAIL__KEEPIT_SNAPSHOT_20260823",
+    "Proofpoint":  "THIRD_PARTY_STANDALONE_RECON_DETAIL__PROOFPOINT_SNAPSHOT_20260823",
+    "SentinelOne": "THIRD_PARTY_STANDALONE_RECON_DETAIL__SENTINELONE_SNAPSHOT_20260823",
+    "Webroot":     "THIRD_PARTY_STANDALONE_RECON_DETAIL__WEBROOT_SNAPSHOT_20260823",
 }
 
 # ---------------------------------------------------------------------------
@@ -443,26 +457,42 @@ def main() -> int:
         run_sql(conn, INIT_SQL, "init + truncate DETAIL_PROD")
 
         print("\n=== STEP 1a: run live vendor SQL files (rebuild <VENDOR>_RECON_DETAIL) ===")
+        sql_fail: dict[str, str] = {}
         live_vendors = [v for v, (m, _) in VENDOR_ROUTING.items() if m == "live"]
-        if not live_vendors:
-            print("  (no live vendors this run)")
         for vendor in live_vendors:
-            run_vendor_sql_file(conn, vendor)
+            ok = run_vendor_sql_file(conn, vendor)
+            if not ok:
+                sql_fail[vendor] = "vendor SQL raised an error"
 
         print("\n=== STEP 1b: emit each vendor into DETAIL_PROD ===")
-        live_ok: list[str] = []
-        snap_ok: list[str] = []
+        emit_live: list[str] = []
+        emit_snap: list[str] = []
+        emit_fail: list[str] = []
         for vendor, (mode, src) in VENDOR_ROUTING.items():
-            if mode == "live":
-                if run_sql(conn, live_emit_block(vendor, src),
-                           f"emit {vendor:<12} LIVE     <- {src}"):
-                    live_ok.append(vendor)
-            else:
-                if run_sql(conn, emit_vendor_block(vendor, src),
-                           f"emit {vendor:<12} snapshot <- {src}"):
-                    snap_ok.append(vendor)
-        print(f"\n  live vendors:     {', '.join(live_ok) or '(none)'}")
-        print(f"  snapshot vendors: {', '.join(snap_ok) or '(none)'}")
+            emitted = False
+            if mode == "live" and vendor not in sql_fail:
+                emitted = run_sql(
+                    conn, live_emit_block(vendor, src),
+                    f"emit {vendor:<12} LIVE     <- {src}",
+                )
+                if emitted:
+                    emit_live.append(vendor)
+            fallback = VENDOR_FALLBACK.get(vendor)
+            if not emitted and fallback:
+                print(f"    ({vendor} live path failed -- falling back to snapshot)")
+                emitted = run_sql(
+                    conn, emit_vendor_block(vendor, fallback),
+                    f"emit {vendor:<12} snapshot <- {fallback}",
+                )
+                if emitted:
+                    emit_snap.append(vendor)
+            if not emitted:
+                emit_fail.append(vendor)
+
+        print("\n  live vendors:     " + (", ".join(emit_live) or "(none)"))
+        print("  snapshot vendors: " + (", ".join(emit_snap) or "(none)"))
+        if emit_fail:
+            print("  FAILED vendors:   " + ", ".join(emit_fail))
 
         print("\n=== STEP 2: overlays on the shared table (per-vendor) ===")
         run_sql(conn, API_BACKFILL_SQL, "backfill API_QUANTITY / AVG_API_QUANTITY (S1/BD/Webroot/Auvik)")
