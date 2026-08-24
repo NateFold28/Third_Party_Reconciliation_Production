@@ -1,0 +1,16 @@
+﻿Fetching invoice files ... 276 files.
+
+VENDOR             ROWS  MONTHS   SKUS  HAS_PRICE    TOTAL_AMOUNT
+--------------------------------------------------------------------
+Acronis           1,189       5     55      1,189 $    2,730,000
+Auvik             4,362       6    153      4,243 $    5,135,341
+Bitdefender          61       4     21          0 $    1,324,721
+ESET                 67       6     13         61 $      496,008
+Exium                29       4      6         29 $      201,796
+KeepIT              113       5      7         90 $    4,036,363
+Proofpoint           61       5     13          5 $    6,077,121
+SentinelOne           6       1      2          3 $       17,186
+
+Total rows: 5,888
+
+[DRY RUN] No rows written.

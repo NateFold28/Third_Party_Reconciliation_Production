@@ -1,0 +1,9 @@
+﻿Fetching invoice files ... 8 files.
+
+VENDOR             ROWS  MONTHS   SKUS  HAS_PRICE    TOTAL_AMOUNT
+--------------------------------------------------------------------
+Auvik               677       1     66        662 $   66,493,991
+
+Total rows: 677
+
+[DRY RUN] No rows written.
