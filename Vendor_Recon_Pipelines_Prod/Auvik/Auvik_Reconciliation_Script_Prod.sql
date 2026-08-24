@@ -32,8 +32,8 @@ WITH partner_name_map AS (
         partner_name,
         TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_normalized,
         sf_id,
-        'AUVIK_PARTNER_MAPPING_V5' AS mapping_source
-    FROM AUVIK_PARTNER_MAPPING_V5
+        'RECON_PARTNER_MAP' AS mapping_source
+    FROM RECON_PARTNER_MAP
     WHERE sf_id IS NOT NULL
       AND REGEXP_LIKE(sf_id, '^ACT-[0-9A-Z-]+$')
       AND partner_name IS NOT NULL
@@ -49,7 +49,7 @@ vendor_product_map AS (
         REGEXP_REPLACE(sku_match_key, '^AUVIK_(CMS|CW)_', 'AUVIK_') AS sku_match_group,
         REGEXP_REPLACE(sku_match_key, '^AUVIK_(CMS|CW)_', '') AS auvik_product_group,
         LISTAGG(DISTINCT mapping_notes, ' | ') WITHIN GROUP (ORDER BY mapping_notes) AS mapping_sources
-    FROM AUVIK_SKU_MAP_V5
+    FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Auvik')
     WHERE vendor_product IS NOT NULL
       AND sku_match_key IS NOT NULL
       AND REGEXP_SUBSTR(sku_match_key, 'AUVIK_(CMS|CW)_', 1, 1, 'e', 1) IS NOT NULL
@@ -61,7 +61,7 @@ cw_sku_map AS (
         REGEXP_REPLACE(sku_match_key, '^AUVIK_(CMS|CW)_', 'AUVIK_') AS sku_match_group,
         REGEXP_REPLACE(sku_match_key, '^AUVIK_(CMS|CW)_', '') AS auvik_product_group,
         LISTAGG(DISTINCT mapping_notes, ' | ') WITHIN GROUP (ORDER BY mapping_notes) AS mapping_sources
-    FROM AUVIK_SKU_MAP_V5
+    FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Auvik')
     WHERE cw_sku IS NOT NULL
       AND sku_match_key IS NOT NULL
     GROUP BY 1, 2, 3
@@ -201,7 +201,7 @@ vendor_cw_skus AS (
         v.sku_match_group,
         ARRAY_AGG(DISTINCT m.cw_sku) WITHIN GROUP (ORDER BY m.cw_sku) AS cw_skus
     FROM vendor_agg v
-    LEFT JOIN AUVIK_SKU_MAP_V5 m
+    LEFT JOIN (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Auvik') m
         ON REGEXP_REPLACE(m.sku_match_key, '^AUVIK_(CMS|CW)_', 'AUVIK_') = v.sku_match_group
        AND m.cw_sku IS NOT NULL
     GROUP BY 1, 2, 3

@@ -114,7 +114,7 @@ partner_map AS (
     -- V5 map is pre-canonicalized in 00_reference_maps.sql, so sf_id here is
     -- already the current Salesforce canonical id.
     SELECT TRIM(partner_name) AS partner_name, sf_id, zuora_name
-    FROM SENTINELONE_PARTNER_MAPPING_V5
+    FROM RECON_PARTNER_MAP
     WHERE sf_id IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY UPPER(TRIM(partner_name))
@@ -130,7 +130,7 @@ partner_canonical_name AS (
     SELECT
         sf_id,
         partner_name AS canonical_partner_name
-    FROM SENTINELONE_PARTNER_MAPPING_V5
+    FROM RECON_PARTNER_MAP
     WHERE sf_id IS NOT NULL
       AND partner_name IS NOT NULL
       AND TRIM(partner_name) <> ''
@@ -157,7 +157,7 @@ mapped_sf_ids AS (
     -- date-aware pre-merge Zuora rows would silently disappear from the
     -- reconciliation detail.
     SELECT DISTINCT sf_id
-    FROM SENTINELONE_PARTNER_MAPPING_V5
+    FROM RECON_PARTNER_MAP
     WHERE sf_id IS NOT NULL
     UNION
     SELECT DISTINCT old_sf_id AS sf_id
@@ -552,7 +552,7 @@ detail_pre AS (
         pj.vendor_quantity,
         -- Vendor invoice pricing (loaded from
         -- SENTINELONE_SKU_INVOICE_RATES via seed CSV and merged into
-        -- SENTINELONE_SKU_MAP_V5). One canonical price per sku_match_group.
+        -- (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'SentinelOne')). One canonical price per sku_match_group.
         -- Rows whose SKU has no invoice line (e.g. CORE) fall back to zero
         -- so the pipeline never crashes, but the app can show them as
         -- unpriced.
@@ -789,7 +789,7 @@ SELECT
         WHEN outcome_flag = 'MINOR_DRIFT' THEN 'Minor drift: 2-5% quantity delta (or <=25 endpoints). Below operational review threshold. No action.'
         WHEN outcome_flag = 'PARTNER_MAPPING_REQUIRED' THEN 'Vendor usage exists but no Salesforce ID was resolved from the governed SentinelOne partner map. Partner Ops: add to map.'
         WHEN outcome_flag = 'VENDOR_ADDON_NO_CW_SKU' THEN 'Vendor add-on (Cloud Funnel / Purple AI / Ranger Insights / Ranger AD / Singularity Identity / Threat Intelligence / Core) is invoiced by S1 at real cost but CW has NO rebill SKU in catalog. TRUE REVENUE LEAKAGE. Product/Catalog: create rebill SKU.'
-        WHEN outcome_flag = 'VENDOR_PRODUCT_NO_CW_SKU' THEN 'Vendor product exists in usage but has no active CW billing SKU in SENTINELONE_SKU_MAP_V5. Product/Catalog: map the SKU.'
+        WHEN outcome_flag = 'VENDOR_PRODUCT_NO_CW_SKU' THEN 'Vendor product exists in usage but has no active CW billing SKU in RECON_SKU_MAP (VENDOR='SentinelOne'). Product/Catalog: map the SKU.'
         WHEN outcome_flag = 'DUPLICATE_BILLING' THEN 'Same SentinelOne SKU group billed through both Zuora and Marketplace in the same account/month. Billing Ops: dedupe source.'
         WHEN outcome_flag = 'STRUCTURAL_BILLING_ONLY' THEN 'CW bills material qty for this partner but SentinelOne vendor file reports ~0. Suggests SentinelOne-side site attribution error (partner-hosted sites reported under end-customer names). Data/vendor issue, NOT a billing dispute. Recon Team: escalate to SentinelOne for site-attribution audit.'
         WHEN outcome_flag = 'STRUCTURAL_VENDOR_ONLY_TRT_CONFIRMED' THEN 'Vendor bills material qty and TRT internal metering confirms real usage, but CW has no Zuora/Marketplace bill. Finance: bill this partner (TRT proves consumption).'

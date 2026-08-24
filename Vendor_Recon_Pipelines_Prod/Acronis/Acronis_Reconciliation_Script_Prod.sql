@@ -41,7 +41,7 @@ partner_map AS (
     SELECT
         TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(pm.partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm,
         ANY_VALUE(COALESCE(mr.canonical_sf_id, pm.sf_id)) AS sf_id
-    FROM ACRONIS_PARTNER_MAPPING_V5 pm
+    FROM RECON_PARTNER_MAP pm
     LEFT JOIN merged_account_resolver mr ON mr.old_sf_id = pm.sf_id
     WHERE pm.sf_id ILIKE 'ACT-%' AND pm.partner_name IS NOT NULL
     GROUP BY 1
@@ -144,7 +144,7 @@ marketplace_any_sf_month AS (
 -- Reverse lookup: sf_id -> partner_name for billing-only rows (no vendor side)
 sf_id_to_partner AS (
     SELECT sf_id, ANY_VALUE(partner_name) AS partner_name
-    FROM ACRONIS_PARTNER_MAPPING_V5
+    FROM RECON_PARTNER_MAP
     WHERE sf_id ILIKE 'ACT-%' AND partner_name IS NOT NULL
     GROUP BY sf_id
 ),
@@ -208,7 +208,7 @@ joined AS (
         ON ma.sf_id = COALESCE(v.sf_id, z.sf_id, m.sf_id)
        AND ma.billing_month = COALESCE(v.billing_month, z.billing_month, m.billing_month)
     LEFT JOIN (SELECT sku_match_key AS sku_match_group, ARRAY_AGG(DISTINCT cw_sku) WITHIN GROUP (ORDER BY cw_sku) AS cw_skus
-               FROM ACRONIS_SKU_MAP_V5 GROUP BY 1) smv
+               FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Acronis') GROUP BY 1) smv
         ON smv.sku_match_group = COALESCE(v.sku_match_group, z.sku_match_group, m.sku_match_group)
     LEFT JOIN sf_id_to_partner pn
         ON pn.sf_id = COALESCE(v.sf_id, z.sf_id, m.sf_id)
@@ -447,7 +447,7 @@ SELECT
         WHEN 'STRUCTURAL_BILLING_ONLY'            THEN 'CW is billing material qty but vendor reports zero usage. Possible legacy subscription, vendor decommission, or subscription expired/terminated. Confirm active vendor subscription.'
         WHEN 'MARKETPLACE_BILLING_NO_VENDOR'      THEN 'Marketplace billing present but vendor reports zero usage; typical for marketplace-only fixed commits or trailing MP cycles.'
         WHEN 'STRUCTURAL_VENDOR_ONLY_NO_CONTRACT' THEN 'Vendor usage exists but no CW contract / billing found. Requires CW subscription creation or partner onboarding.'
-        WHEN 'VENDOR_PRODUCT_NO_CW_SKU'           THEN 'Vendor SKU has no CW crosswalk in ACRONIS_SKU_MAP_V5. Requires SKU catalog addition or product decision.'
+        WHEN 'VENDOR_PRODUCT_NO_CW_SKU'           THEN 'Vendor SKU has no CW crosswalk in RECON_SKU_MAP (VENDOR='Acronis'). Requires SKU catalog addition or product decision.'
         WHEN 'DUPLICATE_BILLING'                  THEN 'Zuora and Marketplace both bill the same partner/month/SKU and materially diverge. Treat as duplicate invoice evidence and reconcile to a single billing source.'
         WHEN 'SKU_MISMATCH_BILLING_ON_OTHER_SKU'  THEN 'Vendor usage and CW billing offset on the same account/month but on different SKU groups. Treat as a SKU mapping offset review first; rebook only if mapping is confirmed wrong.'
         WHEN 'MINOR_DRIFT'                        THEN 'Minor quantity drift within 2-5% (or <=25 units). Below operational action threshold.'
@@ -552,7 +552,7 @@ partner_map AS (
     SELECT
         TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(pm.partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm,
         ANY_VALUE(COALESCE(mr.canonical_sf_id, pm.sf_id)) AS sf_id
-    FROM ACRONIS_PARTNER_MAPPING_V5 pm
+    FROM RECON_PARTNER_MAP pm
     LEFT JOIN merged_account_resolver mr ON mr.old_sf_id = pm.sf_id
     WHERE pm.sf_id ILIKE 'ACT-%' AND pm.partner_name IS NOT NULL
     GROUP BY 1

@@ -33,7 +33,7 @@ WITH partner_name_map AS (
         TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_normalized,
         sf_id,
         mapping_source
-    FROM EXIUM_PARTNER_MAPPING_V5
+    FROM RECON_PARTNER_MAP
     WHERE sf_id IS NOT NULL
       AND REGEXP_LIKE(sf_id, '^ACT-[0-9A-Z-]+$')
       AND partner_name IS NOT NULL
@@ -49,7 +49,7 @@ vendor_product_map AS (
         REGEXP_REPLACE(sku_match_group, '^EXIUM_(CMS|CW)_', 'EXIUM_') AS sku_match_group,
         exium_product_family,
         LISTAGG(DISTINCT mapping_source, ' | ') WITHIN GROUP (ORDER BY mapping_source) AS mapping_sources
-    FROM EXIUM_SKU_MAP_V5
+    FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Exium')
     WHERE is_active = TRUE
       AND vendor_product IS NOT NULL
       AND sku_match_group IS NOT NULL
@@ -62,7 +62,7 @@ cw_sku_map AS (
         REGEXP_REPLACE(sku_match_group, '^EXIUM_(CMS|CW)_', 'EXIUM_') AS sku_match_group,
         exium_product_family,
         LISTAGG(DISTINCT mapping_source, ' | ') WITHIN GROUP (ORDER BY mapping_source) AS mapping_sources
-    FROM EXIUM_SKU_MAP_V5
+    FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Exium')
     WHERE is_active = TRUE
       AND cw_sku IS NOT NULL
       AND sku_match_group IS NOT NULL
@@ -201,7 +201,7 @@ vendor_cw_skus AS (
         v.sku_match_group,
         ARRAY_AGG(DISTINCT m.cw_sku) WITHIN GROUP (ORDER BY m.cw_sku) AS cw_skus
     FROM vendor_agg v
-    LEFT JOIN EXIUM_SKU_MAP_V5 m
+    LEFT JOIN (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Exium') m
         ON m.sku_match_group = v.sku_match_group
        AND m.cw_sku IS NOT NULL
        AND m.is_active = TRUE

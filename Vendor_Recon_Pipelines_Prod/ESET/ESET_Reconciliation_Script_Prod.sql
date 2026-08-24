@@ -25,7 +25,7 @@ WITH partner_map AS (
     SELECT
         TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm,
         ANY_VALUE(sf_id) AS sf_id
-    FROM ESET_PARTNER_MAPPING_V5
+    FROM RECON_PARTNER_MAP
     WHERE sf_id IS NOT NULL AND REGEXP_LIKE(sf_id, '^ACT-[0-9A-Z-]+$') AND partner_name IS NOT NULL
     GROUP BY 1
 ),

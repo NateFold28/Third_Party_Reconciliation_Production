@@ -7,8 +7,8 @@
 --
 -- Required upstream objects:
 --   - PROOFPOINT_USAGE
---   - PROOFPOINT_PARTNER_MAPPING_V5
---   - PROOFPOINT_SKU_MAP_V5
+--   - RECON_PARTNER_MAP
+--   - (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Proofpoint')
 --   - PROOFPOINT_BILLING_MATCHED
 --   - PROOFPOINT_MARKETPLACE_BILLING_MATCHED
 --
@@ -41,7 +41,7 @@ WITH partner_name_map AS (
             )
         ) AS partner_name_normalized,
         sf_id
-    FROM PROOFPOINT_PARTNER_MAPPING_V5
+    FROM RECON_PARTNER_MAP
     WHERE sf_id IS NOT NULL
       AND REGEXP_LIKE(sf_id, '^ACT-[0-9A-Z-]+$')
       AND partner_name IS NOT NULL
@@ -62,7 +62,7 @@ partner_name_map_deduped AS (
 
 cms_acc_map AS (
     SELECT cms_id, sf_id
-    FROM PROOFPOINT_PARTNER_MAPPING_V5
+    FROM RECON_PARTNER_MAP
     WHERE cms_id IS NOT NULL
       AND cms_id != ''
       AND sf_id IS NOT NULL
@@ -97,7 +97,7 @@ pp_skus AS (
         cw_sku,
         sku_match_key AS sku_match_group,
         'SIMPLIFIED_SKU_MAP' AS mapping_source
-    FROM PROOFPOINT_SKU_MAP_V5
+    FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Proofpoint')
 ),
 
 -- Time-variant per-seat contract cost rate lookup.

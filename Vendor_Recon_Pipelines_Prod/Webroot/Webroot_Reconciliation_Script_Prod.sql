@@ -33,7 +33,7 @@ partner_map AS (
         sf_id,
         cms_id,
         zuora_name
-    FROM WEBROOT_PARTNER_MAPPING_V5
+    FROM RECON_PARTNER_MAP
 ),
 
 usage_base AS (
@@ -95,7 +95,7 @@ cw_sku_group_map AS (
                 THEN 'CMS'
             ELSE 'CW'
         END AS billing_stream
-    FROM WEBROOT_SKU_MAP_V5 m
+    FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Webroot') m
     LEFT JOIN WEBROOT_CW_PRICEBOOK_SKU_RATES pb
         ON pb.product_code = m.cw_sku
     WHERE m.cw_sku IS NOT NULL
@@ -457,7 +457,7 @@ SELECT
     vendor_source_files,
     marketplace_transaction_sources,
     'WEBROOT_USAGE_AGGREGATOR_ONLY_PLUS_INVOICE_VALIDATED' AS partner_match_methods,
-    'WEBROOT_SKU_MAP_V5' AS sku_mapping_sources,
+    'RECON_SKU_MAP' AS sku_mapping_sources,
     cr.contract_cost_rate AS contract_cost_basis_quantity,
     ROUND(vendor_quantity * COALESCE(cr.contract_cost_rate, 0), 2)::NUMBER AS contract_cost_basis_amount,
     cr.contract_cost_rate,
