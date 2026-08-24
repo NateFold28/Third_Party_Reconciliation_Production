@@ -264,13 +264,17 @@ def _parse_bitdefender(text: str, file_path: str) -> list[dict]:
         sku = row[i_item].strip()
         if not sku or sku.startswith("-"):
             continue
+        qty  = _num(row[i_qty])
+        # Skip repeated page-header rows ("Item number" / "Description") which
+        # have no numeric quantity.
+        if qty is None:
+            continue
         raw_desc = row[i_desc].strip()
         # Strip "Order number : ..." and everything after
         desc = re.split(r"\s*/\s*" + re.escape(sku), raw_desc, maxsplit=1)[0].strip()
         desc = re.split(r"Order\s+number\s*:", desc, flags=re.IGNORECASE)[0].strip()
         # Clean up slash-separated duplicate SKU entries "BP_2773 : : 1 : 315150 : BP_2773"
         desc = re.split(r"\s*:\s*:\s*\d+\s*:", desc, maxsplit=1)[0].strip()
-        qty  = _num(row[i_qty])
         amt  = _num(row[i_net])
         results.append({"partner": None, "sku": sku, "description": desc,
                          "quantity": qty, "unit_price": None, "amount": amt})
@@ -408,46 +412,39 @@ def _parse_keepit(text: str, file_path: str) -> list[dict]:
 
 def _parse_proofpoint(text: str, file_path: str) -> list[dict]:
     """
-    Table: | Item number | Description | Quantity | Unit | Unit price | Amount |
-    Unit price is often blank in the PDF (Proofpoint reports Amount only).
-    Derive unit_price = amount / quantity when unit_price is blank.
+    Proofpoint invoices use multi-line description cells in their markdown tables.
+    Each item block looks like:
+      |  PP-xxx | <description (may span many lines)>
+      Contract end: DATE | QTY | EA | (unit_price) | $AMOUNT |
+    or single-line:
+      |  PP-xxx | Description | QTY | EA | | $AMOUNT |
+
+    We scan the full text with a regex (DOTALL) to handle both formats.
     """
     results: list[dict] = []
-    rows = _parse_markdown_table(text)
-    header_idx = None
-    for i, row in enumerate(rows):
-        h = [c.lower() for c in row]
-        if any("item number" in c for c in h) and any("quantity" in c for c in h):
-            header_idx = i
-            break
-    if header_idx is None:
-        return results
-
-    hdr = [c.lower() for c in rows[header_idx]]
-    try:
-        i_item = next(i for i, h in enumerate(hdr) if "item number" in h)
-        i_desc = next(i for i, h in enumerate(hdr) if "description" in h)
-        i_qty  = next(i for i, h in enumerate(hdr) if "quantity" in h)
-        i_up   = next(i for i, h in enumerate(hdr) if "unit price" in h)
-        i_amt  = next(i for i, h in enumerate(hdr) if h == "amount" or "amount" in h)
-    except StopIteration:
-        return results
-
-    for row in rows[header_idx + 1:]:
-        if len(row) <= max(i_item, i_desc, i_qty, i_up, i_amt):
+    # Matches: | PP-SKU | <anything multi-line> | qty | EA | unit_price_or_blank | $amount |
+    pattern = re.compile(
+        r'\|\s+(PP-[\w-]+)\s*\|'          # | PP-SKU |
+        r'(.*?)'                           # description (non-greedy, multi-line)
+        r'\|\s*([\d,]+(?:\.\d+)?)\s*'     # | qty (may have commas)
+        r'\|\s*EA\s*\|'                    # | EA |
+        r'[^|]*\|'                         # unit_price column (skip, usually blank)
+        r'\s*\$?([\d,]+(?:\.\d+)?)\s*\|', # | $amount |
+        re.DOTALL,
+    )
+    for m in pattern.finditer(text):
+        sku  = m.group(1).strip()
+        # Collapse multi-line description; strip trailing contract dates
+        raw_desc = re.sub(r'\s+', ' ', m.group(2)).strip().rstrip('|').strip()
+        desc = re.split(r'Contract\s+start\s*:', raw_desc, flags=re.IGNORECASE)[0].strip()
+        desc = desc.rstrip('|').strip()
+        qty  = _num(m.group(3))
+        amt  = _num(m.group(4))
+        if qty is None:
             continue
-        sku  = row[i_item].strip()
-        desc = row[i_desc].strip()
-        if not sku or sku.startswith("-"):
-            continue
-        qty  = _num(row[i_qty])
-        up   = _num(row[i_up])
-        amt  = _num(row[i_amt])
-        # Derive unit_price when blank
-        if up is None and qty and qty != 0 and amt is not None:
-            up = round(amt / qty, 6)
+        up = round(amt / qty, 6) if (amt is not None and qty != 0) else None
         results.append({"partner": None, "sku": sku, "description": desc,
-                         "quantity": qty, "unit_price": up, "amount": amt})
+                        "quantity": qty, "unit_price": up, "amount": amt})
     return results
 
 
@@ -467,68 +464,40 @@ def _parse_sentinelone(text: str, file_path: str) -> list[dict]:
     so column indices stay correct per-page.
     """
     results: list[dict] = []
-    rows = _parse_markdown_table(text)
-    i_qty = i_rate = i_amt = None
-    pending_sku = pending_desc = None
 
-    for row in rows:
-        if not row:
+    # ---------------------------------------------------------------------------
+    # Page 1 format (multi-line description cell):
+    #   | SKU\n...desc | (empty) | start | end | qty | rate | $amount |
+    # Page 2 format (single-line row, description on continuation row):
+    #   | SKU | start | end | qty | rate | $amount |
+    #   | description-text |  |  |  |  |  |   <- skip row
+    # We handle both with a single DOTALL regex.
+    # ---------------------------------------------------------------------------
+
+    # Matches page-1 style multi-line blocks AND page-2 single-line rows.
+    # Anchored on uppercase SKU code, then captures everything up to
+    # a column with digits-only quantity, a rate, and a dollar amount.
+    pattern = re.compile(
+        r'\|\s+([A-Z][A-Z0-9\-]{3,})'      # | SKU
+        r'(.*?)'                            # description (multi-line, non-greedy)
+        r'\|\s*(\d[\d,]*)\s*'              # | qty (no $ prefix, pure number)
+        r'\|\s*([\d,]+\.\d+)\s*'           # | rate
+        r'\|\s*\$?([\d,]+\.\d+)\s*\|',     # | $amount |
+        re.DOTALL,
+    )
+    for m in pattern.finditer(text):
+        sku  = m.group(1).strip()
+        raw  = re.sub(r'\s+', ' ', m.group(2)).strip()
+        # Drop date columns and pipe chars that leaked into description
+        desc = re.split(r'\|\s*\d{1,2}/\d{1,2}/\d{4}', raw)[0]
+        desc = desc.strip('| \t').strip()
+        qty  = _num(m.group(3))
+        rate = _num(m.group(4))
+        amt  = _num(m.group(5))
+        if qty is None:
             continue
-        first = row[0].strip()
-        hdr = [c.lower() for c in row]
-
-        # Re-detect header row on each page
-        if "product code" in hdr[0] and any("inv qty" in h or "rate" in h for h in hdr):
-            try:
-                i_qty  = next(i for i, h in enumerate(hdr) if "inv qty" in h or (i > 1 and "qty" in h))
-                i_rate = next(i for i, h in enumerate(hdr) if h == "rate")
-                i_amt  = next(i for i, h in enumerate(hdr) if h == "amount")
-                pending_sku = pending_desc = None
-            except StopIteration:
-                pass
-            continue
-
-        if i_qty is None:
-            continue
-
-        # Skip totals / remittance rows
-        first_lc = first.lower()
-        if re.match(r"^(subtotal|tax total|total|please|account name|bank|routing|swift)", first_lc):
-            continue
-
-        # Check if row has numeric data in the expected columns
-        if len(row) > i_amt:
-            qty  = _num(row[i_qty])  if i_qty  < len(row) else None
-            rate = _num(row[i_rate]) if i_rate < len(row) else None
-            amt  = _num(row[i_amt])  if i_amt  < len(row) else None
-        else:
-            qty = rate = amt = None
-
-        # Extract product code from first cell (always uppercase-dash pattern)
-        m = re.match(r"^([A-Z][A-Z0-9\-]{3,})", first)
-        if m:
-            # Flush any pending row
-            if pending_sku and pending_desc is not None:
-                pass  # already appended below
-            sku  = m.group(1)
-            desc = first[len(sku):].strip()
-            if qty is not None or amt is not None:
-                # Page 1 style: all data in same row
-                results.append({"partner": None, "sku": sku, "description": desc,
-                                 "quantity": qty, "unit_price": rate, "amount": amt})
-                pending_sku = pending_desc = None
-            else:
-                # Page 2 style: data will be on THIS row (already have qty/rate/amt from right cols)
-                # Actually on page 2, qty/rate/amt ARE in this row — re-check with correct indices
-                if len(row) > i_amt:
-                    results.append({"partner": None, "sku": sku, "description": desc,
-                                     "quantity": _num(row[i_qty]) if i_qty < len(row) else None,
-                                     "unit_price": _num(row[i_rate]) if i_rate < len(row) else None,
-                                     "amount": _num(row[i_amt]) if i_amt < len(row) else None})
-                pending_sku = pending_desc = None
-        # Description-only continuation row (page 2): all cells except [0] blank
-        elif first and all(c.strip() == "" for c in row[1:]) and pending_sku is None:
-            pass  # just a hanging description row, already captured with the SKU row above
+        results.append({"partner": None, "sku": sku, "description": desc,
+                         "quantity": qty, "unit_price": rate, "amount": amt})
 
     return results
 
