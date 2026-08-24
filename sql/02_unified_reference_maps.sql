@@ -1,25 +1,21 @@
 -- =============================================================================
--- 02_unified_reference_maps.sql
+-- 02_unified_reference_maps.sql   (idempotent v2)
 --
--- Purpose: replace 9 per-vendor partner-mapping tables + 7 per-vendor sku-map
--- tables with a single unified pair, plus backward-compatible views so the
--- 9 vendor Reconciliation_Script_Prod.sql files continue to work unchanged.
+-- Builds:
+--   RECON_PARTNER_MAP   (VENDOR, PARTNER_NAME, PARENT_COMPANY, SF_ID, CMS_ID, ZUORA_NAME)
+--   RECON_SKU_MAP      (VENDOR, VENDOR_PRODUCT, VENDOR_SKU, CW_SKU, SKU_MATCH_KEY,
+--                       MAPPING_NOTES, CONTRACT_COST_RATE, CW_RETAIL_RATE)
 --
--- After this runs:
---   Physical:
---     RECON_PARTNER_MAP        (VENDOR, PARTNER_NAME, PARENT_COMPANY,
---                               SF_ID, CMS_ID, ZUORA_NAME)  DISTINCT rows
---     RECON_SKU_MAP            (VENDOR, VENDOR_PRODUCT, VENDOR_SKU, CW_SKU,
---                               SKU_MATCH_KEY, MAPPING_NOTES,
---                               CONTRACT_COST_RATE, CW_RETAIL_RATE)  DISTINCT rows
---   Views (backward-compat, one per vendor -- consumed by vendor SQLs):
---     <VENDOR>_PARTNER_MAPPING_V5  -> SELECT * FROM RECON_PARTNER_MAP WHERE VENDOR = '<v>'
---     <VENDOR>_SKU_MAP_V5          -> SELECT * FROM RECON_SKU_MAP     WHERE VENDOR = '<v>'
+-- Sources unioned into RECON_PARTNER_MAP:
+--   <VENDOR>_PARTNER_MAPPING_V5_LEGACY_20260823   (8 vendor tables, pre-cutover)
+--   RECON_MANUAL_SEED_PARTNER_MAP                 (5,874 master partners × Exium/S1/Webroot)
 --
---   The pre-existing physical tables are renamed to
---     <VENDOR>_PARTNER_MAPPING_V5_LEGACY_20260823
---     <VENDOR>_SKU_MAP_V5_LEGACY_20260823
---   as a safety net. Drop them once we're confident.
+-- Sources unioned into RECON_SKU_MAP:
+--   <VENDOR>_SKU_MAP_V5_LEGACY_20260823           (7 vendor tables, pre-cutover)
+--   RECON_MANUAL_SEED_SKU_MAP                     (Exium/S1/Webroot hand-curated)
+--
+-- Emits backward-compat views <VENDOR>_PARTNER_MAPPING_V5 and <VENDOR>_SKU_MAP_V5
+-- so the 9 vendor Reconciliation_Script_Prod.sql files continue to work unchanged.
 -- =============================================================================
 
 USE ROLE DEVELOPER;
@@ -28,7 +24,7 @@ USE DATABASE ANALYTICS_DEV;
 USE SCHEMA DBT_NFOLD_TRANSFORMATION;
 
 -- -----------------------------------------------------------------------------
--- 1) PARTNER map: union all 8 existing seeds, DISTINCT dedup on all 6 cols.
+-- 1) PARTNER map
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE TABLE RECON_PARTNER_MAP AS
 SELECT DISTINCT
@@ -39,18 +35,20 @@ SELECT DISTINCT
     CMS_ID::VARCHAR         AS CMS_ID,
     ZUORA_NAME::VARCHAR     AS ZUORA_NAME
 FROM (
-    SELECT * FROM ACRONIS_PARTNER_MAPPING_V5
-    UNION ALL SELECT * FROM AUVIK_PARTNER_MAPPING_V5
-    UNION ALL SELECT * FROM BITDEFENDER_PARTNER_MAPPING_V5
-    UNION ALL SELECT * FROM ESET_PARTNER_MAPPING_V5
-    UNION ALL SELECT * FROM KEEPIT_PARTNER_MAPPING_V5
-    UNION ALL SELECT * FROM PROOFPOINT_PARTNER_MAPPING_V5
-    UNION ALL SELECT * FROM SENTINELONE_PARTNER_MAPPING_V5
-    UNION ALL SELECT * FROM WEBROOT_PARTNER_MAPPING_V5
+    SELECT * FROM ACRONIS_PARTNER_MAPPING_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM AUVIK_PARTNER_MAPPING_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM BITDEFENDER_PARTNER_MAPPING_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM ESET_PARTNER_MAPPING_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM KEEPIT_PARTNER_MAPPING_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM PROOFPOINT_PARTNER_MAPPING_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM SENTINELONE_PARTNER_MAPPING_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM WEBROOT_PARTNER_MAPPING_V5_LEGACY_20260823
+    UNION ALL SELECT VENDOR, PARTNER_NAME, PARENT_COMPANY, SF_ID, CMS_ID, ZUORA_NAME
+              FROM RECON_MANUAL_SEED_PARTNER_MAP
 );
 
 -- -----------------------------------------------------------------------------
--- 2) SKU map: union all 7 existing seeds, DISTINCT dedup on all 8 cols.
+-- 2) SKU map
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE TABLE RECON_SKU_MAP AS
 SELECT DISTINCT
@@ -63,42 +61,21 @@ SELECT DISTINCT
     CONTRACT_COST_RATE::FLOAT   AS CONTRACT_COST_RATE,
     CW_RETAIL_RATE::FLOAT       AS CW_RETAIL_RATE
 FROM (
-    SELECT * FROM ACRONIS_SKU_MAP_V5
-    UNION ALL SELECT * FROM AUVIK_SKU_MAP_V5
-    UNION ALL SELECT * FROM BITDEFENDER_SKU_MAP_V5
-    UNION ALL SELECT * FROM ESET_SKU_MAP_V5
-    UNION ALL SELECT * FROM KEEPIT_SKU_MAP_V5
-    UNION ALL SELECT * FROM PROOFPOINT_SKU_MAP_V5
-    UNION ALL SELECT * FROM WEBROOT_SKU_MAP_V5
+    SELECT * FROM ACRONIS_SKU_MAP_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM AUVIK_SKU_MAP_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM BITDEFENDER_SKU_MAP_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM ESET_SKU_MAP_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM KEEPIT_SKU_MAP_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM PROOFPOINT_SKU_MAP_V5_LEGACY_20260823
+    UNION ALL SELECT * FROM WEBROOT_SKU_MAP_V5_LEGACY_20260823
+    UNION ALL SELECT VENDOR, VENDOR_PRODUCT, VENDOR_SKU, CW_SKU, SKU_MATCH_KEY,
+                     MAPPING_NOTES, CONTRACT_COST_RATE, CW_RETAIL_RATE
+              FROM RECON_MANUAL_SEED_SKU_MAP
 );
 
 -- -----------------------------------------------------------------------------
--- 3) Rename existing physical seeds to _LEGACY_20260823. Safety net.
---    (Exium partner + Exium/SentinelOne sku were never present, so no rename.)
--- -----------------------------------------------------------------------------
-ALTER TABLE ACRONIS_PARTNER_MAPPING_V5     RENAME TO ACRONIS_PARTNER_MAPPING_V5_LEGACY_20260823;
-ALTER TABLE AUVIK_PARTNER_MAPPING_V5       RENAME TO AUVIK_PARTNER_MAPPING_V5_LEGACY_20260823;
-ALTER TABLE BITDEFENDER_PARTNER_MAPPING_V5 RENAME TO BITDEFENDER_PARTNER_MAPPING_V5_LEGACY_20260823;
-ALTER TABLE ESET_PARTNER_MAPPING_V5        RENAME TO ESET_PARTNER_MAPPING_V5_LEGACY_20260823;
-ALTER TABLE KEEPIT_PARTNER_MAPPING_V5      RENAME TO KEEPIT_PARTNER_MAPPING_V5_LEGACY_20260823;
-ALTER TABLE PROOFPOINT_PARTNER_MAPPING_V5  RENAME TO PROOFPOINT_PARTNER_MAPPING_V5_LEGACY_20260823;
-ALTER TABLE SENTINELONE_PARTNER_MAPPING_V5 RENAME TO SENTINELONE_PARTNER_MAPPING_V5_LEGACY_20260823;
-ALTER TABLE WEBROOT_PARTNER_MAPPING_V5     RENAME TO WEBROOT_PARTNER_MAPPING_V5_LEGACY_20260823;
-
-ALTER TABLE ACRONIS_SKU_MAP_V5     RENAME TO ACRONIS_SKU_MAP_V5_LEGACY_20260823;
-ALTER TABLE AUVIK_SKU_MAP_V5       RENAME TO AUVIK_SKU_MAP_V5_LEGACY_20260823;
-ALTER TABLE BITDEFENDER_SKU_MAP_V5 RENAME TO BITDEFENDER_SKU_MAP_V5_LEGACY_20260823;
-ALTER TABLE ESET_SKU_MAP_V5        RENAME TO ESET_SKU_MAP_V5_LEGACY_20260823;
-ALTER TABLE KEEPIT_SKU_MAP_V5      RENAME TO KEEPIT_SKU_MAP_V5_LEGACY_20260823;
-ALTER TABLE PROOFPOINT_SKU_MAP_V5  RENAME TO PROOFPOINT_SKU_MAP_V5_LEGACY_20260823;
-ALTER TABLE WEBROOT_SKU_MAP_V5     RENAME TO WEBROOT_SKU_MAP_V5_LEGACY_20260823;
-
--- -----------------------------------------------------------------------------
--- 4) Create backward-compat views with the ORIGINAL names, so the 9 vendor
---    Reconciliation_Script_Prod.sql files continue to work with zero edits.
---    Views for Exium (partner + sku) and SentinelOne (sku) also created so
---    those vendor SQLs no longer crash on missing objects -- they just get
---    filtered to zero rows until real map data is added.
+-- 3) Backward-compat views: one per vendor, filtering the unified table.
+--    The 9 Reconciliation_Script_Prod.sql files continue to work unchanged.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE VIEW ACRONIS_PARTNER_MAPPING_V5     AS SELECT * FROM RECON_PARTNER_MAP WHERE VENDOR = 'Acronis';
 CREATE OR REPLACE VIEW AUVIK_PARTNER_MAPPING_V5       AS SELECT * FROM RECON_PARTNER_MAP WHERE VENDOR = 'Auvik';
