@@ -80,7 +80,7 @@ scripts/ingestion/<Vendor>_Vendor_Usage_Ingestion_Prod.py  x 9    (Excel/CSV in)
 | Table | Role |
 |---|---|
 | `THIRD_PARTY_RECON_OUTPUT_PROD` | Primary flat table the app reads (45 cols) |
-| `THIRD_PARTY_RECON_SUMMARY` | Per-(vendor, month) aggregates + `DATA_LOAD_STATUS` |
+| `THIRD_PARTY_RECON_SUMMARY_PROD` | Per-(vendor, month) aggregates + `DATA_LOAD_STATUS` |
 | `THIRD_PARTY_RECON_DETAIL_PROD` | Row-level detail (drilldown, 34 cols) |
 | `THIRD_PARTY_RECON_VENDOR_USAGE_PROD` | Ingested vendor usage |
 | `RECON_PARTNER_MAP` | Unified partner mapping (25,893 rows) |
@@ -103,27 +103,27 @@ Launch app:
 run_app.bat
 ```
 
-## Verified metrics (2026-08-23, post-KeepIT-fix)
+## Verified metrics (2026-08-23, post-KeepIT-fix + SUMMARY_PROD rename)
 
 - `THIRD_PARTY_RECON_OUTPUT_PROD`: **101,938 rows / 9 vendors LIVE / no fallback / 12 EXCEPTION_TYPE buckets / 45 cols** (matches app parity contract).
-- `THIRD_PARTY_RECON_SUMMARY`: 69 rows, per-vendor row parity 100% vs OUTPUT_PROD (verified 2026-08-23 via `scripts/_verify_app_wiring.py`).
+- `THIRD_PARTY_RECON_SUMMARY_PROD`: 69 rows, per-vendor row parity 100% vs OUTPUT_PROD (verified via `scripts/_verify_app_wiring.py`).
 - `DATA_LOAD_STATUS`: 60 LOADED / 8 NOT_LOADED / 1 PARTIAL (per vendor-month).
 - Overall clear rate: **54.1%** (55,135 / 101,938).
-- Exception dollar mass (vendor_amount on non-Clear rows): **$8.4M total**.
 
-### Per-vendor clear rate + exception $ impact
+### Vendor vs CW parity (the manual-team scoring metric)
 
-| Vendor | Rows | Clear % | Exception $ (VENDOR_AMOUNT) | Notes |
-|---|---:|---:|---:|---|
-| Proofpoint | 5,459 | 96.1% | $38K | production-ready |
-| Bitdefender | 3,385 | 86.7% | $55K | production-ready |
-| Acronis | 17,634 | 82.5% | $509K | small tuning left |
-| SentinelOne | 19,661 | 78.4% | $1.67M | API-usage bucket dominates |
-| Exium | 791 | 71.6% | $86K | small vendor |
-| Auvik | 3,503 | 61.7% | $1.55M | SKU map gap |
-| Webroot | 16,246 | 42.0% | $2.32M | pricing calibration |
-| KeepIT | 21,787 | 28.4% | $1.78M | Unmapped Partner + Vendor-No-CW |
-| ESET | 13,472 | 9.3% | $0 | zero-$ cluster / data flow |
+| Vendor | Clear % | Vendor QTY | CW QTY | Abs QTY Δ | QTY parity % | Vendor $ | CW $ | Abs $ Δ | $ parity % |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Proofpoint | 96.1% | 2.4M | 2.4M | 39,681 | 100.6% | $3.6M | $5.0M | $1.4M | 73.3% |
+| Bitdefender | 86.7% | 2.47M | 2.45M | 529,679 | 100.8% | $1.4M | $3.1M | $1.8M | 45.1% |
+| Acronis | 82.5% | 95.5M | 79.8M | 32.9M | 119.8% | $3.2M | $5.9M | $3.8M | 54.4% |
+| SentinelOne | 78.4% | 12.8M | 10.0M | 3.76M | 128.4% | $10.2M | $34.5M | $28.5M | 29.5% |
+| Exium | 71.6% | 40,383 | 30,108 | 70,491 | 134.1% | $262K | $278K | $540K | 94.1% |
+| Auvik | 61.7% | 703K | 568K | 418K | 123.6% | $3.8M | $4.3M | $3.2M | 88.6% |
+| Webroot | 42.0% | 7.63M | 2.94M | 5.61M | 259.6% | $4.0M | $2.9M | $2.6M | 135.5% |
+| KeepIT | 28.4% | 3.39M | 4.38M | 5.85M | 77.5% | $2.7M | $5.1M | $6.0M | 52.9% |
+| ESET | 9.3% | 117.3M | 4.1M | 114.1M | 2854.3% | $0 | $5.2M | $0 | 0.0% |
+| **OVERALL** | **54.1%** | **242.2M** | **106.6M** | **163.2M** | **227.3%** | **$29.1M** | **$66.1M** | **$47.8M** | **44.0%** |
 
 ### EXCEPTION_TYPE distribution
 
@@ -141,6 +141,22 @@ run_app.bat
 | Vendor SKU, No CW SKU | 90 | $40K |
 | Other Issue | 4 | $0 |
 | CW SKU, No Vendor SKU | 2 | $0 |
+
+### Manual-team parity targets (the bar we're chasing)
+
+From `cowork_output/output/ENGINEERING_MONTHLY_INGESTION_MANIFEST.md`:
+
+| Vendor | Manual QTY parity | Current QTY parity | Gap |
+|---|---:|---:|---:|
+| Exium | 100.0% | 134.1% | over 34.1% |
+| Auvik | 100.3% | 123.6% | over 23.3% |
+| Webroot | 100.3% | 259.6% | over 159% (double-count) |
+| Acronis | 98.1% | 119.8% | over 21.7% |
+| ESET | 98.4% | 2854.3% | vendor_qty exploding (units bug) |
+| SentinelOne | 101.1% | 128.4% | over 27.3% |
+| Proofpoint | 95.4% | 100.6% | **beat target** |
+| Bitdefender | 93.3% | 100.8% | **beat target** |
+| KeepIT | complex | 77.5% | under 22.5% (need product-level fix) |
 
 ## Fine-tuning priorities (2026-08-24 backlog)
 

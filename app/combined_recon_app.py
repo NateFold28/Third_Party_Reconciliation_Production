@@ -701,7 +701,6 @@ def fetch_freshness_key() -> str:
               AND TABLE_NAME IN (
                   'THIRD_PARTY_RECON_DETAIL_PROD',
                   'THIRD_PARTY_RECON_OUTPUT_PROD',
-                  'THIRD_PARTY_RECON_SUMMARY',
                   'THIRD_PARTY_RECON_SUMMARY_PROD',
                   'THIRD_PARTY_RECON_VENDOR_USAGE_PROD'
               )
@@ -840,7 +839,7 @@ def _drop_heavy_columns(df: pd.DataFrame) -> pd.DataFrame:
 def _load_all_recon_frames(
     freshness: str, schema_version: str
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """One round-trip: pull the WHOLE THIRD_PARTY_RECON_SUMMARY and
+    """One round-trip: pull the WHOLE THIRD_PARTY_RECON_SUMMARY_PROD and
     THIRD_PARTY_RECON_OUTPUT_PROD, then slice per-vendor in Python.
 
     Before: N vendors × 2 queries = 2N Snowflake round-trips at startup
@@ -852,7 +851,7 @@ def _load_all_recon_frames(
         _try_query(
             f"""
             SELECT *
-            FROM {SCHEMA}.THIRD_PARTY_RECON_SUMMARY
+            FROM {SCHEMA}.THIRD_PARTY_RECON_SUMMARY_PROD
             ORDER BY VENDOR, BILLING_MONTH
             """,
             freshness,

@@ -13,7 +13,7 @@ Architecture (the "one big table" you asked for):
 
     classifier                ->  THIRD_PARTY_RECON_OUTPUT_PROD (45 cols, adds
                                   EXCEPTION_TYPE + queue flags + CASE_ID)
-                                  + THIRD_PARTY_RECON_SUMMARY
+                                  + THIRD_PARTY_RECON_SUMMARY_PROD
 
     app                       ->  reads OUTPUT_PROD + SUMMARY only
 
@@ -511,7 +511,7 @@ def main() -> int:
 
         print("\n=== STEP 3: build THIRD_PARTY_RECON_OUTPUT_PROD (classifier) ===")
         # The classifier already knows how to turn DETAIL_PROD into the 45-column
-        # OUTPUT_PROD shape the app reads. It also builds THIRD_PARTY_RECON_SUMMARY.
+        # OUTPUT_PROD shape the app reads. It also builds THIRD_PARTY_RECON_SUMMARY_PROD.
         result = subprocess.run(
             [sys.executable, str(REPO / "scripts" / "build_third_party_recon_output_prod.py")],
             capture_output=True, text=True, cwd=str(REPO / "scripts"),

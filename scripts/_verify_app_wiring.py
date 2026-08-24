@@ -42,10 +42,10 @@ def main() -> None:
                COUNT(DISTINCT VENDOR) AS n_vendors,
                MIN(BILLING_MONTH) AS min_month,
                MAX(BILLING_MONTH) AS max_month
-        FROM THIRD_PARTY_RECON_SUMMARY
+        FROM THIRD_PARTY_RECON_SUMMARY_PROD
     """)
     r = c.fetchone()
-    print(f"\nTHIRD_PARTY_RECON_SUMMARY:")
+    print(f"\nTHIRD_PARTY_RECON_SUMMARY_PROD:")
     print(f"  rows={r[0]:,}  vendors={r[1]}  months={r[2]}..{r[3]}")
 
     # 3) Sanity: OUTPUT vs SUMMARY row-count agreement per vendor
@@ -56,7 +56,7 @@ def main() -> None:
         ),
         s AS (
           SELECT VENDOR, SUM(TOTAL_ROWS) AS summary_rows
-          FROM THIRD_PARTY_RECON_SUMMARY GROUP BY 1
+          FROM THIRD_PARTY_RECON_SUMMARY_PROD GROUP BY 1
         )
         SELECT o.VENDOR, o.output_rows, s.summary_rows,
                (o.output_rows - COALESCE(s.summary_rows, 0)) AS delta
@@ -102,7 +102,7 @@ def main() -> None:
     # 6) SUMMARY has data_load_status column?
     c.execute("""
         SELECT DATA_LOAD_STATUS, COUNT(*) AS n
-        FROM THIRD_PARTY_RECON_SUMMARY
+        FROM THIRD_PARTY_RECON_SUMMARY_PROD
         GROUP BY 1
         ORDER BY n DESC
     """)

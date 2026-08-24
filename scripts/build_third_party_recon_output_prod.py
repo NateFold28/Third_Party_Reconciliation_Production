@@ -1,11 +1,11 @@
 """
-Build THIRD_PARTY_RECON_OUTPUT_PROD and THIRD_PARTY_RECON_SUMMARY.
+Build THIRD_PARTY_RECON_OUTPUT_PROD and THIRD_PARTY_RECON_SUMMARY_PROD.
 
 Reads from THIRD_PARTY_RECON_DETAIL_PROD (all vendors, canonical OUTCOME_FLAG)
 and produces:
 
   THIRD_PARTY_RECON_OUTPUT_PROD   - full detail + EXCEPTION_TYPE + EST_DOLLAR_IMPACT
-  THIRD_PARTY_RECON_SUMMARY       - per-vendor-month KPI rollup for the app
+  THIRD_PARTY_RECON_SUMMARY_PROD  - per-vendor-month KPI rollup for the app
 
 Canonical EXCEPTION_TYPE taxonomy (mutually exclusive buckets, priority order):
   1.  Unmapped Partner                     — no valid SF_ID
@@ -427,7 +427,7 @@ FROM classified;
 """
     run_sql(conn, output_sql, "THIRD_PARTY_RECON_OUTPUT_PROD")
 
-    # ── Build THIRD_PARTY_RECON_SUMMARY ───────────────────────────────────
+    # ── Build THIRD_PARTY_RECON_SUMMARY_PROD ────────────────────────────────
     # App reads this table for the per-vendor-month KPI tiles.
     # PERFECT_MATCH_ROWS = rows classified as 'Clear'.
     #
@@ -445,7 +445,7 @@ FROM classified;
     # months where ingestion happened but OUTPUT_PROD dropped everything (or
     # vice versa) still surface a row.
     summary_sql = f"""{USE}
-CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SUMMARY AS
+CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SUMMARY_PROD AS
 WITH output_agg AS (
     SELECT
         VENDOR,
@@ -528,7 +528,7 @@ LEFT JOIN usage_agg    u  ON u.VENDOR = g.VENDOR AND u.BILLING_MONTH = g.BILLING
 LEFT JOIN vendor_medians vm ON vm.VENDOR = g.VENDOR
 ORDER BY g.VENDOR, g.BILLING_MONTH;
 """
-    run_sql(conn, summary_sql, "THIRD_PARTY_RECON_SUMMARY")
+    run_sql(conn, summary_sql, "THIRD_PARTY_RECON_SUMMARY_PROD")
 
     # ── Quick report ──────────────────────────────────────────────────────
     cur = conn.cursor()
@@ -545,7 +545,7 @@ ORDER BY g.VENDOR, g.BILLING_MONTH;
                VENDOR_INSUFF_CW_ROWS,
                UNMAPPED_PARTNER_ROWS,
                OTHER_ISSUE_ROWS
-        FROM THIRD_PARTY_RECON_SUMMARY
+        FROM THIRD_PARTY_RECON_SUMMARY_PROD
         ORDER BY VENDOR, BILLING_MONTH
     """)
     rows = cur.fetchall()
@@ -554,7 +554,7 @@ ORDER BY g.VENDOR, g.BILLING_MONTH;
 
     W = 140
     print(f"\n{'=' * W}")
-    print("  THIRD_PARTY_RECON_SUMMARY — canonical flag distribution")
+    print("  THIRD_PARTY_RECON_SUMMARY_PROD - canonical flag distribution")
     print(f"{'=' * W}")
     widths = [max(len(c), max((len(str(r[i] or '')) for r in rows), default=0))
               for i, c in enumerate(cols)]
