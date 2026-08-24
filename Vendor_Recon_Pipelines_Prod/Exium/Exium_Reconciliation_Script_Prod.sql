@@ -31,15 +31,14 @@ WITH partner_name_map AS (
     SELECT
         partner_name,
         TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_normalized,
-        sf_id,
-        mapping_source
+        sf_id
     FROM RECON_PARTNER_MAP
     WHERE sf_id IS NOT NULL
       AND REGEXP_LIKE(sf_id, '^ACT-[0-9A-Z-]+$')
       AND partner_name IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
-        ORDER BY IFF(mapping_source = 'EXIUM_MAPPING_WORKBOOK', 0, 1), partner_name
+        ORDER BY partner_name
     ) = 1
 ),
 vendor_product_map AS (

@@ -1,4 +1,4 @@
--- KeepIT final reconciliation.
+﻿-- KeepIT final reconciliation.
 -- Purpose: create canonical detail and summary outputs for app/reporting use.
 
 USE ROLE DEVELOPER;
@@ -14,7 +14,7 @@ WITH vendor_sku_map AS (
         NULL::VARCHAR AS product_family,
         'THIRD_PARTY_RECON_SKU_MAP_PROD' AS sku_mapping_source,
         'OK' AS sku_review_flag
-    FROM KEEPIT_SKU_MAP
+    FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'KeepIT')
     WHERE vendor = 'KeepIT'
     GROUP BY 1
 ),
@@ -179,7 +179,7 @@ joined_vendor AS (
         SELECT
             sku_match_key AS sku_match_group,
             ARRAY_AGG(DISTINCT cw_sku) WITHIN GROUP (ORDER BY cw_sku) AS cw_skus
-        FROM KEEPIT_SKU_MAP
+        FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'KeepIT')
         WHERE vendor = 'KeepIT'
           AND cw_sku IS NOT NULL
         GROUP BY 1
@@ -237,7 +237,7 @@ zuora_only AS (
         SELECT
             sku_match_key AS sku_match_group,
             ARRAY_AGG(DISTINCT cw_sku) WITHIN GROUP (ORDER BY cw_sku) AS cw_skus
-        FROM KEEPIT_SKU_MAP
+        FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'KeepIT')
         WHERE vendor = 'KeepIT'
           AND cw_sku IS NOT NULL
         GROUP BY 1
@@ -293,7 +293,7 @@ carr_secondary_only AS (
         SELECT
             sku_match_key AS sku_match_group,
             ARRAY_AGG(DISTINCT cw_sku) WITHIN GROUP (ORDER BY cw_sku) AS cw_skus
-        FROM KEEPIT_SKU_MAP
+        FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'KeepIT')
         WHERE vendor = 'KeepIT'
           AND cw_sku IS NOT NULL
         GROUP BY 1
@@ -517,4 +517,6 @@ SELECT
 FROM KEEPIT_RECON_DETAIL
 GROUP BY 1, 2
 ORDER BY 1, 2;
+
+
 

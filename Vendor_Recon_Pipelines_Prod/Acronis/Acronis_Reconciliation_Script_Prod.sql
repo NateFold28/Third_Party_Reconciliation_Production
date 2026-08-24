@@ -447,7 +447,7 @@ SELECT
         WHEN 'STRUCTURAL_BILLING_ONLY'            THEN 'CW is billing material qty but vendor reports zero usage. Possible legacy subscription, vendor decommission, or subscription expired/terminated. Confirm active vendor subscription.'
         WHEN 'MARKETPLACE_BILLING_NO_VENDOR'      THEN 'Marketplace billing present but vendor reports zero usage; typical for marketplace-only fixed commits or trailing MP cycles.'
         WHEN 'STRUCTURAL_VENDOR_ONLY_NO_CONTRACT' THEN 'Vendor usage exists but no CW contract / billing found. Requires CW subscription creation or partner onboarding.'
-        WHEN 'VENDOR_PRODUCT_NO_CW_SKU'           THEN 'Vendor SKU has no CW crosswalk in RECON_SKU_MAP (VENDOR='Acronis'). Requires SKU catalog addition or product decision.'
+        WHEN 'VENDOR_PRODUCT_NO_CW_SKU'           THEN 'Vendor SKU has no CW crosswalk in RECON_SKU_MAP (VENDOR=Acronis). Requires SKU catalog addition or product decision.'
         WHEN 'DUPLICATE_BILLING'                  THEN 'Zuora and Marketplace both bill the same partner/month/SKU and materially diverge. Treat as duplicate invoice evidence and reconcile to a single billing source.'
         WHEN 'SKU_MISMATCH_BILLING_ON_OTHER_SKU'  THEN 'Vendor usage and CW billing offset on the same account/month but on different SKU groups. Treat as a SKU mapping offset review first; rebook only if mapping is confirmed wrong.'
         WHEN 'MINOR_DRIFT'                        THEN 'Minor quantity drift within 2-5% (or <=25 units). Below operational action threshold.'

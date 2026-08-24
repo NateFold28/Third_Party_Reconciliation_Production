@@ -80,8 +80,7 @@ roy_desc_group AS (
         SELECT d.PRODUCT_DESCRIPTION, gp.sku_match_group,
                ROW_NUMBER() OVER (PARTITION BY d.PRODUCT_DESCRIPTION ORDER BY LENGTH(gp.pattern) DESC) AS rn
         FROM (
-              SELECT DISTINCT VENDOR_PRODUCT_SKU AS PRODUCT_DESCRIPTION
-              FROM BITDEFENDER_USAGE_PROD
+              FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD
               WHERE VENDOR = 'Bitdefender' AND VENDOR_PRODUCT_SKU IS NOT NULL
         ) d
         LEFT JOIN roy_group_patterns gp ON d.PRODUCT_DESCRIPTION ILIKE gp.pattern
@@ -90,7 +89,7 @@ roy_desc_group AS (
 
 partner_lookup AS (
     SELECT partner_name, sf_id
-    FROM BITDEFENDER_PARTNER_MAP_SEED_PROD
+    FROM RECON_PARTNER_MAP
     WHERE partner_name IS NOT NULL
       AND sf_id IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
@@ -110,7 +109,7 @@ royalties_base AS (
         COALESCE(g.sku_match_group, 'GRAVITYZONE') AS sku_match_group,
         r.QUANTITY AS quantity,
         r.AMOUNT
-    FROM BITDEFENDER_USAGE_PROD r
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD r
     LEFT JOIN partner_lookup pm
         ON UPPER(pm.partner_name) = UPPER(r.vendor_partner_name)
     LEFT JOIN roy_desc_group g ON g.PRODUCT_DESCRIPTION = r.VENDOR_PRODUCT_SKU
