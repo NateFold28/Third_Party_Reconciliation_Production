@@ -453,67 +453,83 @@ def _parse_proofpoint(text: str, file_path: str) -> list[dict]:
 
 def _parse_sentinelone(text: str, file_path: str) -> list[dict]:
     """
-    Table format (two-row product entries):
-      Row 1: | Product Code + description | | Start | End | INV Qty | Rate | Amount |
-      Row 2: | Continuation of description | | | | | | |
-    Product code = first word on the line (alphanumeric like S1ES-CMP-EN-T8-SA)
-    Description = rest of cell after product code.
-    Some pages switch to: | Product Code | Start | End | INV Qty | Rate | Amount |
+    SentinelOne invoices have TWO table formats across pages:
+
+    Page 1 (7-column header — extra empty column after Product Code):
+      | Product Code | (empty) | Start Date | End Date | INV Qty | Rate | Amount |
+      Data rows: SKU + multi-line description packed into cell 0; all 7 cols present.
+
+    Page 2 (6-column header — no empty column):
+      | Product Code | Start Date | End Date | INV Qty | Rate | Amount |
+      Data rows: SKU in one row; description in the NEXT row (all other cells blank).
+
+    Strategy: re-detect the header every time we see a "Product Code ... INV Qty" row
+    so column indices stay correct per-page.
     """
     results: list[dict] = []
     rows = _parse_markdown_table(text)
+    i_qty = i_rate = i_amt = None
+    pending_sku = pending_desc = None
 
-    # Find header row
-    header_idx = None
-    for i, row in enumerate(rows):
-        h = [c.lower() for c in row]
-        if any("product code" in c for c in h) and any("inv qty" in c or "rate" in c for c in h):
-            header_idx = i
-            break
-        if any("product code" in c for c in h) and any("amount" in c for c in h):
-            header_idx = i
-            break
-    if header_idx is None:
-        return results
-
-    hdr = [c.lower() for c in rows[header_idx]]
-    # Identify column positions flexibly
-    try:
-        i_prod = 0  # Product code always first
-        # INV Qty may be 4th or 5th depending on whether start/end dates are present
-        i_qty  = next(i for i, h in enumerate(hdr) if "inv qty" in h or (i > 1 and "qty" in h))
-        i_rate = next(i for i, h in enumerate(hdr) if "rate" in h)
-        i_amt  = next(i for i, h in enumerate(hdr) if "amount" in h)
-    except StopIteration:
-        return results
-
-    for row in rows[header_idx + 1:]:
-        if len(row) <= max(i_prod, i_qty, i_rate, i_amt):
+    for row in rows:
+        if not row:
             continue
-        prod_cell = row[i_prod].strip()
-        if not prod_cell:
+        first = row[0].strip()
+        hdr = [c.lower() for c in row]
+
+        # Re-detect header row on each page
+        if "product code" in hdr[0] and any("inv qty" in h or "rate" in h for h in hdr):
+            try:
+                i_qty  = next(i for i, h in enumerate(hdr) if "inv qty" in h or (i > 1 and "qty" in h))
+                i_rate = next(i for i, h in enumerate(hdr) if h == "rate")
+                i_amt  = next(i for i, h in enumerate(hdr) if h == "amount")
+                pending_sku = pending_desc = None
+            except StopIteration:
+                pass
             continue
 
-        # Extract product code: token matching alphanumeric-dash pattern at start
-        m = re.match(r"^([A-Z0-9][A-Z0-9\-]{3,})", prod_cell)
-        if not m:
-            # Page-2 continuation: some rows have product code in col 0 without description
-            # e.g. "S1ES-CTL-EN-T9-SA" on its own line then description on next cell
-            # Skip description-only continuation rows (they start with lowercase or spaces)
+        if i_qty is None:
             continue
-        sku  = m.group(1)
-        desc = prod_cell[len(sku):].strip()
-        # Description may continue in row[1] if the table structure splits across cells
-        if not desc and len(row) > 1:
-            desc = row[1].strip()
 
-        qty  = _num(row[i_qty])
-        rate = _num(row[i_rate])
-        amt  = _num(row[i_amt])
-        if qty is None and amt is None:
+        # Skip totals / remittance rows
+        first_lc = first.lower()
+        if re.match(r"^(subtotal|tax total|total|please|account name|bank|routing|swift)", first_lc):
             continue
-        results.append({"partner": None, "sku": sku, "description": desc,
-                         "quantity": qty, "unit_price": rate, "amount": amt})
+
+        # Check if row has numeric data in the expected columns
+        if len(row) > i_amt:
+            qty  = _num(row[i_qty])  if i_qty  < len(row) else None
+            rate = _num(row[i_rate]) if i_rate < len(row) else None
+            amt  = _num(row[i_amt])  if i_amt  < len(row) else None
+        else:
+            qty = rate = amt = None
+
+        # Extract product code from first cell (always uppercase-dash pattern)
+        m = re.match(r"^([A-Z][A-Z0-9\-]{3,})", first)
+        if m:
+            # Flush any pending row
+            if pending_sku and pending_desc is not None:
+                pass  # already appended below
+            sku  = m.group(1)
+            desc = first[len(sku):].strip()
+            if qty is not None or amt is not None:
+                # Page 1 style: all data in same row
+                results.append({"partner": None, "sku": sku, "description": desc,
+                                 "quantity": qty, "unit_price": rate, "amount": amt})
+                pending_sku = pending_desc = None
+            else:
+                # Page 2 style: data will be on THIS row (already have qty/rate/amt from right cols)
+                # Actually on page 2, qty/rate/amt ARE in this row — re-check with correct indices
+                if len(row) > i_amt:
+                    results.append({"partner": None, "sku": sku, "description": desc,
+                                     "quantity": _num(row[i_qty]) if i_qty < len(row) else None,
+                                     "unit_price": _num(row[i_rate]) if i_rate < len(row) else None,
+                                     "amount": _num(row[i_amt]) if i_amt < len(row) else None})
+                pending_sku = pending_desc = None
+        # Description-only continuation row (page 2): all cells except [0] blank
+        elif first and all(c.strip() == "" for c in row[1:]) and pending_sku is None:
+            pass  # just a hanging description row, already captured with the SKU row above
+
     return results
 
 

@@ -54,7 +54,6 @@ WORKSPACE_ROOT = SENTINELONE_ROOT.parents[2]
 OUTPUT_DIR = SENTINELONE_ROOT / "outputs"
 SKU_INVOICE_RATES_PATH = (
     SENTINELONE_ROOT
-    / "Prod_Pipeline"
     / "seeds"
     / "sentinelone_sku_invoice_rates.csv"
 )

@@ -1,0 +1,1136 @@
+FULL INGESTION RUN 2026-08-24
+Tables dropped before this run: THIRD_PARTY_RECON_VENDOR_USAGE_PROD, THIRD_PARTY_RECON_VENDOR_INVOICES
+
+======================================================================
+[Acronis] --all-months
+======================================================================
+[2026-01] files=18, rows=2,665, sku_count=46, entities=11
+[2026-02] files=18, rows=2,639, sku_count=46, entities=11
+[2026-03] files=24, rows=2,646, sku_count=50, entities=16
+[2026-04] files=22, rows=2,597, sku_count=50, entities=14
+[2026-05] files=22, rows=2,471, sku_count=48, entities=14
+[2026-06] files=22, rows=2,414, sku_count=48, entities=13
+[2026-07] files=23, rows=2,385, sku_count=49, entities=14
+[WARN] Price seed not found at C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\outputs\acronis_sku_price_seed_latest_invoice.csv. Run load_mapping_and_invoice_seeds.py before ingestion to populate UNIT_PRICE/AMOUNT.
+TOTAL rows=17,817, entities=16, tenants=533
+[WARN] Price seed not found at C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\outputs\acronis_sku_price_seed_latest_invoice.csv. Run load_mapping_and_invoice_seeds.py before ingestion to populate UNIT_PRICE/AMOUNT.
+Loaded 16,045 rows into ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_USAGE_PROD in 1 chunk(s).
+
+[Acronis] exit=0  time=18.0s
+
+======================================================================
+[Auvik] --all-months
+======================================================================
+Parsing 01_JAN_2026/Connectwise Usage Report - Additional Accounts.xlsx ...
+  WARNING [Connectwise Usage Report - Additional Accounts.xlsx]: Multiple period pairs found (2): 2026-01-01-2026-01-31; 2026-02-01-2026-02-01
+  WARNING [Connectwise Usage Report - Additional Accounts.xlsx]: Could not validate Invoice Date offset: multiple end/invoice dates.
+  WARNING [Connectwise Usage Report - Additional Accounts.xlsx]: Summary tab not found or totals not parsed â€” entity total check skipped.
+  LOADED: rows=52 CW=$13,139.17 CMS=$14,245.95
+Parsing 01_JAN_2026/Connectwise usage report February.xlsx ...
+  INFO: Connectwise usage report February.xlsx â€” product defaulted to Billable (consider adding mapping rule): 'Auvik Flow Devices'
+  LOADED: rows=801 CW=$288,563.80 CMS=$199,128.87
+Parsing 02_FEB_2026/Connectwise Usage Report February Service.xlsx ...
+  INFO: Connectwise Usage Report February Service.xlsx â€” product defaulted to Billable (consider adding mapping rule): 'Free of Charge'
+  WARNING [Connectwise Usage Report February Service.xlsx]: Invoice Date 2026-03-03 is not the first day of the month after End Date 2026-02-28 (expected 2026-03-01).
+  LOADED: rows=837 CW=$313,198.96 CMS=$216,695.09
+Parsing 03_MAR_2026/ConnectWise Usage Report - March Service.xlsx ...
+  INFO: ConnectWise Usage Report - March Service.xlsx â€” product defaulted to Billable (consider adding mapping rule): 'Free of Charge'
+  LOADED: rows=797 CW=$307,767.85 CMS=$216,329.15
+Parsing 04_APR_2026/Connectwise Usage Report for May Invoices.xlsx ...
+  INFO: Connectwise Usage Report for May Invoices.xlsx â€” product defaulted to Billable (consider adding mapping rule): 'Free of Charge'
+  INFO: Connectwise Usage Report for May Invoices.xlsx â€” product defaulted to Billable (consider adding mapping rule): 'MSP Monthly Free Trial'
+  LOADED: rows=783 CW=$289,217.66 CMS=$217,128.40
+Parsing 05_MAY_2026/ConnectWise Usage Report - June Invoices.xlsx ...
+  INFO: ConnectWise Usage Report - June Invoices.xlsx â€” product defaulted to Billable (consider adding mapping rule): 'Free of Charge'
+  INFO: ConnectWise Usage Report - June Invoices.xlsx â€” product defaulted to Billable (consider adding mapping rule): 'MSP Monthly Free Trial'
+  LOADED: rows=769 CW=$285,132.84 CMS=$213,993.16
+Parsing 06_JUN_2026/Connectwise Usage Report July.xlsx ...
+  INFO: Connectwise Usage Report July.xlsx â€” product defaulted to Billable (consider adding mapping rule): 'Free of Charge'
+  INFO: Connectwise Usage Report July.xlsx â€” product defaulted to Billable (consider adding mapping rule): 'MSP Monthly Free Trial'
+  LOADED: rows=748 CW=$289,052.66 CMS=$207,566.64
+Parsing 07_JUL_2026/Usage Report July Usage ConnectWise.xlsx ...
+  INFO: Usage Report July Usage ConnectWise.xlsx â€” product defaulted to Billable (consider adding mapping rule): 'Free of Charge'
+  LOADED: rows=733 CW=$294,661.49 CMS=$198,181.74
+
+LOCAL USAGE CONTROLS
+BILLING_MONTH MODIFIER                                VENDOR_PRODUCT_SKU  rows  quantity  total_charge
+   2026-01-01      CMS                                    ANM Essentials    12    2644.0      18146.91
+   2026-01-01      CMS                        ANM Essentials - Evergreen     3     693.0       4396.84
+   2026-01-01      CMS                          ANM Essentials Evergreen     3    -108.0       1176.00
+   2026-01-01      CMS                  ANM Performance Add-On Evergreen     1     425.0       1700.00
+   2026-01-01      CMS                           ANM Performance Add-Ons     8    1015.0       3454.38
+   2026-01-01      CMS                            ANM Performance Add-on     7    -360.0       1289.69
+   2026-01-01      CMS               COANM-0 Additional Billable Devices    11     137.0       1596.00
+   2026-01-01      CMS            COANM-0 Additional Performance Add-Ons     3      43.0        293.69
+   2026-01-01      CMS                COANM-0 Committed Billable Devices     3     510.0       3255.00
+   2026-01-01      CMS               COANM-1 Additional Billable Devices     3      52.0        505.45
+   2026-01-01      CMS                COANM-1 Committed Billable Devices    17     715.0       6463.65
+   2026-01-01      CMS               COANM-2 Additional Billable Devices    17     441.0       4394.40
+   2026-01-01      CMS                COANM-2 Committed Billable Devices     5     500.0       3640.00
+   2026-01-01      CMS               COANM-3 Additional Billable Devices     4    1182.0       7970.48
+   2026-01-01      CMS            COANM-3 Additional Performance Add-Ons     5     237.0       1014.68
+   2026-01-01      CMS                COANM-3 Committed Billable Devices    21     880.0       6854.75
+   2026-01-01      CMS               COANM-4 Additional Billable Devices     3     574.0       3642.24
+   2026-01-01      CMS            COANM-4 Additional Performance Add-Ons     4     130.0        633.41
+   2026-01-01      CMS                COANM-4 Committed Billable Devices     1     250.0       1470.00
+   2026-01-01      CMS               COANM-5 Additional Billable Devices     2       4.0       1256.60
+   2026-01-01      CMS            COANM-5 Additional Performance Add-Ons     2     759.0       2729.85
+   2026-01-01      CMS                COANM-5 Committed Billable Devices     2    1000.0       5025.00
+   2026-01-01      CMS                            Continuum Monthly Plan     1     332.0       1860.00
+   2026-01-01      CMS         EPRM-ANM-10 Auvik Essentials -- Committed     9     110.0       1185.00
+   2026-01-01      CMS           EPRM-ANM-10 Auvik Essentials -- Overage     8     111.0       1365.00
+   2026-01-01      CMS        EPRM-ANM-100 Auvik Essentials -- Committed     6     718.0       5551.20
+   2026-01-01      CMS          EPRM-ANM-100 Auvik Essentials -- Overage     6      51.0        966.95
+   2026-01-01      CMS       EPRM-ANM-1000 Auvik Essentials -- Committed     5    5700.0      25017.00
+   2026-01-01      CMS         EPRM-ANM-1000 Auvik Essentials -- Overage     5    1031.0       9306.78
+   2026-01-01      CMS        EPRM-ANM-175 Auvik Essentials -- Committed     8    1400.0       9908.50
+   2026-01-01      CMS          EPRM-ANM-175 Auvik Essentials -- Overage     8    -123.0        870.16
+   2026-01-01      CMS        EPRM-ANM-250 Auvik Essentials -- Committed     8    2000.0      13150.00
+   2026-01-01      CMS          EPRM-ANM-250 Auvik Essentials -- Overage     8     171.0       4337.76
+   2026-01-01      CMS         EPRM-ANM-40 Auvik Essentials -- Committed     8     320.0       2952.80
+   2026-01-01      CMS           EPRM-ANM-40 Auvik Essentials -- Overage     7     217.0       2105.25
+   2026-01-01      CMS        EPRM-ANM-500 Auvik Essentials -- Committed     5    2500.0      13705.00
+   2026-01-01      CMS          EPRM-ANM-500 Auvik Essentials -- Overage     5    -370.0        697.71
+   2026-01-01      CMS         EPRM-ANM-75 Auvik Essentials -- Committed     2     150.0       1296.75
+   2026-01-01      CMS           EPRM-ANM-75 Auvik Essentials -- Overage     2      61.0        561.60
+   2026-01-01      CMS        EPRM-ANM-750 Auvik Essentials -- Committed     1     750.0       4095.00
+   2026-01-01      CMS          EPRM-ANM-750 Auvik Essentials -- Overage     1     384.0       2096.64
+   2026-01-01      CMS         ERM-ANM-250 Auvik Essentials -- Committed     2     500.0       2800.00
+   2026-01-01      CMS           ERM-ANM-250 Auvik Essentials -- Overage     2    -107.0          0.00
+   2026-01-01      CMS          ERM-ANM-40 Auvik Essentials -- Committed     1      65.0        650.00
+   2026-01-01      CMS            ERM-ANM-40 Auvik Essentials -- Overage     1     -28.0          0.00
+   2026-01-01      CMS         ERM-ANM-500 Auvik Essentials -- Committed     1     500.0       2940.00
+   2026-01-01      CMS           ERM-ANM-500 Auvik Essentials -- Overage     1     212.0       1246.56
+   2026-01-01      CMS                                          Licenses    25     694.0       6214.49
+   2026-01-01      CMS              PARM-ANM-10 Auvik Performance Add On     1       5.0         35.00
+   2026-01-01      CMS   PARM-ANM-10 Auvik Performance Add On -- Overage     1       6.0         42.00
+   2026-01-01      CMS             PARM-ANM-100 Auvik Performance Add On     2      85.0        395.85
+   2026-01-01      CMS  PARM-ANM-100 Auvik Performance Add On -- Overage     4     344.0       1749.24
+   2026-01-01      CMS            PARM-ANM-1000 Auvik Performance Add On     2    1138.0       2118.80
+   2026-01-01      CMS PARM-ANM-1000 Auvik Performance Add On -- Overage     4    1491.0       3123.09
+   2026-01-01      CMS  PARM-ANM-175 Auvik Performance Add On -- Overage     2      19.0         80.08
+   2026-01-01      CMS  PARM-ANM-250 Auvik Performance Add On -- Overage     4     134.0        519.52
+   2026-01-01      CMS              PARM-ANM-40 Auvik Performance Add On     1      10.0         68.00
+   2026-01-01      CMS   PARM-ANM-40 Auvik Performance Add On -- Overage     2      43.0        260.05
+   2026-01-01      CMS  PARM-ANM-500 Auvik Performance Add On -- Overage     3     205.0        604.90
+   2026-01-01      CMS        PRM-ANM-500 Auvik Performance -- Committed     1     500.0       3460.00
+   2026-01-01      CMS          PRM-ANM-500 Auvik Performance -- Overage     1     111.0        768.12
+   2026-01-01      CMS                        RM - ASM - 100 - Committed     1     100.0        105.00
+   2026-01-01      CMS                          RM - ASM - 100 - Overage     1     -88.0          0.00
+   2026-01-01      CMS                        RM - ASM - 250 - Committed     1     250.0        315.00
+   2026-01-01      CMS                          RM - ASM - 250 - Overage     1      25.0         31.50
+   2026-01-01      CMS                         RM - ASM - 50 - Committed     1      50.0        105.00
+   2026-01-01      CMS                        RM - ASM - 500 - Committed     2    1115.0       1014.65
+   2026-01-01      CMS                          RM - ASM - 500 - Overage     2    -987.0          0.00
+   2026-01-01      CMS                       SRM - ASM - MSP - Committed     1     100.0        105.00
+   2026-01-01      CMS                         SRM - ASM - MSP - Overage     1    -190.0          0.00
+   2026-01-01      CMS                                  Usage - Licenses    20     123.0       2684.85
+   2026-01-01       CW                                    ANM Essentials    26    5951.0      37681.55
+   2026-01-01       CW                        ANM Essentials - Evergreen     7    2021.0      11983.13
+   2026-01-01       CW                          ANM Essentials Evergreen     7     244.0       1757.95
+   2026-01-01       CW                  ANM Performance Add-On Evergreen     5     413.0       1988.28
+   2026-01-01       CW                           ANM Performance Add-Ons    12    2285.0       7113.02
+   2026-01-01       CW               ANM Performance Add-Ons - Evergreen     2     508.0       1675.52
+   2026-01-01       CW                            ANM Performance Add-on     8    -298.0       1314.93
+   2026-01-01       CW                                Auvik Flow Devices     2       2.0          0.00
+   2026-01-01       CW                        Auvik MSP Monthly Plan Fee     1       1.0        156.80
+   2026-01-01       CW                             Auvik SaaS Management     7     490.0        899.04
+   2026-01-01       CW                 Auvik SaaS Management - Evergreen     2    2100.0       1417.50
+   2026-01-01       CW                   Auvik SaaS Management Evergreen     2      43.0         61.74
+   2026-01-01       CW                                  Billable Devices    13    1432.0       9098.80
+   2026-01-01       CW                     Billable Devices - Additional     8      27.0          0.00
+   2026-01-01       CW                          Billable Devices - Promo     5      37.0          0.00
+   2026-01-01       CW                    Billable Devices Added to Plan     1       1.0          0.00
+   2026-01-01       CW               CWANM-0 Additional Billable Devices    11     401.0       4998.00
+   2026-01-01       CW            CWANM-0 Additional Performance Add-Ons     2     -27.0          0.00
+   2026-01-01       CW                CWANM-0 Committed Billable Devices    16     282.0       2961.00
+   2026-01-01       CW             CWANM-0 Committed Performance Add-Ons     2      40.0        273.20
+   2026-01-01       CW               CWANM-1 Additional Billable Devices    13     414.0       3750.80
+   2026-01-01       CW            CWANM-1 Additional Performance Add-Ons     1      12.0         68.52
+   2026-01-01       CW                CWANM-1 Committed Billable Devices    15     727.0       6406.45
+   2026-01-01       CW             CWANM-1 Committed Performance Add-Ons     3      59.0        201.39
+   2026-01-01       CW               CWANM-2 Additional Billable Devices    11      78.0       3269.00
+   2026-01-01       CW            CWANM-2 Additional Performance Add-Ons     3     -41.0          0.00
+   2026-01-01       CW                CWANM-2 Committed Billable Devices    10    1133.0       8053.15
+   2026-01-01       CW             CWANM-2 Committed Performance Add-Ons     4     196.0        854.71
+   2026-01-01       CW               CWANM-3 Additional Billable Devices     4     691.0       5329.80
+   2026-01-01       CW            CWANM-3 Additional Performance Add-Ons     2    -106.0          0.00
+   2026-01-01       CW                CWANM-3 Committed Billable Devices     4     873.0       5575.74
+   2026-01-01       CW             CWANM-3 Committed Performance Add-Ons     2     430.0       1750.00
+   2026-01-01       CW               CWANM-4 Additional Billable Devices     4     606.0       3393.60
+   2026-01-01       CW            CWANM-4 Additional Performance Add-Ons     1      28.0        107.80
+   2026-01-01       CW                CWANM-4 Committed Billable Devices     4    1623.0       9088.80
+   2026-01-01       CW               CWANM-5 Additional Billable Devices     3    -166.0       1386.70
+   2026-01-01       CW                CWANM-5 Committed Billable Devices     3    1872.0       9447.80
+   2026-01-01       CW             CWANM-5 Committed Performance Add-Ons     1      31.0        106.33
+   2026-01-01       CW               CWANM-7 Additional Billable Devices     1       6.0         20.46
+   2026-01-01       CW                CWANM-7 Committed Billable Devices     1    2000.0       6820.00
+   2026-01-01       CW         EPRM-ANM-10 Auvik Essentials -- Committed    12     158.0       1697.98
+   2026-01-01       CW           EPRM-ANM-10 Auvik Essentials -- Overage    12       8.0        430.50
+   2026-01-01       CW        EPRM-ANM-100 Auvik Essentials -- Committed     7     915.0       6625.73
+   2026-01-01       CW          EPRM-ANM-100 Auvik Essentials -- Overage     7     259.0       2871.40
+   2026-01-01       CW       EPRM-ANM-1000 Auvik Essentials -- Committed     3    3030.0      12936.00
+   2026-01-01       CW         EPRM-ANM-1000 Auvik Essentials -- Overage     3    -943.0        996.66
+   2026-01-01       CW        EPRM-ANM-175 Auvik Essentials -- Committed     2     375.0       2482.50
+   2026-01-01       CW          EPRM-ANM-175 Auvik Essentials -- Overage     2       0.0         59.58
+   2026-01-01       CW        EPRM-ANM-250 Auvik Essentials -- Committed     8    2169.0      12806.31
+   2026-01-01       CW          EPRM-ANM-250 Auvik Essentials -- Overage     8     597.0       6497.24
+   2026-01-01       CW         EPRM-ANM-40 Auvik Essentials -- Committed     8     384.0       3510.98
+   2026-01-01       CW           EPRM-ANM-40 Auvik Essentials -- Overage     6      87.0       1453.04
+   2026-01-01       CW        EPRM-ANM-500 Auvik Essentials -- Committed     3    1550.0       7720.00
+   2026-01-01       CW          EPRM-ANM-500 Auvik Essentials -- Overage     3       3.0        142.10
+   2026-01-01       CW         EPRM-ANM-75 Auvik Essentials -- Committed     1      75.0        616.88
+   2026-01-01       CW           EPRM-ANM-75 Auvik Essentials -- Overage     1      39.0        320.97
+   2026-01-01       CW        EPRM-ANM-750 Auvik Essentials -- Committed     4    3317.0      15615.51
+   2026-01-01       CW          EPRM-ANM-750 Auvik Essentials -- Overage     4     -19.0       2010.66
+   2026-01-01       CW          ERM-ANM-10 Auvik Essentials -- Committed    11     203.0       2146.50
+   2026-01-01       CW            ERM-ANM-10 Auvik Essentials -- Overage    10      26.0        430.50
+   2026-01-01       CW         ERM-ANM-100 Auvik Essentials -- Committed     7     874.0       7038.00
+   2026-01-01       CW           ERM-ANM-100 Auvik Essentials -- Overage     6     463.0       4218.40
+   2026-01-01       CW        ERM-ANM-1000 Auvik Essentials -- Committed     1    1364.0       5728.80
+   2026-01-01       CW          ERM-ANM-1000 Auvik Essentials -- Overage     1   -1078.0          0.00
+   2026-01-01       CW         ERM-ANM-175 Auvik Essentials -- Committed     1     225.0       1417.50
+   2026-01-01       CW           ERM-ANM-175 Auvik Essentials -- Overage     1      24.0        151.20
+   2026-01-01       CW         ERM-ANM-250 Auvik Essentials -- Committed     7    2172.0      12687.36
+   2026-01-01       CW           ERM-ANM-250 Auvik Essentials -- Overage     7     221.0       2740.08
+   2026-01-01       CW          ERM-ANM-40 Auvik Essentials -- Committed     5     216.0       1925.20
+   2026-01-01       CW            ERM-ANM-40 Auvik Essentials -- Overage     6    -102.0        148.75
+   2026-01-01       CW         ERM-ANM-500 Auvik Essentials -- Committed     1     500.0       2940.00
+   2026-01-01       CW           ERM-ANM-500 Auvik Essentials -- Overage     1    -181.0          0.00
+   2026-01-01       CW          ERM-ANM-75 Auvik Essentials -- Committed     1      75.0        648.38
+   2026-01-01       CW            ERM-ANM-75 Auvik Essentials -- Overage     1       5.0         43.25
+   2026-01-01       CW              PARM-ANM-10 Auvik Performance Add On     9     113.0        807.02
+   2026-01-01       CW   PARM-ANM-10 Auvik Performance Add On -- Overage     9       1.0        225.00
+   2026-01-01       CW             PARM-ANM-100 Auvik Performance Add On     5     451.0       2071.81
+   2026-01-01       CW  PARM-ANM-100 Auvik Performance Add On -- Overage     5      56.0        432.25
+   2026-01-01       CW PARM-ANM-1000 Auvik Performance Add On -- Overage     2      14.0         33.02
+   2026-01-01       CW             PARM-ANM-175 Auvik Performance Add On     2      51.0        206.04
+   2026-01-01       CW  PARM-ANM-175 Auvik Performance Add On -- Overage     2       0.0          8.08
+   2026-01-01       CW             PARM-ANM-250 Auvik Performance Add On     3     446.0       1449.33
+   2026-01-01       CW  PARM-ANM-250 Auvik Performance Add On -- Overage     4    -156.0        213.76
+   2026-01-01       CW              PARM-ANM-40 Auvik Performance Add On     4     142.0        880.90
+   2026-01-01       CW   PARM-ANM-40 Auvik Performance Add On -- Overage     1     -28.0          0.00
+   2026-01-01       CW             PARM-ANM-500 Auvik Performance Add On     2     574.0       1659.56
+   2026-01-01       CW  PARM-ANM-500 Auvik Performance Add On -- Overage     2     -59.0          0.00
+   2026-01-01       CW   PARM-ANM-75 Auvik Performance Add On -- Overage     1       4.0         22.40
+   2026-01-01       CW             PARM-ANM-750 Auvik Performance Add On     4    1221.0       3381.39
+   2026-01-01       CW  PARM-ANM-750 Auvik Performance Add On -- Overage     4     410.0       1172.72
+   2026-01-01       CW         PRM-ANM-10 Auvik Performance -- Committed     1      10.0        175.00
+   2026-01-01       CW           PRM-ANM-10 Auvik Performance -- Overage     2      31.0        612.50
+   2026-01-01       CW        PRM-ANM-100 Auvik Performance -- Committed     1     100.0       1066.00
+   2026-01-01       CW          PRM-ANM-100 Auvik Performance -- Overage     1     -27.0          0.00
+   2026-01-01       CW        PRM-ANM-250 Auvik Performance -- Committed     1     250.0       2112.50
+   2026-01-01       CW          PRM-ANM-250 Auvik Performance -- Overage     1     -20.0          0.00
+   2026-01-01       CW         PRM-ANM-40 Auvik Performance -- Committed     3     140.0       2161.60
+   2026-01-01       CW           PRM-ANM-40 Auvik Performance -- Overage     2      -7.0         46.32
+   2026-01-01       CW        PRM-ANM-500 Auvik Performance -- Committed     1     720.0       5234.40
+   2026-01-01       CW          PRM-ANM-500 Auvik Performance -- Overage     1    -421.0          0.00
+   2026-01-01       CW                        RM - ASM - 100 - Committed     2     295.0        464.63
+   2026-01-01       CW                          RM - ASM - 100 - Overage     2     804.0       1287.70
+   2026-01-01       CW                       RM - ASM - 1000 - Committed     1    1000.0        570.00
+   2026-01-01       CW                         RM - ASM - 1000 - Overage     1      68.0         38.76
+   2026-01-01       CW                        RM - ASM - 250 - Committed     3     770.0        958.49
+   2026-01-01       CW                          RM - ASM - 250 - Overage     3      34.0        316.98
+   2026-01-01       CW                          Usage - Billable Devices    15    -114.0       4499.53
+   2026-02-01      CMS                                    ANM Essentials    12    2535.0      17253.15
+   2026-02-01      CMS                        ANM Essentials - Evergreen   104   13432.0      88185.02
+   2026-02-01      CMS                          ANM Essentials Evergreen    86    3730.0      41416.44
+   2026-02-01      CMS                  ANM Full Performance - Evergreen     1     500.0       3703.86
+   2026-02-01      CMS                    ANM Full Performance Evergreen     1     112.0        829.92
+   2026-02-01      CMS                  ANM Performance Add-On Evergreen    25    1873.0       8459.30
+   2026-02-01      CMS                           ANM Performance Add-Ons     8    1015.0       3454.38
+   2026-02-01      CMS               ANM Performance Add-Ons - Evergreen     8     158.0        522.38
+   2026-02-01      CMS                            ANM Performance Add-on     7    -393.0       1266.19
+   2026-02-01      CMS                 Auvik SaaS Management - Evergreen     5    1000.0       1107.07
+   2026-02-01      CMS                   Auvik SaaS Management Evergreen     4    -534.0         27.00
+   2026-02-01      CMS                COANM-0 Committed Billable Devices     1     250.0       1470.00
+   2026-02-01      CMS               COANM-1 Additional Billable Devices     1       2.0         18.38
+   2026-02-01      CMS                COANM-1 Committed Billable Devices     5     200.0       1838.00
+   2026-02-01      CMS               COANM-2 Additional Billable Devices     5     114.0       1350.89
+   2026-02-01      CMS                COANM-2 Committed Billable Devices     1     100.0        735.00
+   2026-02-01      CMS               COANM-3 Additional Billable Devices     1     -24.0          0.00
+   2026-02-01      CMS            COANM-3 Additional Performance Add-Ons     1      16.0         71.68
+   2026-02-01      CMS                COANM-3 Committed Billable Devices     1     175.0       1158.50
+   2026-02-01      CMS               COANM-4 Additional Billable Devices     1     106.0        623.28
+   2026-02-01      CMS            COANM-4 Additional Performance Add-Ons     1       5.0         30.00
+   2026-02-01      CMS                            Continuum Monthly Plan     1     253.0       1465.00
+   2026-02-01      CMS        EPRM-ANM-100 Auvik Essentials -- Committed     4     468.0       3511.20
+   2026-02-01      CMS          EPRM-ANM-100 Auvik Essentials -- Overage     4      21.0        700.00
+   2026-02-01      CMS       EPRM-ANM-1000 Auvik Essentials -- Committed     1    1000.0       3270.00
+   2026-02-01      CMS         EPRM-ANM-1000 Auvik Essentials -- Overage     1     973.0       3181.71
+   2026-02-01      CMS        EPRM-ANM-175 Auvik Essentials -- Committed     3     525.0       3969.00
+   2026-02-01      CMS          EPRM-ANM-175 Auvik Essentials -- Overage     3     -66.0        642.60
+   2026-02-01      CMS        EPRM-ANM-250 Auvik Essentials -- Committed     4    1000.0       6430.00
+   2026-02-01      CMS          EPRM-ANM-250 Auvik Essentials -- Overage     4    -280.0        629.16
+   2026-02-01      CMS         EPRM-ANM-40 Auvik Essentials -- Committed     2      80.0        735.20
+   2026-02-01      CMS           EPRM-ANM-40 Auvik Essentials -- Overage     2      76.0        698.44
+   2026-02-01      CMS        EPRM-ANM-500 Auvik Essentials -- Committed     3    1500.0       8455.00
+   2026-02-01      CMS          EPRM-ANM-500 Auvik Essentials -- Overage     3     -88.0        424.41
+   2026-02-01      CMS         EPRM-ANM-75 Auvik Essentials -- Committed     2     150.0       1296.75
+   2026-02-01      CMS           EPRM-ANM-75 Auvik Essentials -- Overage     2      72.0        682.56
+   2026-02-01      CMS                                          Licenses     2     140.0       1155.00
+   2026-02-01      CMS             PARM-ANM-100 Auvik Performance Add On     2      85.0        395.85
+   2026-02-01      CMS  PARM-ANM-100 Auvik Performance Add On -- Overage     2     151.0        762.58
+   2026-02-01      CMS            PARM-ANM-1000 Auvik Performance Add On     1    1000.0       1760.00
+   2026-02-01      CMS PARM-ANM-1000 Auvik Performance Add On -- Overage     1     937.0       1649.12
+   2026-02-01      CMS  PARM-ANM-175 Auvik Performance Add On -- Overage     1       4.0         18.48
+   2026-02-01      CMS  PARM-ANM-250 Auvik Performance Add On -- Overage     2      53.0        196.90
+   2026-02-01      CMS   PARM-ANM-40 Auvik Performance Add On -- Overage     1      14.0         87.50
+   2026-02-01      CMS  PARM-ANM-500 Auvik Performance Add On -- Overage     1     141.0        414.54
+   2026-02-01      CMS                        RM - ASM - 500 - Committed     1     615.0        559.65
+   2026-02-01      CMS                          RM - ASM - 500 - Overage     1    -613.0          0.00
+   2026-02-01      CMS                                  Usage - Licenses     2     -60.0         84.00
+   2026-02-01       CW                                    ANM Essentials    31    5660.0      39475.21
+   2026-02-01       CW                        ANM Essentials - Evergreen   125   23819.0     141690.22
+   2026-02-01       CW                          ANM Essentials Evergreen   114     485.0      45266.40
+   2026-02-01       CW                  ANM Full Performance - Evergreen     5     928.0       8549.86
+   2026-02-01       CW                    ANM Full Performance Evergreen     4    -461.0          0.00
+   2026-02-01       CW                  ANM Performance Add-On Evergreen    27     277.0       2165.87
+   2026-02-01       CW                           ANM Performance Add-Ons    11    2284.0       7110.64
+   2026-02-01       CW               ANM Performance Add-Ons - Evergreen    31    2309.0       9669.78
+   2026-02-01       CW                            ANM Performance Add-on     9    -552.0       1321.54
+   2026-02-01       CW                             Auvik SaaS Management     8     883.0       1396.17
+   2026-02-01       CW                 Auvik SaaS Management - Evergreen     6    3720.0       2852.12
+   2026-02-01       CW                   Auvik SaaS Management Evergreen     6     370.0        444.18
+   2026-02-01       CW                                  Billable Devices     2     190.0       1360.60
+   2026-02-01       CW                     Billable Devices - Additional     2       5.0          0.00
+   2026-02-01       CW               CWANM-0 Additional Billable Devices     1     -19.0          0.00
+   2026-02-01       CW            CWANM-0 Additional Performance Add-Ons     1     -19.0          0.00
+   2026-02-01       CW                CWANM-0 Committed Billable Devices     1      30.0        315.00
+   2026-02-01       CW             CWANM-0 Committed Performance Add-Ons     1      30.0        204.90
+   2026-02-01       CW               CWANM-1 Additional Billable Devices     1      90.0        827.10
+   2026-02-01       CW                CWANM-1 Committed Billable Devices     3     120.0       1102.80
+   2026-02-01       CW               CWANM-2 Additional Billable Devices     1     -79.0          0.00
+   2026-02-01       CW               CWANM-3 Additional Billable Devices     1     -54.0          0.00
+   2026-02-01       CW                CWANM-3 Committed Billable Devices     1     237.0       1568.94
+   2026-02-01       CW         EPRM-ANM-10 Auvik Essentials -- Committed     2      31.0        349.48
+   2026-02-01       CW           EPRM-ANM-10 Auvik Essentials -- Overage     2       9.0         94.50
+   2026-02-01       CW        EPRM-ANM-100 Auvik Essentials -- Committed     4     556.0       4112.73
+   2026-02-01       CW          EPRM-ANM-100 Auvik Essentials -- Overage     4      -3.0       1037.40
+   2026-02-01       CW       EPRM-ANM-1000 Auvik Essentials -- Committed     1    1000.0       4410.00
+   2026-02-01       CW         EPRM-ANM-1000 Auvik Essentials -- Overage     1     235.0       1036.35
+   2026-02-01       CW        EPRM-ANM-175 Auvik Essentials -- Committed     1     200.0       1324.00
+   2026-02-01       CW          EPRM-ANM-175 Auvik Essentials -- Overage     1      13.0         86.06
+   2026-02-01       CW        EPRM-ANM-250 Auvik Essentials -- Committed     2     566.0       3239.60
+   2026-02-01       CW          EPRM-ANM-250 Auvik Essentials -- Overage     2    -227.0         88.20
+   2026-02-01       CW         EPRM-ANM-40 Auvik Essentials -- Committed     1      40.0        350.00
+   2026-02-01       CW           EPRM-ANM-40 Auvik Essentials -- Overage     1     109.0        953.75
+   2026-02-01       CW        EPRM-ANM-500 Auvik Essentials -- Committed     1     500.0       2575.00
+   2026-02-01       CW          EPRM-ANM-500 Auvik Essentials -- Overage     1      -6.0          0.00
+   2026-02-01       CW        EPRM-ANM-750 Auvik Essentials -- Committed     2    1626.0       7739.76
+   2026-02-01       CW          EPRM-ANM-750 Auvik Essentials -- Overage     2     312.0       1637.44
+   2026-02-01       CW          ERM-ANM-10 Auvik Essentials -- Committed     1      23.0        241.50
+   2026-02-01       CW            ERM-ANM-10 Auvik Essentials -- Overage     1      -3.0          0.00
+   2026-02-01       CW         ERM-ANM-100 Auvik Essentials -- Committed     1     100.0       -474.19
+   2026-02-01       CW         ERM-ANM-250 Auvik Essentials -- Committed     2     713.0       4192.44
+   2026-02-01       CW           ERM-ANM-250 Auvik Essentials -- Overage     2      43.0        258.72
+   2026-02-01       CW          ERM-ANM-40 Auvik Essentials -- Committed     3     131.0       1181.45
+   2026-02-01       CW            ERM-ANM-40 Auvik Essentials -- Overage     4     -59.0        148.75
+   2026-02-01       CW          ERM-ANM-75 Auvik Essentials -- Committed     1      75.0        648.38
+   2026-02-01       CW            ERM-ANM-75 Auvik Essentials -- Overage     1      -6.0          0.00
+   2026-02-01       CW                                    Free of Charge     7      56.0          0.00
+   2026-02-01       CW              PARM-ANM-10 Auvik Performance Add On     2      31.0        233.02
+   2026-02-01       CW   PARM-ANM-10 Auvik Performance Add On -- Overage     1       0.0          0.00
+   2026-02-01       CW             PARM-ANM-100 Auvik Performance Add On     2      92.0        438.36
+   2026-02-01       CW  PARM-ANM-100 Auvik Performance Add On -- Overage     2     -18.0          0.00
+   2026-02-01       CW PARM-ANM-1000 Auvik Performance Add On -- Overage     1       9.0         21.42
+   2026-02-01       CW             PARM-ANM-175 Auvik Performance Add On     1      45.0        181.80
+   2026-02-01       CW  PARM-ANM-175 Auvik Performance Add On -- Overage     1       2.0          8.08
+   2026-02-01       CW  PARM-ANM-250 Auvik Performance Add On -- Overage     1       4.0         13.96
+   2026-02-01       CW             PARM-ANM-500 Auvik Performance Add On     1     374.0       1099.56
+   2026-02-01       CW  PARM-ANM-500 Auvik Performance Add On -- Overage     1       5.0         14.70
+   2026-02-01       CW             PARM-ANM-750 Auvik Performance Add On     2    1170.0       3240.90
+   2026-02-01       CW  PARM-ANM-750 Auvik Performance Add On -- Overage     2     484.0       1385.00
+   2026-02-01       CW        PRM-ANM-250 Auvik Performance -- Committed     1     250.0       2112.50
+   2026-02-01       CW          PRM-ANM-250 Auvik Performance -- Overage     1      17.0        143.65
+   2026-02-01       CW         PRM-ANM-40 Auvik Performance -- Committed     1      42.0        648.48
+   2026-02-01       CW           PRM-ANM-40 Auvik Performance -- Overage     1       6.0         92.64
+   2026-02-01       CW                        RM - ASM - 100 - Committed     1     175.0        275.63
+   2026-02-01       CW                          RM - ASM - 100 - Overage     1     774.0       1222.92
+   2026-02-01       CW                        RM - ASM - 250 - Committed     1     270.0        283.50
+   2026-02-01       CW                          RM - ASM - 250 - Overage     1    -184.0          0.00
+   2026-02-01       CW                          Usage - Billable Devices     4      12.0        756.00
+   2026-03-01      CMS                                    ANM Essentials    12    2610.0      17651.59
+   2026-03-01      CMS                        ANM Essentials - Evergreen    97   13362.0      87398.57
+   2026-03-01      CMS                          ANM Essentials Evergreen    82    3910.0      42791.57
+   2026-03-01      CMS                  ANM Full Performance - Evergreen     1     500.0       3703.86
+   2026-03-01      CMS                    ANM Full Performance Evergreen     1     112.0        829.92
+   2026-03-01      CMS                  ANM Performance Add-On Evergreen    22    1906.0       8565.01
+   2026-03-01      CMS                           ANM Performance Add-Ons     8    1015.0       3454.38
+   2026-03-01      CMS               ANM Performance Add-Ons - Evergreen     8     158.0        522.38
+   2026-03-01      CMS                            ANM Performance Add-on     7    -395.0       1275.32
+   2026-03-01      CMS                 Auvik SaaS Management - Evergreen     5    1000.0       1107.07
+   2026-03-01      CMS                   Auvik SaaS Management Evergreen     4    -510.0         48.60
+   2026-03-01      CMS                COANM-0 Committed Billable Devices     1     250.0       1470.00
+   2026-03-01      CMS               COANM-1 Additional Billable Devices     1      -1.0          0.00
+   2026-03-01      CMS                COANM-1 Committed Billable Devices     4     160.0       1470.40
+   2026-03-01      CMS               COANM-2 Additional Billable Devices     4     135.0       1284.73
+   2026-03-01      CMS                COANM-2 Committed Billable Devices     1     100.0        735.00
+   2026-03-01      CMS               COANM-4 Additional Billable Devices     1      98.0        576.24
+   2026-03-01      CMS            COANM-4 Additional Performance Add-Ons     1       5.0         30.00
+   2026-03-01      CMS                            Continuum Monthly Plan     1     174.0       1034.00
+   2026-03-01      CMS        EPRM-ANM-100 Auvik Essentials -- Committed     4     468.0       3511.20
+   2026-03-01      CMS          EPRM-ANM-100 Auvik Essentials -- Overage     4      66.0        896.00
+   2026-03-01      CMS       EPRM-ANM-1000 Auvik Essentials -- Committed     1    1000.0       3270.00
+   2026-03-01      CMS         EPRM-ANM-1000 Auvik Essentials -- Overage     1    1068.0       3492.36
+   2026-03-01      CMS        EPRM-ANM-175 Auvik Essentials -- Committed     3     525.0       3969.00
+   2026-03-01      CMS          EPRM-ANM-175 Auvik Essentials -- Overage     3     -44.0        846.72
+   2026-03-01      CMS        EPRM-ANM-250 Auvik Essentials -- Committed     4    1000.0       6430.00
+   2026-03-01      CMS          EPRM-ANM-250 Auvik Essentials -- Overage     4    -322.0        511.56
+   2026-03-01      CMS         EPRM-ANM-40 Auvik Essentials -- Committed     2      80.0        735.20
+   2026-03-01      CMS           EPRM-ANM-40 Auvik Essentials -- Overage     2      91.0        836.29
+   2026-03-01      CMS        EPRM-ANM-500 Auvik Essentials -- Committed     3    1500.0       8455.00
+   2026-03-01      CMS          EPRM-ANM-500 Auvik Essentials -- Overage     3     -66.0        315.53
+   2026-03-01      CMS         EPRM-ANM-75 Auvik Essentials -- Committed     2     150.0       1296.75
+   2026-03-01      CMS           EPRM-ANM-75 Auvik Essentials -- Overage     2      82.0        708.51
+   2026-03-01      CMS                                          Licenses     2     140.0       1155.00
+   2026-03-01      CMS             PARM-ANM-100 Auvik Performance Add On     2      85.0        395.85
+   2026-03-01      CMS  PARM-ANM-100 Auvik Performance Add On -- Overage     2     123.0        632.14
+   2026-03-01      CMS            PARM-ANM-1000 Auvik Performance Add On     1    1000.0       1760.00
+   2026-03-01      CMS PARM-ANM-1000 Auvik Performance Add On -- Overage     1    1026.0       1805.76
+   2026-03-01      CMS  PARM-ANM-250 Auvik Performance Add On -- Overage     2      49.0        182.60
+   2026-03-01      CMS   PARM-ANM-40 Auvik Performance Add On -- Overage     1      15.0         93.75
+   2026-03-01      CMS  PARM-ANM-500 Auvik Performance Add On -- Overage     2     148.0        437.64
+   2026-03-01      CMS                        RM - ASM - 500 - Committed     1     615.0        559.65
+   2026-03-01      CMS                          RM - ASM - 500 - Overage     1    -613.0          0.00
+   2026-03-01      CMS                                  Usage - Licenses     2     -61.0         84.00
+   2026-03-01       CW                                    ANM Essentials    28    5670.0      38775.44
+   2026-03-01       CW                        ANM Essentials - Evergreen   125   23164.0     139756.59
+   2026-03-01       CW                          ANM Essentials Evergreen   112    2822.0      46284.84
+   2026-03-01       CW                  ANM Full Performance - Evergreen     5     928.0       8549.86
+   2026-03-01       CW                    ANM Full Performance Evergreen     4    -455.0          0.00
+   2026-03-01       CW                  ANM Performance Add-On Evergreen    28     213.0       2122.54
+   2026-03-01       CW                           ANM Performance Add-Ons    10    1959.0       5973.14
+   2026-03-01       CW               ANM Performance Add-Ons - Evergreen    33    3122.0      12450.41
+   2026-03-01       CW                            ANM Performance Add-on     7    -356.0       1083.37
+   2026-03-01       CW                             Auvik SaaS Management     8    1078.0       1649.50
+   2026-03-01       CW                 Auvik SaaS Management - Evergreen     6    3720.0       2852.12
+   2026-03-01       CW                   Auvik SaaS Management Evergreen     5     502.0        351.90
+   2026-03-01       CW                                  Billable Devices     2     190.0       1360.60
+   2026-03-01       CW                     Billable Devices - Additional     2       5.0          0.00
+   2026-03-01       CW               CWANM-1 Additional Billable Devices     1      98.0        900.62
+   2026-03-01       CW                CWANM-1 Committed Billable Devices     2      80.0        735.20
+   2026-03-01       CW               CWANM-2 Additional Billable Devices     1     -79.0          0.00
+   2026-03-01       CW               CWANM-3 Additional Billable Devices     1     -64.0          0.00
+   2026-03-01       CW                CWANM-3 Committed Billable Devices     1     237.0       1568.94
+   2026-03-01       CW         EPRM-ANM-10 Auvik Essentials -- Committed     2      31.0        349.48
+   2026-03-01       CW           EPRM-ANM-10 Auvik Essentials -- Overage     2       9.0         94.50
+   2026-03-01       CW        EPRM-ANM-100 Auvik Essentials -- Committed     3     436.0       3230.73
+   2026-03-01       CW          EPRM-ANM-100 Auvik Essentials -- Overage     3      81.0       1425.90
+   2026-03-01       CW       EPRM-ANM-1000 Auvik Essentials -- Committed     1    1000.0       4410.00
+   2026-03-01       CW         EPRM-ANM-1000 Auvik Essentials -- Overage     1     444.0       1958.04
+   2026-03-01       CW        EPRM-ANM-175 Auvik Essentials -- Committed     1     200.0       1324.00
+   2026-03-01       CW          EPRM-ANM-175 Auvik Essentials -- Overage     1      21.0        139.02
+   2026-03-01       CW        EPRM-ANM-250 Auvik Essentials -- Committed     2     566.0       3239.60
+   2026-03-01       CW          EPRM-ANM-250 Auvik Essentials -- Overage     2    -247.0         94.08
+   2026-03-01       CW         EPRM-ANM-40 Auvik Essentials -- Committed     1      40.0        350.00
+   2026-03-01       CW           EPRM-ANM-40 Auvik Essentials -- Overage     1     108.0        945.00
+   2026-03-01       CW        EPRM-ANM-750 Auvik Essentials -- Committed     2    1626.0       7739.76
+   2026-03-01       CW          EPRM-ANM-750 Auvik Essentials -- Overage     2     365.0       1870.68
+   2026-03-01       CW          ERM-ANM-10 Auvik Essentials -- Committed     1      23.0        241.50
+   2026-03-01       CW            ERM-ANM-10 Auvik Essentials -- Overage     1      -4.0          0.00
+   2026-03-01       CW         ERM-ANM-250 Auvik Essentials -- Committed     2     713.0       4192.44
+   2026-03-01       CW           ERM-ANM-250 Auvik Essentials -- Overage     2      48.0        288.12
+   2026-03-01       CW          ERM-ANM-40 Auvik Essentials -- Committed     3     131.0       1181.45
+   2026-03-01       CW            ERM-ANM-40 Auvik Essentials -- Overage     4     -59.0         96.25
+   2026-03-01       CW          ERM-ANM-75 Auvik Essentials -- Committed     1      75.0        648.38
+   2026-03-01       CW            ERM-ANM-75 Auvik Essentials -- Overage     1      -4.0          0.00
+   2026-03-01       CW                                    Free of Charge     7      56.0          0.00
+   2026-03-01       CW              PARM-ANM-10 Auvik Performance Add On     2      31.0        233.02
+   2026-03-01       CW   PARM-ANM-10 Auvik Performance Add On -- Overage     1       0.0          0.00
+   2026-03-01       CW             PARM-ANM-100 Auvik Performance Add On     2      92.0        438.36
+   2026-03-01       CW  PARM-ANM-100 Auvik Performance Add On -- Overage     2     -19.0          0.00
+   2026-03-01       CW PARM-ANM-1000 Auvik Performance Add On -- Overage     1       9.0         21.42
+   2026-03-01       CW             PARM-ANM-175 Auvik Performance Add On     1      45.0        181.80
+   2026-03-01       CW  PARM-ANM-175 Auvik Performance Add On -- Overage     1       5.0         20.20
+   2026-03-01       CW  PARM-ANM-250 Auvik Performance Add On -- Overage     1       4.0         13.96
+   2026-03-01       CW             PARM-ANM-750 Auvik Performance Add On     2    1170.0       3240.90
+   2026-03-01       CW  PARM-ANM-750 Auvik Performance Add On -- Overage     2     538.0       1520.73
+   2026-03-01       CW        PRM-ANM-250 Auvik Performance -- Committed     1     250.0       2112.50
+   2026-03-01       CW          PRM-ANM-250 Auvik Performance -- Overage     1      22.0        185.90
+   2026-03-01       CW         PRM-ANM-40 Auvik Performance -- Committed     1      42.0        648.48
+   2026-03-01       CW           PRM-ANM-40 Auvik Performance -- Overage     1       7.0        108.08
+   2026-03-01       CW                        RM - ASM - 250 - Committed     1     270.0        283.50
+   2026-03-01       CW                          RM - ASM - 250 - Overage     1    -186.0          0.00
+   2026-03-01       CW                          Usage - Billable Devices     3      -9.0        525.00
+   2026-04-01      CMS                                    ANM Essentials    12    2627.0      17660.55
+   2026-04-01      CMS                        ANM Essentials - Evergreen   103   14847.0      97843.79
+   2026-04-01      CMS                          ANM Essentials Evergreen    88    3709.0      44875.92
+   2026-04-01      CMS                  ANM Full Performance - Evergreen     1     500.0       3703.86
+   2026-04-01      CMS                    ANM Full Performance Evergreen     1     112.0        829.92
+   2026-04-01      CMS                  ANM Performance Add-On Evergreen    24    1885.0       8467.67
+   2026-04-01      CMS                           ANM Performance Add-Ons     8    1015.0       3454.38
+   2026-04-01      CMS               ANM Performance Add-Ons - Evergreen     8     158.0        522.38
+   2026-04-01      CMS                            ANM Performance Add-on     7    -400.0       1204.82
+   2026-04-01      CMS                 Auvik SaaS Management - Evergreen     4     950.0       1002.07
+   2026-04-01      CMS                   Auvik SaaS Management Evergreen     4    -484.0         71.55
+   2026-04-01      CMS               COANM-1 Additional Billable Devices     1       1.0          9.19
+   2026-04-01      CMS                COANM-1 Committed Billable Devices     3     120.0       1102.80
+   2026-04-01      CMS               COANM-2 Additional Billable Devices     3     140.0       1260.84
+   2026-04-01      CMS                COANM-2 Committed Billable Devices     1     100.0        735.00
+   2026-04-01      CMS            COANM-4 Additional Performance Add-Ons     1       5.0         30.00
+   2026-04-01      CMS                            Continuum Monthly Plan     1     261.0       1505.00
+   2026-04-01      CMS        EPRM-ANM-100 Auvik Essentials -- Committed     3     368.0       2776.20
+   2026-04-01      CMS          EPRM-ANM-100 Auvik Essentials -- Overage     3     138.0        996.80
+   2026-04-01      CMS       EPRM-ANM-1000 Auvik Essentials -- Committed     1    1000.0       3270.00
+   2026-04-01      CMS         EPRM-ANM-1000 Auvik Essentials -- Overage     1    1229.0       4018.83
+   2026-04-01      CMS        EPRM-ANM-175 Auvik Essentials -- Committed     1     175.0       1323.00
+   2026-04-01      CMS          EPRM-ANM-175 Auvik Essentials -- Overage     1      65.0        491.40
+   2026-04-01      CMS        EPRM-ANM-250 Auvik Essentials -- Committed     2     500.0       3360.00
+   2026-04-01      CMS          EPRM-ANM-250 Auvik Essentials -- Overage     2    -252.0          0.00
+   2026-04-01      CMS         EPRM-ANM-40 Auvik Essentials -- Committed     2      80.0        735.20
+   2026-04-01      CMS           EPRM-ANM-40 Auvik Essentials -- Overage     2      92.0        845.48
+   2026-04-01      CMS        EPRM-ANM-500 Auvik Essentials -- Committed     2    1000.0       5515.00
+   2026-04-01      CMS          EPRM-ANM-500 Auvik Essentials -- Overage     2      67.0        357.46
+   2026-04-01      CMS         EPRM-ANM-75 Auvik Essentials -- Committed     1      75.0        648.00
+   2026-04-01      CMS           EPRM-ANM-75 Auvik Essentials -- Overage     1     102.0        881.28
+   2026-04-01      CMS                                          Licenses     4     142.0       1155.00
+   2026-04-01      CMS             PARM-ANM-100 Auvik Performance Add On     2      85.0        395.85
+   2026-04-01      CMS  PARM-ANM-100 Auvik Performance Add On -- Overage     2     167.0        872.38
+   2026-04-01      CMS            PARM-ANM-1000 Auvik Performance Add On     1    1000.0       1760.00
+   2026-04-01      CMS PARM-ANM-1000 Auvik Performance Add On -- Overage     1    1186.0       2087.36
+   2026-04-01      CMS   PARM-ANM-40 Auvik Performance Add On -- Overage     1      15.0         93.75
+   2026-04-01      CMS  PARM-ANM-500 Auvik Performance Add On -- Overage     2     168.0        504.42
+   2026-04-01      CMS   PARM-ANM-75 Auvik Performance Add On -- Overage     1      20.0        117.60
+   2026-04-01      CMS                        RM - ASM - 500 - Committed     1     615.0        559.65
+   2026-04-01      CMS                          RM - ASM - 500 - Overage     1    -613.0          0.00
+   2026-04-01      CMS                                  Usage - Licenses     2     -62.0         84.00
+   2026-04-01       CW                                    ANM Essentials    28    5807.0      39029.37
+   2026-04-01       CW                        ANM Essentials - Evergreen   123   21692.0     133109.94
+   2026-04-01       CW                          ANM Essentials Evergreen   113    3005.0      44446.46
+   2026-04-01       CW                  ANM Full Performance - Evergreen     4     875.0       7674.26
+   2026-04-01       CW                    ANM Full Performance Evergreen     4    -433.0          0.00
+   2026-04-01       CW                  ANM Performance Add-On Evergreen    30      19.0       2638.94
+   2026-04-01       CW                           ANM Performance Add-Ons    10    1959.0       5973.14
+   2026-04-01       CW               ANM Performance Add-Ons - Evergreen    34    3123.0      12450.41
+   2026-04-01       CW                            ANM Performance Add-on     7    -336.0       1146.76
+   2026-04-01       CW                             Auvik SaaS Management     8    1100.0       1701.11
+   2026-04-01       CW                 Auvik SaaS Management - Evergreen     6    3720.0       2852.12
+   2026-04-01       CW                   Auvik SaaS Management Evergreen     5     644.0        441.33
+   2026-04-01       CW                                  Billable Devices     1      40.0        367.60
+   2026-04-01       CW                     Billable Devices - Additional     1       4.0          0.00
+   2026-04-01       CW                          Billable Devices - Promo     1      65.0          0.00
+   2026-04-01       CW               CWANM-1 Additional Billable Devices     1      94.0        863.86
+   2026-04-01       CW                CWANM-1 Committed Billable Devices     2      80.0        735.20
+   2026-04-01       CW               CWANM-3 Additional Billable Devices     1     -66.0          0.00
+   2026-04-01       CW                CWANM-3 Committed Billable Devices     1     237.0       1568.94
+   2026-04-01       CW         EPRM-ANM-10 Auvik Essentials -- Committed     2      31.0        349.48
+   2026-04-01       CW           EPRM-ANM-10 Auvik Essentials -- Overage     2      10.0        106.50
+   2026-04-01       CW        EPRM-ANM-100 Auvik Essentials -- Committed     3     436.0       3230.73
+   2026-04-01       CW          EPRM-ANM-100 Auvik Essentials -- Overage     3     118.0       1659.00
+   2026-04-01       CW        EPRM-ANM-175 Auvik Essentials -- Committed     1     200.0       1324.00
+   2026-04-01       CW          EPRM-ANM-175 Auvik Essentials -- Overage     1      31.0        205.22
+   2026-04-01       CW        EPRM-ANM-250 Auvik Essentials -- Committed     2     566.0       3239.60
+   2026-04-01       CW          EPRM-ANM-250 Auvik Essentials -- Overage     2    -241.0        117.60
+   2026-04-01       CW        EPRM-ANM-750 Auvik Essentials -- Committed     2    1626.0       7739.76
+   2026-04-01       CW          EPRM-ANM-750 Auvik Essentials -- Overage     2     220.0       1261.40
+   2026-04-01       CW          ERM-ANM-10 Auvik Essentials -- Committed     1      23.0        241.50
+   2026-04-01       CW            ERM-ANM-10 Auvik Essentials -- Overage     1      -4.0          0.00
+   2026-04-01       CW         ERM-ANM-250 Auvik Essentials -- Committed     2     713.0       4192.44
+   2026-04-01       CW           ERM-ANM-250 Auvik Essentials -- Overage     2      32.0        311.64
+   2026-04-01       CW          ERM-ANM-40 Auvik Essentials -- Committed     1      40.0        367.60
+   2026-04-01       CW            ERM-ANM-40 Auvik Essentials -- Overage     1       7.0         64.33
+   2026-04-01       CW          ERM-ANM-75 Auvik Essentials -- Committed     1      75.0        648.38
+   2026-04-01       CW            ERM-ANM-75 Auvik Essentials -- Overage     1     -46.0          0.00
+   2026-04-01       CW                                    Free of Charge     7      56.0          0.00
+   2026-04-01       CW                            MSP Monthly Free Trial     1       1.0          0.00
+   2026-04-01       CW              PARM-ANM-10 Auvik Performance Add On     2      31.0        233.02
+   2026-04-01       CW   PARM-ANM-10 Auvik Performance Add On -- Overage     1       1.0          8.00
+   2026-04-01       CW             PARM-ANM-100 Auvik Performance Add On     2      92.0        438.36
+   2026-04-01       CW  PARM-ANM-100 Auvik Performance Add On -- Overage     2     -16.0          0.00
+   2026-04-01       CW             PARM-ANM-175 Auvik Performance Add On     1      45.0        181.80
+   2026-04-01       CW  PARM-ANM-175 Auvik Performance Add On -- Overage     1       8.0         32.32
+   2026-04-01       CW  PARM-ANM-250 Auvik Performance Add On -- Overage     1       4.0         13.96
+   2026-04-01       CW             PARM-ANM-750 Auvik Performance Add On     2    1170.0       3240.90
+   2026-04-01       CW  PARM-ANM-750 Auvik Performance Add On -- Overage     2     412.0       1166.17
+   2026-04-01       CW        PRM-ANM-250 Auvik Performance -- Committed     1     250.0       2112.50
+   2026-04-01       CW          PRM-ANM-250 Auvik Performance -- Overage     1      21.0        177.45
+   2026-04-01       CW         PRM-ANM-40 Auvik Performance -- Committed     1      42.0        648.48
+   2026-04-01       CW           PRM-ANM-40 Auvik Performance -- Overage     1       7.0        108.08
+   2026-04-01       CW                        Performance Add-On - Promo     1      65.0          0.00
+   2026-04-01       CW                        RM - ASM - 250 - Committed     1     270.0        283.50
+   2026-04-01       CW                          RM - ASM - 250 - Overage     1    -191.0          0.00
+   2026-04-01       CW                          Usage - Billable Devices     2      22.0        514.50
+   2026-05-01      CMS                                    ANM Essentials    12    2779.0      18319.81
+   2026-05-01      CMS                        ANM Essentials - Evergreen   100   15552.0     101376.79
+   2026-05-01      CMS                          ANM Essentials Evergreen    86    3156.0      43890.62
+   2026-05-01      CMS                  ANM Full Performance - Evergreen     1     500.0       3703.86
+   2026-05-01      CMS                    ANM Full Performance Evergreen     1     103.0        763.23
+   2026-05-01      CMS                  ANM Performance Add-On Evergreen    24    1843.0       8092.10
+   2026-05-01      CMS                           ANM Performance Add-Ons     8    1015.0       3454.38
+   2026-05-01      CMS               ANM Performance Add-Ons - Evergreen     8     158.0        522.38
+   2026-05-01      CMS                            ANM Performance Add-on     7    -399.0       1200.61
+   2026-05-01      CMS                 Auvik SaaS Management - Evergreen     4     950.0       1002.07
+   2026-05-01      CMS                   Auvik SaaS Management Evergreen     4    -461.0        101.25
+   2026-05-01      CMS                COANM-1 Committed Billable Devices     2      80.0        735.20
+   2026-05-01      CMS               COANM-2 Additional Billable Devices     3     139.0       1249.81
+   2026-05-01      CMS                COANM-2 Committed Billable Devices     1     100.0        735.00
+   2026-05-01      CMS            COANM-4 Additional Performance Add-Ons     1       5.0         30.00
+   2026-05-01      CMS                            Continuum Monthly Plan     1     385.0       2125.00
+   2026-05-01      CMS        EPRM-ANM-100 Auvik Essentials -- Committed     3     368.0       2776.20
+   2026-05-01      CMS          EPRM-ANM-100 Auvik Essentials -- Overage     3     136.0       1003.80
+   2026-05-01      CMS       EPRM-ANM-1000 Auvik Essentials -- Committed     1    1000.0       3270.00
+   2026-05-01      CMS         EPRM-ANM-1000 Auvik Essentials -- Overage     1    1300.0       4251.00
+   2026-05-01      CMS        EPRM-ANM-250 Auvik Essentials -- Committed     1     250.0       1680.00
+   2026-05-01      CMS          EPRM-ANM-250 Auvik Essentials -- Overage     1     -93.0          0.00
+   2026-05-01      CMS         EPRM-ANM-40 Auvik Essentials -- Committed     2      80.0        735.20
+   2026-05-01      CMS           EPRM-ANM-40 Auvik Essentials -- Overage     2      92.0        845.48
+   2026-05-01      CMS        EPRM-ANM-500 Auvik Essentials -- Committed     1     500.0       2940.00
+   2026-05-01      CMS          EPRM-ANM-500 Auvik Essentials -- Overage     1      30.0        176.40
+   2026-05-01      CMS         EPRM-ANM-75 Auvik Essentials -- Committed     1      75.0        648.00
+   2026-05-01      CMS           EPRM-ANM-75 Auvik Essentials -- Overage     1     115.0        993.60
+   2026-05-01      CMS                                          Licenses     4     142.0       1155.00
+   2026-05-01      CMS             PARM-ANM-100 Auvik Performance Add On     2      85.0        395.85
+   2026-05-01      CMS  PARM-ANM-100 Auvik Performance Add On -- Overage     2     175.0        918.10
+   2026-05-01      CMS            PARM-ANM-1000 Auvik Performance Add On     1    1000.0       1760.00
+   2026-05-01      CMS PARM-ANM-1000 Auvik Performance Add On -- Overage     1    1256.0       2210.56
+   2026-05-01      CMS   PARM-ANM-40 Auvik Performance Add On -- Overage     1      15.0         93.75
+   2026-05-01      CMS  PARM-ANM-500 Auvik Performance Add On -- Overage     1      26.0         87.36
+   2026-05-01      CMS   PARM-ANM-75 Auvik Performance Add On -- Overage     1      20.0        117.60
+   2026-05-01      CMS                        RM - ASM - 500 - Committed     1     615.0        559.65
+   2026-05-01      CMS                          RM - ASM - 500 - Overage     1    -613.0          0.00
+   2026-05-01      CMS                                  Usage - Licenses     2     -46.0         73.50
+   2026-05-01       CW                                    ANM Essentials    28    5757.0      39066.00
+   2026-05-01       CW                        ANM Essentials - Evergreen   131   23610.0     145555.89
+   2026-05-01       CW                          ANM Essentials Evergreen   123    2237.0      43557.20
+   2026-05-01       CW                  ANM Full Performance - Evergreen     6    1375.0      12508.01
+   2026-05-01       CW                    ANM Full Performance Evergreen     6    -288.0        909.83
+   2026-05-01       CW                  ANM Performance Add-On Evergreen    33     298.0       3841.96
+   2026-05-01       CW                           ANM Performance Add-Ons    10    1959.0       5973.14
+   2026-05-01       CW               ANM Performance Add-Ons - Evergreen    39    3337.0      13388.37
+   2026-05-01       CW                            ANM Performance Add-on     7    -325.0       1167.64
+   2026-05-01       CW                             Auvik SaaS Management     8    1054.0       1614.21
+   2026-05-01       CW                 Auvik SaaS Management - Evergreen     6    3720.0       2852.12
+   2026-05-01       CW                   Auvik SaaS Management Evergreen     5     824.0        561.66
+   2026-05-01       CW                          Billable Devices - Promo     1      65.0          0.00
+   2026-05-01       CW               CWANM-1 Additional Billable Devices     1      87.0        799.53
+   2026-05-01       CW                CWANM-1 Committed Billable Devices     2      80.0        735.20
+   2026-05-01       CW         EPRM-ANM-10 Auvik Essentials -- Committed     1      16.0        191.98
+   2026-05-01       CW           EPRM-ANM-10 Auvik Essentials -- Overage     1      -1.0          0.00
+   2026-05-01       CW        EPRM-ANM-100 Auvik Essentials -- Committed     1     144.0        953.28
+   2026-05-01       CW          EPRM-ANM-100 Auvik Essentials -- Overage     1     -99.0          0.00
+   2026-05-01       CW        EPRM-ANM-250 Auvik Essentials -- Committed     1     316.0       1769.60
+   2026-05-01       CW          EPRM-ANM-250 Auvik Essentials -- Overage     1    -263.0          0.00
+   2026-05-01       CW        EPRM-ANM-750 Auvik Essentials -- Committed     1     800.0       3808.00
+   2026-05-01       CW          EPRM-ANM-750 Auvik Essentials -- Overage     1     -35.0          0.00
+   2026-05-01       CW          ERM-ANM-10 Auvik Essentials -- Committed     1      23.0        241.50
+   2026-05-01       CW            ERM-ANM-10 Auvik Essentials -- Overage     1      -4.0          0.00
+   2026-05-01       CW         ERM-ANM-250 Auvik Essentials -- Committed     1     250.0       1470.00
+   2026-05-01       CW           ERM-ANM-250 Auvik Essentials -- Overage     1     -35.0          0.00
+   2026-05-01       CW          ERM-ANM-40 Auvik Essentials -- Committed     1      40.0        367.60
+   2026-05-01       CW            ERM-ANM-40 Auvik Essentials -- Overage     1      -2.0          0.00
+   2026-05-01       CW          ERM-ANM-75 Auvik Essentials -- Committed     1      75.0        648.38
+   2026-05-01       CW                                    Free of Charge     7      56.0          0.00
+   2026-05-01       CW                            MSP Monthly Free Trial     1       1.0          0.00
+   2026-05-01       CW              PARM-ANM-10 Auvik Performance Add On     1      16.0        128.02
+   2026-05-01       CW   PARM-ANM-10 Auvik Performance Add On -- Overage     1      -1.0          0.00
+   2026-05-01       CW             PARM-ANM-100 Auvik Performance Add On     1      22.0        105.16
+   2026-05-01       CW  PARM-ANM-100 Auvik Performance Add On -- Overage     1     -11.0          0.00
+   2026-05-01       CW             PARM-ANM-750 Auvik Performance Add On     1     500.0       1385.00
+   2026-05-01       CW  PARM-ANM-750 Auvik Performance Add On -- Overage     1      -8.0          0.00
+   2026-05-01       CW         PRM-ANM-40 Auvik Performance -- Committed     1      42.0        648.48
+   2026-05-01       CW           PRM-ANM-40 Auvik Performance -- Overage     1       7.0        108.08
+   2026-05-01       CW                        Performance Add-On - Promo     1      65.0          0.00
+   2026-05-01       CW                        RM - ASM - 250 - Committed     1     270.0        283.50
+   2026-05-01       CW                          RM - ASM - 250 - Overage     1    -183.0          0.00
+   2026-05-01       CW                          Usage - Billable Devices     1      47.0        493.50
+   2026-06-01      CMS                                    ANM Essentials    12    2793.0      18493.97
+   2026-06-01      CMS                        ANM Essentials - Evergreen    96   14827.0      96623.00
+   2026-06-01      CMS                          ANM Essentials Evergreen    78    3843.0      42339.22
+   2026-06-01      CMS                  ANM Full Performance - Evergreen     1     500.0       3703.86
+   2026-06-01      CMS                    ANM Full Performance Evergreen     1     111.0        822.51
+   2026-06-01      CMS                  ANM Performance Add-On Evergreen    20    1673.0       7263.16
+   2026-06-01      CMS                           ANM Performance Add-Ons     8    1015.0       3454.38
+   2026-06-01      CMS               ANM Performance Add-Ons - Evergreen     8     158.0        522.38
+   2026-06-01      CMS                            ANM Performance Add-on     7    -376.0       1254.48
+   2026-06-01      CMS                 Auvik SaaS Management - Evergreen     3     850.0        897.06
+   2026-06-01      CMS                   Auvik SaaS Management Evergreen     3    -397.0         63.45
+   2026-06-01      CMS                COANM-1 Committed Billable Devices     2      80.0        735.20
+   2026-06-01      CMS               COANM-2 Additional Billable Devices     3     141.0       1266.35
+   2026-06-01      CMS                COANM-2 Committed Billable Devices     1     100.0        735.00
+   2026-06-01      CMS            COANM-4 Additional Performance Add-Ons     1       5.0         30.00
+   2026-06-01      CMS                            Continuum Monthly Plan     1     461.0       2505.00
+   2026-06-01      CMS        EPRM-ANM-100 Auvik Essentials -- Committed     3     368.0       2776.20
+   2026-06-01      CMS          EPRM-ANM-100 Auvik Essentials -- Overage     3     157.0       1145.20
+   2026-06-01      CMS       EPRM-ANM-1000 Auvik Essentials -- Committed     1    1000.0       3270.00
+   2026-06-01      CMS         EPRM-ANM-1000 Auvik Essentials -- Overage     1    1277.0       4175.79
+   2026-06-01      CMS        EPRM-ANM-250 Auvik Essentials -- Committed     1     250.0       1680.00
+   2026-06-01      CMS          EPRM-ANM-250 Auvik Essentials -- Overage     1     -72.0          0.00
+   2026-06-01      CMS         EPRM-ANM-40 Auvik Essentials -- Committed     2      80.0        735.20
+   2026-06-01      CMS           EPRM-ANM-40 Auvik Essentials -- Overage     2      96.0        882.24
+   2026-06-01      CMS        EPRM-ANM-500 Auvik Essentials -- Committed     1     500.0       2940.00
+   2026-06-01      CMS          EPRM-ANM-500 Auvik Essentials -- Overage     1      34.0        199.92
+   2026-06-01      CMS         EPRM-ANM-75 Auvik Essentials -- Committed     1      75.0        648.00
+   2026-06-01      CMS           EPRM-ANM-75 Auvik Essentials -- Overage     1     121.0       1045.44
+   2026-06-01      CMS                                          Licenses     4     142.0       1155.00
+   2026-06-01      CMS             PARM-ANM-100 Auvik Performance Add On     2      85.0        395.85
+   2026-06-01      CMS  PARM-ANM-100 Auvik Performance Add On -- Overage     2     165.0        864.18
+   2026-06-01      CMS            PARM-ANM-1000 Auvik Performance Add On     1    1000.0       1760.00
+   2026-06-01      CMS PARM-ANM-1000 Auvik Performance Add On -- Overage     1    1232.0       2168.32
+   2026-06-01      CMS   PARM-ANM-40 Auvik Performance Add On -- Overage     1      15.0         93.75
+   2026-06-01      CMS  PARM-ANM-500 Auvik Performance Add On -- Overage     1      26.0         87.36
+   2026-06-01      CMS   PARM-ANM-75 Auvik Performance Add On -- Overage     1      29.0        170.52
+   2026-06-01      CMS                        RM - ASM - 500 - Committed     1     615.0        559.65
+   2026-06-01      CMS                          RM - ASM - 500 - Overage     1    -613.0          0.00
+   2026-06-01      CMS                                  Usage - Licenses     2     -47.0        105.00
+   2026-06-01       CW                                    ANM Essentials    26    5381.0      36607.79
+   2026-06-01       CW                        ANM Essentials - Evergreen   134   25634.0     158835.04
+   2026-06-01       CW                          ANM Essentials Evergreen   127    1548.0      42468.17
+   2026-06-01       CW                  ANM Full Performance - Evergreen     5     655.0       6904.80
+   2026-06-01       CW                    ANM Full Performance Evergreen     5      62.0        969.11
+   2026-06-01       CW                  ANM Performance Add-On Evergreen    34    1037.0       6407.47
+   2026-06-01       CW                           ANM Performance Add-Ons     9    1709.0       5098.14
+   2026-06-01       CW               ANM Performance Add-Ons - Evergreen    38    3555.0      14111.51
+   2026-06-01       CW                            ANM Performance Add-on     6    -260.0       1338.32
+   2026-06-01       CW                             Auvik SaaS Management     4     798.0       1100.95
+   2026-06-01       CW                 Auvik SaaS Management - Evergreen     9    4085.0       3427.00
+   2026-06-01       CW                   Auvik SaaS Management Evergreen     8     883.0        640.65
+   2026-06-01       CW                          Billable Devices - Promo     1      65.0          0.00
+   2026-06-01       CW               CWANM-1 Additional Billable Devices     1      99.0        909.81
+   2026-06-01       CW                CWANM-1 Committed Billable Devices     2      80.0        735.20
+   2026-06-01       CW         EPRM-ANM-10 Auvik Essentials -- Committed     1      16.0        191.98
+   2026-06-01       CW           EPRM-ANM-10 Auvik Essentials -- Overage     1       0.0          0.00
+   2026-06-01       CW        EPRM-ANM-100 Auvik Essentials -- Committed     1     144.0        953.28
+   2026-06-01       CW          EPRM-ANM-100 Auvik Essentials -- Overage     1    -101.0          0.00
+   2026-06-01       CW        EPRM-ANM-750 Auvik Essentials -- Committed     1     800.0       3808.00
+   2026-06-01       CW          EPRM-ANM-750 Auvik Essentials -- Overage     1    -296.0          0.00
+   2026-06-01       CW          ERM-ANM-10 Auvik Essentials -- Committed     1      23.0        241.50
+   2026-06-01       CW            ERM-ANM-10 Auvik Essentials -- Overage     1      -4.0          0.00
+   2026-06-01       CW          ERM-ANM-40 Auvik Essentials -- Committed     1      40.0        367.60
+   2026-06-01       CW            ERM-ANM-40 Auvik Essentials -- Overage     1      12.0        110.28
+   2026-06-01       CW          ERM-ANM-75 Auvik Essentials -- Committed     1      75.0        648.38
+   2026-06-01       CW                                    Free of Charge     7      56.0          0.00
+   2026-06-01       CW                            MSP Monthly Free Trial     1       1.0          0.00
+   2026-06-01       CW              PARM-ANM-10 Auvik Performance Add On     1      16.0        128.02
+   2026-06-01       CW   PARM-ANM-10 Auvik Performance Add On -- Overage     1       0.0          0.00
+   2026-06-01       CW             PARM-ANM-100 Auvik Performance Add On     1      22.0        105.16
+   2026-06-01       CW  PARM-ANM-100 Auvik Performance Add On -- Overage     1     -11.0          0.00
+   2026-06-01       CW             PARM-ANM-750 Auvik Performance Add On     1     500.0       1385.00
+   2026-06-01       CW  PARM-ANM-750 Auvik Performance Add On -- Overage     1      -6.0          0.00
+   2026-06-01       CW         PRM-ANM-40 Auvik Performance -- Committed     1      42.0        648.48
+   2026-06-01       CW           PRM-ANM-40 Auvik Performance -- Overage     1       8.0        123.52
+   2026-06-01       CW                        Performance Add-On - Promo     1      65.0          0.00
+   2026-06-01       CW                        RM - ASM - 250 - Committed     1     270.0        283.50
+   2026-06-01       CW                          RM - ASM - 250 - Overage     1     -33.0          0.00
+   2026-06-01       CW                          Usage - Billable Devices     1      48.0        504.00
+   2026-07-01      CMS                                    ANM Essentials    11    2853.0      18757.11
+   2026-07-01      CMS                        ANM Essentials - Evergreen    93   14047.0      91736.88
+   2026-07-01      CMS                          ANM Essentials Evergreen    75    3281.0      38558.41
+   2026-07-01      CMS                  ANM Full Performance - Evergreen     1     500.0       3703.86
+   2026-07-01      CMS                    ANM Full Performance Evergreen     1     118.0        874.38
+   2026-07-01      CMS                  ANM Performance Add-On Evergreen    19    1586.0       6890.11
+   2026-07-01      CMS                           ANM Performance Add-Ons     8    1015.0       3454.38
+   2026-07-01      CMS               ANM Performance Add-Ons - Evergreen     8     158.0        522.38
+   2026-07-01      CMS                            ANM Performance Add-on     7    -353.0       1334.41
+   2026-07-01      CMS                 Auvik SaaS Management - Evergreen     3     850.0        897.06
+   2026-07-01      CMS                   Auvik SaaS Management Evergreen     3    -666.0          0.00
+   2026-07-01      CMS                COANM-1 Committed Billable Devices     2      80.0        735.20
+   2026-07-01      CMS               COANM-2 Additional Billable Devices     3     141.0       1264.51
+   2026-07-01      CMS                COANM-2 Committed Billable Devices     1     100.0        735.00
+   2026-07-01      CMS            COANM-4 Additional Performance Add-Ons     1       5.0         30.00
+   2026-07-01      CMS                            Continuum Monthly Plan     1     355.0       1980.00
+   2026-07-01      CMS        EPRM-ANM-100 Auvik Essentials -- Committed     3     368.0       2776.20
+   2026-07-01      CMS          EPRM-ANM-100 Auvik Essentials -- Overage     3     172.0       1268.40
+   2026-07-01      CMS       EPRM-ANM-1000 Auvik Essentials -- Committed     1    1000.0       3270.00
+   2026-07-01      CMS         EPRM-ANM-1000 Auvik Essentials -- Overage     1    1285.0       4201.95
+   2026-07-01      CMS        EPRM-ANM-250 Auvik Essentials -- Committed     1     250.0       1680.00
+   2026-07-01      CMS          EPRM-ANM-250 Auvik Essentials -- Overage     1     -81.0          0.00
+   2026-07-01      CMS         EPRM-ANM-40 Auvik Essentials -- Committed     2      80.0        735.20
+   2026-07-01      CMS           EPRM-ANM-40 Auvik Essentials -- Overage     2      93.0        854.67
+   2026-07-01      CMS        EPRM-ANM-500 Auvik Essentials -- Committed     1     500.0       2940.00
+   2026-07-01      CMS          EPRM-ANM-500 Auvik Essentials -- Overage     1      30.0        176.40
+   2026-07-01      CMS         EPRM-ANM-75 Auvik Essentials -- Committed     1      75.0        648.00
+   2026-07-01      CMS           EPRM-ANM-75 Auvik Essentials -- Overage     1      80.0        691.20
+   2026-07-01      CMS                                          Licenses     4     142.0       1155.00
+   2026-07-01      CMS             PARM-ANM-100 Auvik Performance Add On     2      85.0        395.85
+   2026-07-01      CMS  PARM-ANM-100 Auvik Performance Add On -- Overage     2     172.0        903.08
+   2026-07-01      CMS            PARM-ANM-1000 Auvik Performance Add On     1    1000.0       1760.00
+   2026-07-01      CMS PARM-ANM-1000 Auvik Performance Add On -- Overage     1    1241.0       2184.16
+   2026-07-01      CMS   PARM-ANM-40 Auvik Performance Add On -- Overage     1      15.0         93.75
+   2026-07-01      CMS  PARM-ANM-500 Auvik Performance Add On -- Overage     1      25.0         84.00
+   2026-07-01      CMS   PARM-ANM-75 Auvik Performance Add On -- Overage     1      33.0        194.04
+   2026-07-01      CMS                        RM - ASM - 500 - Committed     1     615.0        559.65
+   2026-07-01      CMS                          RM - ASM - 500 - Overage     1    -613.0          0.00
+   2026-07-01      CMS                                  Usage - Licenses     2     -52.0        136.50
+   2026-07-01       CW                                    ANM Essentials    22    4214.0      28414.99
+   2026-07-01       CW                        ANM Essentials - Evergreen   135   28334.0     172341.68
+   2026-07-01       CW                          ANM Essentials Evergreen   129     647.0      42785.07
+   2026-07-01       CW                  ANM Full Performance - Evergreen     6     830.0       8687.18
+   2026-07-01       CW                    ANM Full Performance Evergreen     6     -42.0        966.54
+   2026-07-01       CW                  ANM Performance Add-On Evergreen    37    1565.0       7652.03
+   2026-07-01       CW                           ANM Performance Add-Ons     9    1862.0       5673.86
+   2026-07-01       CW               ANM Performance Add-Ons - Evergreen    38    4054.0      15695.65
+   2026-07-01       CW                            ANM Performance Add-on     7    -382.0       1400.90
+   2026-07-01       CW                             Auvik SaaS Management     4     801.0       1118.33
+   2026-07-01       CW                 Auvik SaaS Management - Evergreen     9    4085.0       3427.00
+   2026-07-01       CW                   Auvik SaaS Management Evergreen     8     995.0        729.66
+   2026-07-01       CW               CWANM-1 Additional Billable Devices     1     106.0        974.14
+   2026-07-01       CW                CWANM-1 Committed Billable Devices     2      80.0        735.20
+   2026-07-01       CW         EPRM-ANM-10 Auvik Essentials -- Committed     1      16.0        191.98
+   2026-07-01       CW           EPRM-ANM-10 Auvik Essentials -- Overage     1       0.0          0.00
+   2026-07-01       CW        EPRM-ANM-100 Auvik Essentials -- Committed     1     144.0        953.28
+   2026-07-01       CW          EPRM-ANM-100 Auvik Essentials -- Overage     1     -98.0          0.00
+   2026-07-01       CW          ERM-ANM-40 Auvik Essentials -- Committed     1      40.0        367.60
+   2026-07-01       CW            ERM-ANM-40 Auvik Essentials -- Overage     1      12.0        110.28
+   2026-07-01       CW          ERM-ANM-75 Auvik Essentials -- Committed     1      75.0        648.38
+   2026-07-01       CW                                    Free of Charge     7      56.0          0.00
+   2026-07-01       CW              PARM-ANM-10 Auvik Performance Add On     1      16.0        128.02
+   2026-07-01       CW   PARM-ANM-10 Auvik Performance Add On -- Overage     1       0.0          0.00
+   2026-07-01       CW             PARM-ANM-100 Auvik Performance Add On     1      22.0        105.16
+   2026-07-01       CW  PARM-ANM-100 Auvik Performance Add On -- Overage     1     -11.0          0.00
+   2026-07-01       CW         PRM-ANM-40 Auvik Performance -- Committed     1      42.0        648.48
+   2026-07-01       CW           PRM-ANM-40 Auvik Performance -- Overage     1       7.0        108.08
+   2026-07-01       CW                        RM - ASM - 250 - Committed     1     270.0        283.50
+   2026-07-01       CW                          RM - ASM - 250 - Overage     1     -18.0          0.00
+   2026-07-01       CW                          Usage - Billable Devices     1      49.0        514.50
+
+ENTITY TOTALS
+BILLING_MONTH MODIFIER    AMOUNT
+   2026-01-01      CMS 213374.82
+   2026-01-01       CW 302177.16
+   2026-02-01      CMS 216695.09
+   2026-02-01       CW 312724.77
+   2026-03-01      CMS 216329.15
+   2026-03-01       CW 307767.85
+   2026-04-01      CMS 217128.40
+   2026-04-01       CW 289217.66
+   2026-05-01      CMS 213993.16
+   2026-05-01       CW 285132.84
+   2026-06-01      CMS 207566.64
+   2026-06-01       CW 289052.66
+   2026-07-01      CMS 198181.74
+   2026-07-01       CW 294661.49
+
+AUDIT CHECKS
+                                        SOURCE_FILE LOAD_STATUS BILLING_MONTH  TOTAL_DATA_ROWS  CW_ROWS  CMS_ROWS  CHARGEABLE_ROWS  ZERO_AMOUNT_ROWS  INGESTED_CW_TOTAL  SUMMARY_CW_TOTAL  CW_TOTAL_DELTA  INGESTED_CMS_TOTAL  SUMMARY_CMS_TOTAL  CMS_TOTAL_DELTA ENTITY_TOTAL_CHECK PERIOD_UNIQUE_CHECK                                                                                                                                                                                                                                      ERROR_MESSAGE
+Connectwise Usage Report - Additional Accounts.xlsx      LOADED    2026-01-01               52       28        24               42                10           13139.17               NaN             NaN            14245.95                NaN              NaN               WARN                WARN WARN: Multiple period pairs found (2): 2026-01-01-2026-01-31; 2026-02-01-2026-02-01 | WARN: Could not validate Invoice Date offset: multiple end/invoice dates. | WARN: Summary tab not found or totals not parsed â€” entity total check skipped.
+             Connectwise usage report February.xlsx      LOADED    2026-01-01              801      483       318              602               199          288563.80         288563.80             0.0           199128.87          199128.87              0.0               PASS                PASS                                                                                                                                                                                                                                               None
+     Connectwise Usage Report February Service.xlsx      LOADED    2026-02-01              837      494       343              640               197          313198.96         313198.96             0.0           216695.09          216695.09              0.0               PASS                PASS                                                                                                                                   WARN: Invoice Date 2026-03-03 is not the first day of the month after End Date 2026-02-28 (expected 2026-03-01).
+      ConnectWise Usage Report - March Service.xlsx      LOADED    2026-03-01              797      473       324              611               186          307767.85         307767.85             0.0           216329.15          216329.15              0.0               PASS                PASS                                                                                                                                                                                                                                               None
+     Connectwise Usage Report for May Invoices.xlsx      LOADED    2026-04-01              783      463       320              603               180          289217.66         289217.66             0.0           217128.40          217128.40              0.0               PASS                PASS                                                                                                                                                                                                                                               None
+      ConnectWise Usage Report - June Invoices.xlsx      LOADED    2026-05-01              769      463       306              585               184          285132.84         285132.84             0.0           213993.16          213993.16              0.0               PASS                PASS                                                                                                                                                                                                                                               None
+                 Connectwise Usage Report July.xlsx      LOADED    2026-06-01              748      460       288              573               175          289052.66         289052.66             0.0           207566.64          207566.64              0.0               PASS                PASS                                                                                                                                                                                                                                               None
+           Usage Report July Usage ConnectWise.xlsx      LOADED    2026-07-01              733      454       279              562               171          294661.49         294661.49             0.0           198181.74          198181.74              0.0               PASS                PASS                                                                                                                                                                                                                                               None
+Wrote C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\outputs\auvik_ingest_usage_all_months.csv
+Wrote C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\outputs\auvik_ingest_audit_all_months.csv
+Loaded 5,316 rows into THIRD_PARTY_RECON_VENDOR_USAGE_PROD (1 chunk(s)).
+Loaded 8 rows into AUVIK_USAGE_FILE_AUDIT.
+
+[Auvik] exit=0  time=11.4s
+
+======================================================================
+[Bitdefender] --all-months
+======================================================================
+Read 1,031 rows from Bitdefender_CW_Royalty Report_01.2026.xlsx.
+Read 1,038 rows from Bitdefender_CW_Royalty Report_02.2026.xlsx.
+Read 1,048 rows from Bitdefender_CW_Royalty Report_03.2026.xlsx.
+Read 1,059 rows from Bitdefender_CW_Royalty Report_04.2026.xlsx.
+Read 1,040 rows from Bitdefender_CW_Royalty Report_05.2026.xlsx.
+Read 1,055 rows from Bitdefender_CW_Royalty Report_06.2026.xlsx.
+Loaded 6,271 raw Bitdefender royalty rows into BITDEFENDER_ROYALTY_REPORT_RAW_PROD.
+Loaded Bitdefender into ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_USAGE_PROD from royalty workbooks in 7.4s.
+
+[Bitdefender] exit=0  time=9.6s
+
+======================================================================
+[ESET] --all-months
+======================================================================
+
+
+STDERR:
+Traceback (most recent call last):
+  File "C:\Users\Nate.Fold\projects\.venv\Lib\site-packages\pandas\io\sql.py", line 2664, in execute
+    cur.execute(sql, *args)
+  File "C:\Users\Nate.Fold\projects\.venv\Lib\site-packages\snowflake\connector\cursor.py", line 1142, in execute
+    Error.errorhandler_wrapper(self.connection, self, error_class, errvalue)
+  File "C:\Users\Nate.Fold\projects\.venv\Lib\site-packages\snowflake\connector\errors.py", line 298, in errorhandler_wrapper
+    handed_over = Error.hand_to_other_handler(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nate.Fold\projects\.venv\Lib\site-packages\snowflake\connector\errors.py", line 354, in hand_to_other_handler
+    cursor.errorhandler(connection, cursor, error_class, error_value)
+  File "C:\Users\Nate.Fold\projects\.venv\Lib\site-packages\snowflake\connector\errors.py", line 229, in default_errorhandler
+    raise error_class(
+snowflake.connector.errors.ProgrammingError: 002003 (42S02): SQL compilation error:
+Object 'ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES' does not exist or not authorized.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\scripts\ingestion\ESET_Vendor_Usage_Ingestion_Prod.py", line 794, in <module>
+    main()
+  File "C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\scripts\ingestion\ESET_Vendor_Usage_Ingestion_Prod.py", line 696, in main
+    partner_rates, parent_rates = load_invoice_rates(invoice_conn)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\scripts\ingestion\ESET_Vendor_Usage_Ingestion_Prod.py", line 240, in load_invoice_rates
+    invoice_df = pd.read_sql(query, conn)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nate.Fold\projects\.venv\Lib\site-packages\pandas\io\sql.py", line 708, in read_sql
+    return pandas_sql.read_query(
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nate.Fold\projects\.venv\Lib\site-packages\pandas\io\sql.py", line 2728, in read_query
+    cursor = self.execute(sql, params)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nate.Fold\projects\.venv\Lib\site-packages\pandas\io\sql.py", line 2676, in execute
+    raise ex from exc
+pandas.errors.DatabaseError: Execution failed on sql '
+    SELECT BILLING_MONTH, PARTNER, VENDOR_PRODUCT_SKU, UNIT_PRICE
+    FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES
+    WHERE VENDOR ILIKE '%eset%'
+      AND UNIT_PRICE IS NOT NULL
+    ': 002003 (42S02): SQL compilation error:
+Object 'ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES' does not exist or not authorized.
+
+[ESET] exit=1  time=4.2s
+
+======================================================================
+[Exium] --all-months
+======================================================================
+Processing 2026-01...
+  Connectwise-Billing_Report_January-2026.csv: raw=619, chargeable=322, non_chargeable=297, partners=60, amount=$40,266.25
+Processing 2026-02...
+  Connectwise-Billing_Report_February-2026.csv: raw=634, chargeable=328, non_chargeable=306, partners=60, amount=$41,064.50
+Processing 2026-03...
+  Billing Report March-2026-lat.csv: raw=606, chargeable=330, non_chargeable=276, partners=62, amount=$42,048.25
+Processing 2026-04...
+  Billing Report April-2026-lat.csv: raw=597, chargeable=319, non_chargeable=278, partners=58, amount=$35,818.75
+Processing 2026-05...
+  Connectwise-Billing_Report_May-2026.csv: raw=605, chargeable=332, non_chargeable=273, partners=57, amount=$37,313.25
+Processing 2026-06...
+  Connectwise-Billing_Report_June-2026.csv: raw=617, chargeable=337, non_chargeable=280, partners=56, amount=$34,936.00
+Processing 2026-07...
+  Connectwise-Billing_Report_July-2026.csv: raw=621, chargeable=342, non_chargeable=279, partners=55, amount=$35,534.50
+Loaded 97 rows for 2026-01 into THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+Loaded 97 rows for 2026-02 into THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+Loaded 99 rows for 2026-03 into THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+Loaded 88 rows for 2026-04 into THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+Loaded 91 rows for 2026-05 into THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+Loaded 92 rows for 2026-06 into THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+Loaded 91 rows for 2026-07 into THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+
+[Exium] exit=0  time=20.2s
+
+======================================================================
+[KeepIT] --all-months
+======================================================================
+[2026-01-01] MAIN Connectwise-Jan26 Summary.xlsx: rows=7,326, quantity=336,269.00, amount=222,606.65
+[2026-01-01] PROMO Takeout invoice January- Summary.xlsx: rows=386, quantity=395,604.00, amount=253,941.00
+[2026-01-01] TAKEOUT Takeout invoice for post 3rd yr MSPs - January- Summary.xlsx: rows=8, quantity=28,583.00, amount=22,992.00
+[2026-02-01] MAIN Connectwise-Febr26 Summary.xlsx: rows=7,558, quantity=343,122.00, amount=225,327.80
+[2026-02-01] TAKEOUT Invoice_332089.pdf: rows=7, quantity=395,271.00, amount=276,939.25
+[2026-03-01] MAIN connectwise-Main 2026-03 Summary.xlsx: rows=7,539, quantity=324,862.00, amount=213,883.00
+[2026-03-01] TAKEOUT Invoice_349958.pdf: rows=7, quantity=371,374.00, amount=287,042.10
+[2026-04-01] MAIN connectwise-summary 2026-04 -Main.xlsx: rows=7,724, quantity=343,035.00, amount=318,891.50
+[2026-04-01] TAKEOUT Invoice_380192.pdf: rows=7, quantity=410,475.00, amount=309,023.05
+[2026-05-01] MAIN Summary Main - connectwise-2026-05.xlsx: rows=7,885, quantity=351,344.00, amount=344,448.75
+[2026-05-01] TAKEOUT Invoice_407230.pdf: rows=7, quantity=414,400.00, amount=312,318.35
+[2026-06-01] MAIN Summary Main - connectwise-2026-06.xlsx: rows=8,130, quantity=372,491.00, amount=363,518.00
+[2026-06-01] TAKEOUT Invoice_424740.pdf: rows=7, quantity=424,741.00, amount=329,030.90
+[2026-07-01] MAIN Summary Main - connectwise-2026-07.xlsx: rows=8,460, quantity=396,716.00, amount=381,437.25
+[2026-07-01] PROMO Summary-connectwise-promo-partners-2026-07.xlsx: rows=441, quantity=462,768.00, amount=295,629.85
+[2026-07-01] TAKEOUT Takeout Invoice Post year 3 - July 2026.xlsx: rows=20, quantity=34,947.00, amount=34,368.50
+Wrote source scan: C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\outputs\keepit_source_scan_20260824_121544.csv
+Wrote usage audit: C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\outputs\keepit_usage_ingest_audit_20260824_121544.csv
+Loaded 5,849 rows for ['2026-01-01', '2026-02-01', '2026-03-01', '2026-04-01', '2026-05-01', '2026-06-01', '2026-07-01'] into ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_USAGE_PROD in 1 chunk(s).
+
+[KeepIT] exit=0  time=22.7s
+
+======================================================================
+[Proofpoint] --all-months
+======================================================================
+[2026-01] Connectwise APAC.xlsx sheet='Connectwise APAC': rows=96, quantity=3,281.00, amount=5,208.98
+[2026-01] ConnectWise, LLC.xlsx sheet='ConnectWise, LLC': rows=7,779, quantity=369,083.00, amount=561,930.09
+SKIP Zuora Usage.xlsx: only 0/16 expected headers found on row 16 (threshold=12).
+[2026-02] Connectwise APAC.xlsx sheet='Connectwise APAC': rows=96, quantity=3,315.00, amount=5,261.32
+[2026-02] ConnectWise, LLC.xlsx sheet='ConnectWise, LLC': rows=8,089, quantity=377,997.00, amount=579,655.40
+SKIP Proofpoint Issue Partners - FEB 2026.xlsx: only 0/16 expected headers found on row 16 (threshold=12).
+SKIP Proofpoint Zuora Usage FEB 2026.xlsx: only 0/16 expected headers found on row 16 (threshold=12).
+[2026-03] Connectwise APAC.xlsx sheet='Connectwise APAC': rows=94, quantity=3,321.00, amount=5,267.18
+[2026-03] ConnectWise, LLC.xlsx sheet='ConnectWise, LLC': rows=8,323, quantity=384,789.00, amount=592,452.08
+SKIP Zuora Usage.xlsx: only 0/16 expected headers found on row 16 (threshold=12).
+[2026-04] Connectwise APAC.xlsx sheet='Connectwise APAC': rows=90, quantity=3,330.00, amount=5,281.86
+[2026-04] ConnectWise, LLC.xlsx sheet='ConnectWise, LLC': rows=8,597, quantity=393,714.00, amount=608,703.45
+SKIP Zuora Usage.xlsx: only 0/16 expected headers found on row 16 (threshold=12).
+[2026-05] Connectwise APAC.xlsx sheet='Connectwise APAC': rows=89, quantity=3,309.00, amount=5,248.68
+[2026-05] ConnectWise, LLC.xlsx sheet='ConnectWise, LLC': rows=8,884, quantity=402,489.00, amount=624,625.79
+SKIP Zuora Usage May'26.xlsx: only 0/16 expected headers found on row 16 (threshold=12).
+[2026-06] Connectwise APAC.xlsx sheet='Connectwise APAC': rows=99, quantity=3,411.00, amount=5,566.35
+[2026-06] ConnectWise, LLC.xlsx sheet='ConnectWise, LLC': rows=9,134, quantity=413,804.00, amount=643,454.93
+SKIP Proofpoint Zoura usage June'26.xlsx: only 0/16 expected headers found on row 16 (threshold=12).
+[2026-07] Connectwise APAC.xlsx sheet='Sheet': rows=99, quantity=3,402.00, amount=5,547.59
+[2026-07] ConnectWise, LLC (1).xlsx sheet='ConnectWise, LLC': rows=9,395, quantity=422,353.00, amount=660,819.59
+[2026-07] ConnectWise, LLC.xlsx sheet='ConnectWise, LLC': rows=9,395, quantity=422,353.00, amount=660,819.59
+SKIP Proofpoint Recon July'26.xlsx: only 0/16 expected headers found on row 16 (threshold=12).
+TOTAL rows=70,259, quantity=3,209,951.00, amount=4,969,842.88
+Wrote audit: C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\outputs\proofpoint_template_ingest_audit_all_months.csv
+Appended 70,259 rows for months ['2026-01-01', '2026-02-01', '2026-03-01', '2026-04-01', '2026-05-01', '2026-06-01', '2026-07-01'] into ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_USAGE_PROD in 1 chunk(s).
+
+[Proofpoint] exit=0  time=20.6s
+
+======================================================================
+[SentinelOne] --all-months
+======================================================================
+Dropped 3,529 partners (rows=10,465) with zero usage across every agent column.
+
+STDERR:
+Traceback (most recent call last):
+  File "C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\scripts\ingestion\SentinelOne_Vendor_Usage_Ingestion_Prod.py", line 648, in <module>
+    main()
+  File "C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\scripts\ingestion\SentinelOne_Vendor_Usage_Ingestion_Prod.py", line 615, in main
+    frames = [parse_month(source_root, m) for m in months]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\scripts\ingestion\SentinelOne_Vendor_Usage_Ingestion_Prod.py", line 467, in parse_month
+    frame = parse_usage_workbook(usage_path)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\scripts\ingestion\SentinelOne_Vendor_Usage_Ingestion_Prod.py", line 442, in parse_usage_workbook
+    rates = load_invoice_rate_map()
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\scripts\ingestion\SentinelOne_Vendor_Usage_Ingestion_Prod.py", line 171, in load_invoice_rate_map
+    raise FileNotFoundError(seed_path)
+FileNotFoundError: C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline\Prod_Pipeline\seeds\sentinelone_sku_invoice_rates.csv
+
+[SentinelOne] exit=1  time=34.9s
+
+======================================================================
+[Webroot] --all-months
+======================================================================
+LOADED: CW MSP 01_JAN_2026 Aggregator Order Details - ConnectWise, Inc. MSP - 2026-01-15  Webroot Customer Service Interface.xlsx rows=1,744 qty=334,613 amount=171,989.28
+LOADED: CW RESELLER 01_JAN_2026 Aggregator Order Details - ConnectWise, Inc. RESELLER - 2026-01-15  Webroot Customer Service Interface.xlsx rows=11 qty=1,823 amount=1,447.93
+LOADED: CW MSP 02_FEB_2026 Aggregator Order Details - ConnectWise, Inc. MSP - 2026-02-15  Webroot Customer Service Interface.xlsx rows=1,739 qty=330,229 amount=169,732.13
+LOADED: CW RESELLER 02_FEB_2026 Aggregator Order Details - ConnectWise, Inc. RESELLER - 2026-02-15  Webroot Customer Service Interface.xlsx rows=11 qty=1,823 amount=1,447.93
+LOADED: CW MSP 03_MAR_2026 Aggregator Order Details - ConnectWise, Inc. MSP - 2026-03-15  Webroot Customer Service Interface.xlsx rows=1,721 qty=321,430 amount=165,339.44
+LOADED: CW RESELLER 03_MAR_2026 Aggregator Order Details - ConnectWise, Inc. RESELLER - 2026-03-15  Webroot Customer Service Interface.xlsx rows=11 qty=1,823 amount=1,447.93
+LOADED: CW MSP 04_APR_2026 Aggregator Order Details - ConnectWise, Inc. MSP - 2026-04-15  Webroot Customer Service Interface.xlsx rows=1,668 qty=299,931 amount=154,449.78
+LOADED: CW RESELLER 04_APR_2026 Aggregator Order Details - ConnectWise, Inc. RESELLER - 2026-04-15  Webroot Customer Service Interface.xlsx rows=10 qty=1,797 amount=1,422.97
+LOADED: CW MSP 05_MAY_2026 Aggregator Order Details - ConnectWise, Inc. MSP - 2026-05-15  Webroot Customer Service Interface.xlsx rows=1,642 qty=283,872 amount=146,101.92
+LOADED: CW RESELLER 05_MAY_2026 Aggregator Order Details - ConnectWise, Inc. RESELLER - 2026-05-15  Webroot Customer Service Interface.xlsx rows=8 qty=1,647 amount=1,286.97
+LOADED: CW MSP 06_JUN_2026 Aggregator Order Details - ConnectWise, Inc. MSP - 2026-06-15  Webroot Customer Service Interface.xlsx rows=1,613 qty=274,915 amount=150,922.85
+LOADED: CW RESELLER 06_JUN_2026 Aggregator Order Details - ConnectWise, Inc. RESELLER - 2026-06-15  Webroot Customer Service Interface.xlsx rows=7 qty=947 amount=789.97
+LOADED: CW MSP 07_JUL_2026 Aggregator Order Details - ConnectWise, Inc. MSP - 2026-07-15  Webroot Customer Service Interface.xlsx rows=1,592 qty=257,747 amount=141,556.00
+LOADED: CW RESELLER 07_JUL_2026 Aggregator Order Details - ConnectWise, Inc. RESELLER - 2026-07-15  Webroot Customer Service Interface.xlsx rows=7 qty=947 amount=789.97
+LOADED: CMS MSP 01_JAN_2026 Aggregator Order Details - Continuum Managed Services LLC MSP - 2026-01-25  Webroot Customer Service Interface.xlsx rows=2,920 qty=348,631 amount=178,684.10
+LOADED: CMS MSP 02_FEB_2026 Aggregator Order Details - Continuum Managed Services LLC MSP - 2026-02-25  Webroot Customer Service Interface.xlsx rows=2,896 qty=343,360 amount=175,951.97
+LOADED: CMS MSP 03_MAR_2026 Aggregator Order Details - Continuum Managed Services LLC MSP - 2026-03-25  Webroot Customer Service Interface.xlsx rows=2,887 qty=332,746 amount=170,480.67
+LOADED: CMS MSP 04_APR_2026 Aggregator Order Details - Continuum Managed Services LLC MSP - 2026-04-25  Webroot Customer Service Interface.xlsx rows=2,833 qty=317,938 amount=162,986.43
+LOADED: CMS MSP 05_MAY_2026 Aggregator Order Details - Continuum Managed Services LLC MSP - 2026-05-25 Webroot Customer Service Interface (1).xlsx rows=2,807 qty=306,071 amount=156,790.25
+LOADED: CMS MSP 06_JUN_2026 Aggregator Order Details - Continuum Managed Services LLC MSP - 2026-06-25  Webroot Customer Service Interface.xlsx rows=2,791 qty=295,575 amount=161,332.53
+SKIPPED_DUPLICATE_CONTENT: CMS MSP 07_JUL_2026 Aggregator Order Details - Continuum Managed Services LLC MSP - 2026-06-25  Webroot Customer Service Interface.xlsx rows=0 qty=0 amount=0.00
+Partner seed rows=1,832 distinct_sf_ids=1,815
+
+LOCAL USAGE CONTROLS
+BILLING_MONTH MODIFIER VENDOR_PRODUCT_SKU  row_count  total_seats  total_amount
+   2026-01-01      CMS                DNS        585      32627.0      17292.31
+   2026-01-01      CMS                GSM       1735     298767.0     155358.84
+   2026-01-01      CMS                SAT        474      17237.0       6032.95
+   2026-01-01       CW                DNS        498      30082.0      15943.46
+   2026-01-01       CW                GSM        767     292764.0     152737.25
+   2026-01-01       CW                SAT        470      13590.0       4756.50
+   2026-02-01      CMS                DNS        579      33931.0      17983.43
+   2026-02-01      CMS                GSM       1725     292167.0     151926.84
+   2026-02-01      CMS                SAT        471      17262.0       6041.70
+   2026-02-01       CW                DNS        498      30057.0      15930.21
+   2026-02-01       CW                GSM        763     288539.0     150540.25
+   2026-02-01       CW                SAT        469      13456.0       4709.60
+   2026-03-01      CMS                DNS        581      33357.0      17679.21
+   2026-03-01      CMS                GSM       1716     282443.0     146870.36
+   2026-03-01      CMS                SAT        472      16946.0       5931.10
+   2026-03-01       CW                DNS        493      29432.0      15598.96
+   2026-03-01       CW                GSM        758     281477.0     146868.01
+   2026-03-01       CW                SAT        464      12344.0       4320.40
+   2026-04-01      CMS                DNS        571      33209.0      17600.77
+   2026-04-01      CMS                GSM       1681     269003.0     139881.56
+   2026-04-01      CMS                SAT        464      15726.0       5504.10
+   2026-04-01       CW                DNS        482      28613.0      15164.89
+   2026-04-01       CW                GSM        728     262524.0     137001.01
+   2026-04-01       CW                SAT        450      10591.0       3706.85
+   2026-05-01      CMS                DNS        567      31474.0      16681.22
+   2026-05-01      CMS                GSM       1661     258824.0     134588.48
+   2026-05-01      CMS                SAT        459      15773.0       5520.55
+   2026-05-01       CW                DNS        478      27535.0      14593.55
+   2026-05-01       CW                GSM        706     247473.0     129116.49
+   2026-05-01       CW                SAT        448      10511.0       3678.85
+   2026-06-01      CMS                DNS        564      30176.0      15993.28
+   2026-06-01      CMS                GSM       1646     249760.0     139865.60
+   2026-06-01      CMS                SAT        459      15639.0       5473.65
+   2026-06-01       CW                DNS        470      27289.0      14463.17
+   2026-06-01       CW                GSM        697     238045.0     133564.85
+   2026-06-01       CW                SAT        441      10528.0       3684.80
+   2026-07-01       CW                DNS        464      24942.0      13219.26
+   2026-07-01       CW                GSM        688     224066.0     125736.61
+   2026-07-01       CW                SAT        436       9686.0       3390.10
+Subtotal parity: PASS for loaded files.
+Loaded 28,078 rows into THIRD_PARTY_RECON_VENDOR_USAGE_PROD.
+Loaded 49 rows into WEBROOT_USAGE_FILE_AUDIT.
+Loaded 1,832 rows into WEBROOT_PARTNER_MAP_SEED.
+
+SNOWFLAKE LOAD PARITY
+BILLING_MONTH MODIFIER VENDOR_PRODUCT_SKU  row_count_delta  total_seats_delta  total_amount_delta
+   2026-01-01      CMS                DNS                0                0.0        0.000000e+00
+   2026-01-01      CMS                GSM                0                0.0        0.000000e+00
+   2026-01-01      CMS                SAT                0                0.0        0.000000e+00
+   2026-01-01       CW                DNS                0                0.0        0.000000e+00
+   2026-01-01       CW                GSM                0                0.0        0.000000e+00
+   2026-01-01       CW                SAT                0                0.0        0.000000e+00
+   2026-02-01      CMS                DNS                0                0.0        0.000000e+00
+   2026-02-01      CMS                GSM                0                0.0        0.000000e+00
+   2026-02-01      CMS                SAT                0                0.0        0.000000e+00
+   2026-02-01       CW                DNS                0                0.0        0.000000e+00
+   2026-02-01       CW                GSM                0                0.0        0.000000e+00
+   2026-02-01       CW                SAT                0                0.0        9.094947e-13
+   2026-03-01      CMS                DNS                0                0.0        0.000000e+00
+   2026-03-01      CMS                GSM                0                0.0        0.000000e+00
+   2026-03-01      CMS                SAT                0                0.0        0.000000e+00
+   2026-03-01       CW                DNS                0                0.0        0.000000e+00
+   2026-03-01       CW                GSM                0                0.0        0.000000e+00
+   2026-03-01       CW                SAT                0                0.0        0.000000e+00
+   2026-04-01      CMS                DNS                0                0.0        0.000000e+00
+   2026-04-01      CMS                GSM                0                0.0        0.000000e+00
+   2026-04-01      CMS                SAT                0                0.0        0.000000e+00
+   2026-04-01       CW                DNS                0                0.0        0.000000e+00
+   2026-04-01       CW                GSM                0                0.0        0.000000e+00
+   2026-04-01       CW                SAT                0                0.0        0.000000e+00
+   2026-05-01      CMS                DNS                0                0.0        0.000000e+00
+   2026-05-01      CMS                GSM                0                0.0        0.000000e+00
+   2026-05-01      CMS                SAT                0                0.0        0.000000e+00
+   2026-05-01       CW                DNS                0                0.0        0.000000e+00
+   2026-05-01       CW                GSM                0                0.0        0.000000e+00
+   2026-05-01       CW                SAT                0                0.0        0.000000e+00
+   2026-06-01      CMS                DNS                0                0.0        0.000000e+00
+   2026-06-01      CMS                GSM                0                0.0        0.000000e+00
+   2026-06-01      CMS                SAT                0                0.0        0.000000e+00
+   2026-06-01       CW                DNS                0                0.0        0.000000e+00
+   2026-06-01       CW                GSM                0                0.0        0.000000e+00
+   2026-06-01       CW                SAT                0                0.0        4.547474e-13
+   2026-07-01       CW                DNS                0                0.0        0.000000e+00
+   2026-07-01       CW                GSM                0                0.0        0.000000e+00
+   2026-07-01       CW                SAT                0                0.0        0.000000e+00
+
+SNOWFLAKE FILE AUDIT
+              load_status  file_count  data_row_count  recomputed_total_seats  recomputed_total_extended_amount  max_total_seats_delta  max_total_extended_amount_delta
+                   LOADED          20           28918               4057865.0                        2114951.02                    0.0                              0.0
+SKIPPED_DUPLICATE_CONTENT           1            2791                295575.0                         161332.53                    0.0                              0.0
+
+[Webroot] exit=0  time=20.2s
+
+======================================================================
+[Invoice] --from 2026-01
+======================================================================
+Fetching invoice files ... 276 files.
+
+VENDOR             ROWS  MONTHS   SKUS  HAS_PRICE    TOTAL_AMOUNT
+--------------------------------------------------------------------
+Acronis           1,189       5     55      1,189 $    2,730,000
+Auvik             4,362       6    153      4,243 $    5,135,341
+Bitdefender          61       4     21          0 $    1,324,721
+ESET                 67       6     13         61 $      496,008
+Exium                29       4      6         29 $      201,796
+KeepIT              113       5      7         90 $    4,036,363
+Proofpoint           61       5     13          5 $    6,077,121
+SentinelOne          28       5      7         25 $    3,375,789
+
+Total rows: 5,910
+
+Recreating ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES (5,910 rows) ...
+  Loaded 5,910 rows in 1 chunk(s).
+Done.
+
+[Invoice] exit=0  time=7.4s

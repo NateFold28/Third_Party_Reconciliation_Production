@@ -1,0 +1,19 @@
+﻿SKU_MATCH_GROUP,VENDOR_INVOICE_SKU,VENDOR_INVOICE_UNIT_PRICE,RATE_SOURCE_MONTH,RATE_SOURCE_INVOICE,NOTES
+CLOUD_FUNNEL,PM-CFL-ND-T1-SA,0.300000,06_JUN_2026,INV128590,Cloud Funnel Data Export (Per Endpoint)
+COMPLETE,S1ES-CMP-EN-T8-SA,1.010000,06_JUN_2026,INV128590,Complete Protection Platform (Per Workstation) - T8 tier
+CONTROL,S1ES-CTL-EN-T9-SA,0.720000,06_JUN_2026,INV128590,Control Protection Platform (Per Workstation) - T9 tier
+CORE,,,,,No invoice line yet - Core is Complete/Control fallback; leave NULL
+DATA_RETENTION_180,PM-RT180-ND-T2-SA,0.270000,06_JUN_2026,INV128590,180 Day Data Retention (Per Endpoint)
+DATA_RETENTION_30,PM-RT30-ND-T2-SA,0.090000,06_JUN_2026,INV128590,30 Day Data Retention (Per Endpoint)
+DATA_RETENTION_365,PM-RT1Y-ND-T2-SA,0.360000,06_JUN_2026,INV128590,365 Day Data Retention (Per Endpoint)
+DATA_RETENTION_90,PM-RT90-ND-T2-SA,0.180000,06_JUN_2026,INV128590,90 Day Data Retention (Per Endpoint)
+FORENSICS,SP-FOR-ND-T1-SA,0.300000,07_JUL_2026,INV130684,RemoteOps Forensics (Per Endpoint). S1 invoices this at $0.30. CW equivalent SKU = SP-RSO-ND-T1-C ($0.60 retail). Same product different naming.
+PURPLE_AI,PR-AIAST-ND-T1-SA,0.500000,06_JUN_2026,INV128590,Purple AI SOC Analyst (Per Endpoint)
+RANGER,SP-RGR-ND-T2-SA,0.380000,06_JUN_2026,INV128590,Singularity Network Discovery (Per Endpoint)
+RANGER_AD,SP-RAD-US-T2-SA,0.550000,06_JUN_2026,INV128590,Ranger AD (Per Endpoint)
+RANGER_INSIGHTS,SP-RGI-ND-T2-SA,0.750000,06_JUN_2026,INV128590,Singularity Vulnerability Management (Per Endpoint)
+REMOTEOPS,,,,,RSO basic scripting is FREE (included in platform). S1 charges for Forensics (SP-FOR-ND-T1-SA) which is the paid tier. RSO-only partners have $0 cost. Partners with Forensics get charged under FORENSICS group.
+SINGULARITY_IDENTITY,S1ES-IDE-EN-T2-SA,0.950000,06_JUN_2026,INV128590,Singularity Identity (Per Endpoint)
+THREAT_INTELLIGENCE,PM-TI-ND-T2-SA,0.880000,06_JUN_2026,INV128590,Singularity Threat Intelligence Product (Per Endpoint)
+WATCHTOWER,SS-WAT-ND-T2-SA,0.460000,06_JUN_2026,INV128590,WatchTower (Per Endpoint)
+XDR_INGEST_14,PM-XIRT14-GB-T2-SA,10.080000,06_JUN_2026,INV128590,Data Ingest 14d Retention with Unlimited Queries (Daily Avg GB)

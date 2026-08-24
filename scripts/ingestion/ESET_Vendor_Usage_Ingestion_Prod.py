@@ -237,7 +237,12 @@ def load_invoice_rates(conn) -> Tuple[Dict[Tuple[str, str, str], float], Dict[Tu
     WHERE VENDOR ILIKE '%eset%'
       AND UNIT_PRICE IS NOT NULL
     """
-    invoice_df = pd.read_sql(query, conn)
+    invoice_df = pd.DataFrame()
+    try:
+        invoice_df = pd.read_sql(query, conn)
+    except Exception as e:
+        print(f"WARNING: could not load ESET invoice rates ({type(e).__name__}: {e}). "
+              "Unit prices will be filled by sql/00b_backfill_invoice_prices.sql.", flush=True)
     partner_rates: Dict[Tuple[str, str, str], float] = {}
     parent_rates: Dict[Tuple[str, str, str], float] = {}
     if invoice_df.empty:
