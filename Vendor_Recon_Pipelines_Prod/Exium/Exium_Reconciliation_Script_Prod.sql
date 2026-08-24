@@ -197,7 +197,11 @@ vendor_cw_skus AS (
         v.sku_match_group,
         ARRAY_AGG(DISTINCT m.cw_sku) WITHIN GROUP (ORDER BY m.cw_sku) AS cw_skus
     FROM vendor_agg v
-    LEFT JOIN (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Exium') m
+    LEFT JOIN (
+        SELECT CW_SKU AS cw_sku, SKU_MATCH_KEY AS sku_match_group,
+               NULL::VARCHAR AS exium_product_family, TRUE AS is_active
+        FROM RECON_SKU_MAP WHERE VENDOR = 'Exium' AND CW_SKU IS NOT NULL
+    ) m
         ON m.sku_match_group = v.sku_match_group
        AND m.cw_sku IS NOT NULL
        AND m.is_active = TRUE

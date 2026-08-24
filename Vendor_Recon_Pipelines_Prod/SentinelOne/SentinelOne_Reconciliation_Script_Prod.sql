@@ -181,13 +181,13 @@ partner_map_monthly AS (
             s.sf_id
         ) AS sf_id,
         s.zuora_name
-    FROM SENTINELONE_PARTNER_MAP_SEED s
+    FROM RECON_PARTNER_MAP s
     LEFT JOIN merged_account_resolver mr
         ON mr.old_sf_id = s.sf_id
     WHERE s.sf_id IS NOT NULL
-      AND s.BILLING_MONTH IS NOT NULL
+      AND s.PARTNER_NAME IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY s.BILLING_MONTH::DATE, UPPER(TRIM(s.VENDOR_PARTNER_NAME))
+        PARTITION BY s.PARTNER_NAME::DATE, UPPER(TRIM(s.PARTNER_NAME))
         ORDER BY s.zuora_name DESC NULLS LAST
     ) = 1
 ),

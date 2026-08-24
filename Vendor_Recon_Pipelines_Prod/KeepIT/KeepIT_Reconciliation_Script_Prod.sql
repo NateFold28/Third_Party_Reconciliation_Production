@@ -1,4 +1,4 @@
- KeepIT final reconciliation.
+-- KeepIT final reconciliation.
 -- Purpose: create canonical detail and summary outputs for app/reporting use.
 
 USE ROLE DEVELOPER;
