@@ -105,23 +105,42 @@ run_app.bat
 
 ## Verified metrics (2026-08-23, post-KeepIT-fix)
 
-- `THIRD_PARTY_RECON_OUTPUT_PROD`: **101,938 rows / 9 vendors LIVE / no fallback**
-- Clear: **55,135 rows (54.1% overall)**
-- Total exception dollar impact: **~$47.8M** (was $189M before KeepIT fix)
+- `THIRD_PARTY_RECON_OUTPUT_PROD`: **101,938 rows / 9 vendors LIVE / no fallback / 12 EXCEPTION_TYPE buckets / 45 cols** (matches app parity contract).
+- `THIRD_PARTY_RECON_SUMMARY`: 69 rows, per-vendor row parity 100% vs OUTPUT_PROD (verified 2026-08-23 via `scripts/_verify_app_wiring.py`).
+- `DATA_LOAD_STATUS`: 60 LOADED / 8 NOT_LOADED / 1 PARTIAL (per vendor-month).
+- Overall clear rate: **54.1%** (55,135 / 101,938).
+- Exception dollar mass (vendor_amount on non-Clear rows): **$8.4M total**.
 
 ### Per-vendor clear rate + exception $ impact
 
-| Vendor | Rows | Clear % | Exception $ | Notes |
+| Vendor | Rows | Clear % | Exception $ (VENDOR_AMOUNT) | Notes |
 |---|---:|---:|---:|---|
-| Proofpoint | 5,459 | 96.1% | $1.4M | production-ready |
-| Bitdefender | 3,385 | 86.7% | $1.8M | production-ready |
-| Acronis | 17,634 | 82.5% | $3.8M | production-ready |
-| SentinelOne | 19,661 | 78.4% | $28.5M | large $ needs review |
-| Exium | 791 | 71.6% | $0.5M | small vendor |
-| Auvik | 3,503 | 61.7% | $3.2M | fine-tune |
-| Webroot | 16,246 | 42.0% | $2.6M | wired but needs tuning |
-| KeepIT | 21,787 | 28.4% | $6.0M | recovered from $182M phantom |
-| ESET | 13,472 | 9.3% | $0 | needs work (zero-dollar exception cluster) |
+| Proofpoint | 5,459 | 96.1% | $38K | production-ready |
+| Bitdefender | 3,385 | 86.7% | $55K | production-ready |
+| Acronis | 17,634 | 82.5% | $509K | small tuning left |
+| SentinelOne | 19,661 | 78.4% | $1.67M | API-usage bucket dominates |
+| Exium | 791 | 71.6% | $86K | small vendor |
+| Auvik | 3,503 | 61.7% | $1.55M | SKU map gap |
+| Webroot | 16,246 | 42.0% | $2.32M | pricing calibration |
+| KeepIT | 21,787 | 28.4% | $1.78M | Unmapped Partner + Vendor-No-CW |
+| ESET | 13,472 | 9.3% | $0 | zero-$ cluster / data flow |
+
+### EXCEPTION_TYPE distribution
+
+| Bucket | Rows | Vendor $ |
+|---|---:|---:|
+| Clear | 55,135 | $21.1M |
+| CW Billing, No Vendor Billing | 14,510 | $0 |
+| Known Discount / Bundle | 11,065 | $715K |
+| Vendor Billing, No CW Billing | 7,208 | $2.60M |
+| API Usage Recorded, No CW Billing | 5,651 | $1.65M |
+| Duplicated CW Invoice | 4,734 | $580K |
+| Vendor Billing, Insufficient CW Billing | 2,964 | $1.81M |
+| Unmapped Partner | 351 | $573K |
+| Marketplace Billing Delay | 224 | $40K |
+| Vendor SKU, No CW SKU | 90 | $40K |
+| Other Issue | 4 | $0 |
+| CW SKU, No Vendor SKU | 2 | $0 |
 
 ## Fine-tuning priorities (2026-08-24 backlog)
 
