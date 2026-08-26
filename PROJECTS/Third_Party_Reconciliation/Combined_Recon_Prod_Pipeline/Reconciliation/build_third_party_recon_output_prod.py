@@ -1,11 +1,11 @@
 """
-Build THIRD_PARTY_RECON_OUTPUT_PROD and THIRD_PARTY_RECON_SUMMARY.
+Build THIRD_PARTY_RECON_OUTPUT_PROD and THIRD_PARTY_RECON_SUMMARY_PROD.
 
 Reads from THIRD_PARTY_RECON_DETAIL_PROD (all vendors, canonical OUTCOME_FLAG)
 and produces:
 
   THIRD_PARTY_RECON_OUTPUT_PROD   - full detail + EXCEPTION_TYPE + EST_DOLLAR_IMPACT
-  THIRD_PARTY_RECON_SUMMARY       - per-vendor-month KPI rollup for the app
+  THIRD_PARTY_RECON_SUMMARY_PROD  - per-vendor-month KPI rollup for the app
 
 Canonical EXCEPTION_TYPE taxonomy (mutually exclusive buckets, priority order):
   1.  Unmapped Partner                     — no valid SF_ID
@@ -15,7 +15,7 @@ Canonical EXCEPTION_TYPE taxonomy (mutually exclusive buckets, priority order):
   4.  Known Discount / Bundle              — HAS_DISCOUNT=TRUE AND amounts DON'T already reconcile
                                              (Amit-defined Clear Internal: variance is intentional bundle/discount)
   5.  Marketplace Billing Delay            — prior-period timing artifact
-  6.  API Usage Recorded, No CW Billing    — API qty > 0 at partner-month grain, CW = 0
+  6.  API Usage, Insufficient CW Billing   — API qty > 0 and CW billing is missing or materially short
   7.  Vendor SKU, No CW SKU                — vendor product has no CW rebill SKU
   8.  CW SKU, No Vendor SKU                — CW subscription has no vendor counterpart
   9.  Vendor Billing, No CW Billing        — vendor_amount > 0, cw_amount = 0
@@ -117,6 +117,37 @@ CASE
          OR OUTCOME_FLAG IN ('Unmapped Partner', 'Unmapped SKU', 'PARTNER_MAPPING_REQUIRED')
     THEN 'Unmapped Partner'
 
+    -- ESET is quantity-first: vendor source files carry seats, while dollars
+    -- come from a contract-cost overlay. Preserve ESET's quantity outcome at
+    -- the app boundary instead of letting amount-first rules relabel rows.
+    WHEN VENDOR = 'ESET' AND OUTCOME_FLAG = 'Clear'
+    THEN 'Clear'
+    WHEN VENDOR = 'ESET' AND OUTCOME_FLAG = 'Vendor Billing, No CW Billing'
+    THEN 'Vendor Billing, No CW Billing'
+    WHEN VENDOR = 'ESET' AND OUTCOME_FLAG = 'Vendor Billing, Insufficient CW Billing'
+    THEN 'Vendor Billing, Insufficient CW Billing'
+    WHEN VENDOR = 'ESET' AND OUTCOME_FLAG = 'CW Billing, No Vendor Billing'
+    THEN 'CW Billing, No Vendor Billing'
+
+    -- SentinelOne add-ons are invoice-backed catalog gaps. Their usage rows can
+    -- carry zero vendor amount because the cost rate is invoice-derived, and
+    -- partner-month rollups can otherwise clear them against unrelated SKUs.
+    WHEN VENDOR = 'SentinelOne'
+         AND COALESCE(VENDOR_QUANTITY, 0) > 0
+         AND COALESCE(TOTAL_BILLING_QUANTITY, 0) = 0
+         AND (
+             UPPER(COALESCE(SKU_MATCH_GROUP, '')) IN (
+                 'S1_PURPLE_AI', 'PURPLE_AI',
+                 'S1_RANGER_INS', 'S1_RANGER_INSIGHTS', 'RANGER_INSIGHTS',
+                 'S1_RANGER_AD', 'RANGER_AD',
+                 'WATCHTOWER'
+             )
+             OR UPPER(COALESCE(VENDOR_PRODUCT, '')) IN (
+                 'PURPLE AI', 'RANGER INSIGHTS', 'RANGER AD', 'WATCHTOWER'
+             )
+         )
+    THEN 'Vendor SKU, No CW SKU'
+
     -- ── 2. Clear (checked BEFORE Discount) ─────────────────────────────────
     -- CW amount >= vendor amount is always "Clear" regardless of bundle flag.
     -- The Known Discount / Bundle bucket only exists to EXPLAIN variance — if
@@ -151,13 +182,14 @@ CASE
     THEN 'Clear'
 
     -- ── 3. Duplicated CW Invoice ───────────────────────────────────────────
-    -- The pipeline-set DUPLICATE_BILLING_FLAG is the authoritative signal.
-    -- Do NOT use the raw ZUORA_AMOUNT > 0 AND MARKETPLACE_AMOUNT > 0 check:
-    -- many vendors legitimately bill through both channels for different SKUs
-    -- (S1 license + MDR bundle, Webroot license + RMM bundle). Using amount-based
-    -- logic would incorrectly classify hundreds of valid rows as duplicates.
-    WHEN COALESCE(DUPLICATE_BILLING_FLAG, 'FALSE') = 'TRUE'
-         OR OUTCOME_FLAG IN ('Duplicated CW Invoice', 'Duplicate Billing', 'DUPLICATE_BILLING')
+    -- Require positive overlap in two CW billing sources before labeling a
+    -- duplicate invoice. Vendor pipelines can still detect candidates, but
+    -- secondary validation lanes (for example KeepIT CARR checks) should not
+    -- become duplicate-billing exceptions without positive source dollars.
+    WHEN (COALESCE(DUPLICATE_BILLING_FLAG, 'FALSE') = 'TRUE'
+          OR OUTCOME_FLAG IN ('Duplicated CW Invoice', 'Duplicate Billing', 'DUPLICATE_BILLING'))
+         AND COALESCE(ZUORA_AMOUNT, 0) > 0
+         AND COALESCE(MARKETPLACE_AMOUNT, 0) > 0
     THEN 'Duplicated CW Invoice'
 
     -- ── 4. Known Discount / Bundle (Amit "Clear Internal") ─────────────────
@@ -196,11 +228,11 @@ CASE
     )
     THEN 'Marketplace Billing Delay'
 
-    -- ── 6. API Usage Recorded, No CW Billing ──────────────────────────────
-    -- TRT / API confirms active usage but THIS ROW has no CW billing.
-    -- Check at row level: if API_QUANTITY > 0 (vendor has API activity),
-    -- and this specific product row has ZERO CW billing, then it's an API-driven
-    -- gap (vendor's product is active but CW hasn't billed it yet).
+    -- ── 6. API Usage, Insufficient CW Billing ─────────────────────────────
+    -- TRT / API confirms active usage and CW billing is either missing or
+    -- materially short at this row's account/product grain. This intentionally
+    -- captures both true no-bill rows and insufficient-bill rows where the API
+    -- proves usage exists.
     --
     -- NOTE: API_QUANTITY is backfilled to all rows for a partner-month, so
     -- a partner-month with API activity on Product A will have that same
@@ -211,15 +243,21 @@ CASE
     -- so it falls to Rule 9 (Vendor Billing / CW Billing mismatch).
     WHEN (COALESCE(VENDOR_QUANTITY, 0) > 0
           AND COALESCE(API_QUANTITY, 0) > 0
-          AND COALESCE(TOTAL_BILLING_QUANTITY, 0) = 0
-          AND COALESCE(TOTAL_BILLING_AMOUNT, 0) = 0)
+          AND (
+              COALESCE(TOTAL_BILLING_QUANTITY, 0) <= 0
+              OR COALESCE(VENDOR_QUANTITY, 0) > COALESCE(TOTAL_BILLING_QUANTITY, 0) * 1.25
+              OR COALESCE(TOTAL_BILLING_AMOUNT, 0) <= 0
+              OR (COALESCE(VENDOR_AMOUNT, 0) > 0
+                  AND COALESCE(VENDOR_AMOUNT, 0) > COALESCE(TOTAL_BILLING_AMOUNT, 0) * 1.25)
+          ))
          OR OUTCOME_FLAG IN (
+             'API Usage, Insufficient CW Billing',
              'API Usage Recorded, No CW Billing',
              'Missing CW Billing - API Confirmed',
              'TRT_VENDOR_USAGE_NOT_BILLED',
              'STRUCTURAL_VENDOR_ONLY_TRT_CONFIRMED'
          )
-    THEN 'API Usage Recorded, No CW Billing'
+    THEN 'API Usage, Insufficient CW Billing'
 
     -- ── 7. Vendor SKU, No CW SKU ──────────────────────────────────────────
     -- Vendor is charging CW for a product that has no CW rebill SKU.
@@ -255,8 +293,8 @@ CASE
     -- ── 11. Vendor Billing, Insufficient CW Billing ───────────────────────
     -- Vendor charges CW materially more than CW bills the partner (>25% gap).
     -- Both sides must have real billing — zero on either side is handled above.
-    -- Guaranteed mutually exclusive with "API Usage Recorded, No CW Billing"
-    -- because that rule requires partner-month CW = 0.
+    -- Guaranteed mutually exclusive with "API Usage, Insufficient CW Billing"
+    -- because that rule fires first when API/TRT confirms the usage signal.
     WHEN COALESCE(VENDOR_AMOUNT, 0) > 0
          AND COALESCE(TOTAL_BILLING_AMOUNT, 0) > 0
          AND COALESCE(VENDOR_AMOUNT, 0) > COALESCE(TOTAL_BILLING_AMOUNT, 0) * 1.25
@@ -315,7 +353,7 @@ CASE EXCEPTION_TYPE
     WHEN 'Known Discount / Bundle'                      THEN 'No action - intentional discount or bundle pricing'
     WHEN 'Vendor SKU, No CW SKU'                        THEN 'Product / Catalog: add a CW rebill SKU for this vendor product'
     WHEN 'CW SKU, No Vendor SKU'                        THEN 'Ops: verify whether this CW rebill SKU should still be active'
-    WHEN 'API Usage Recorded, No CW Billing'            THEN 'Finance: create billing for TRT-confirmed endpoint usage'
+    WHEN 'API Usage, Insufficient CW Billing'           THEN 'Finance: close billing gap for API-confirmed usage'
     WHEN 'Vendor Billing, No CW Billing'                THEN 'Finance / Sales: onboard billing - vendor charged CW with no CW rebill to partner'
     WHEN 'CW Billing, No Vendor Billing'                THEN 'Ops: verify vendor-side attribution or retire the stale CW subscription'
     WHEN 'Vendor Billing, Insufficient CW Billing'      THEN 'Finance / Sales: close billing gap - vendor materially ahead of CW'
@@ -326,7 +364,7 @@ END
 FINANCE_QUEUE_BUCKETS_SQL = (
     "'Vendor Billing, No CW Billing', "
     "'Vendor Billing, Insufficient CW Billing', "
-    "'API Usage Recorded, No CW Billing', "
+    "'API Usage, Insufficient CW Billing', "
     "'Vendor SKU, No CW SKU'"
 )
 OPS_QUEUE_BUCKETS_SQL = (
@@ -406,7 +444,11 @@ WITH filtered AS (
 -- per-row classification / label / group-id work out of the Streamlit
 -- app and into Snowflake so tab / filter changes stay O(1) in Python.
 SELECT
-    *,
+    VENDOR,
+    BILLING_MONTH,
+    INV_ID,
+    SF_ID,
+    * EXCLUDE (VENDOR, BILLING_MONTH, INV_ID, SF_ID),
     {ACTION_NEEDED_CASE}                                                                AS ACTION_NEEDED,
     CASE WHEN EXCEPTION_TYPE IN ({FINANCE_QUEUE_BUCKETS_SQL}) THEN TRUE ELSE FALSE END  AS IS_LEAKAGE,
     CASE WHEN EXCEPTION_TYPE IN ({FINANCE_QUEUE_BUCKETS_SQL}) THEN TRUE ELSE FALSE END  AS IS_FINANCE_QUEUE,
@@ -427,51 +469,116 @@ FROM classified;
 """
     run_sql(conn, output_sql, "THIRD_PARTY_RECON_OUTPUT_PROD")
 
-    # ── Build THIRD_PARTY_RECON_SUMMARY ───────────────────────────────────
+    # ── Build THIRD_PARTY_RECON_SUMMARY_PROD ────────────────────────────────
     # App reads this table for the per-vendor-month KPI tiles.
     # PERFECT_MATCH_ROWS = rows classified as 'Clear'.
+    #
+    # DATA_LOAD_STATUS (added 2026-08-21):
+    #   LOADED       — usage row count for this (vendor, month) is at least 30% of
+    #                  that vendor's median row count across all months present.
+    #   PARTIAL      — usage rows exist but are < 30% of the vendor median (i.e.,
+    #                  the month has only a small fraction of expected data).
+    #   NOT_LOADED   — vendor usage has zero rows for this (vendor, month), which
+    #                  usually means the source files were not ingested yet.
+    # The app should render "No Data Loaded" / "Partial Data" tiles for PARTIAL /
+    # NOT_LOADED months instead of reporting a poor reconciliation rate.
+    #
+    # Grid: FULL OUTER JOIN OUTPUT_PROD aggregates with USAGE_PROD aggregates so
+    # months where ingestion happened but OUTPUT_PROD dropped everything (or
+    # vice versa) still surface a row.
     summary_sql = f"""{USE}
-CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SUMMARY AS
+CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SUMMARY_PROD AS
+WITH output_agg AS (
+    SELECT
+        VENDOR,
+        BILLING_MONTH,
+        COUNT(*)                                                                    AS TOTAL_ROWS,
+        COUNT_IF(EXCEPTION_TYPE = 'Clear')                                          AS PERFECT_MATCH_ROWS,
+        SUM(COALESCE(VENDOR_QUANTITY, 0))                                           AS TOTAL_VENDOR_SEATS,
+        SUM(COALESCE(TOTAL_BILLING_QUANTITY, 0))                                    AS TOTAL_BILLING_SEATS,
+        ROUND(SUM(COALESCE(VENDOR_AMOUNT, 0)), 2)                                   AS TOTAL_VENDOR_AMOUNT,
+        ROUND(SUM(COALESCE(TOTAL_BILLING_AMOUNT, 0)), 2)                            AS TOTAL_BILLING_AMOUNT,
+        COUNT_IF(EXCEPTION_TYPE = 'Unmapped Partner')                               AS UNMAPPED_PARTNER_ROWS,
+        COUNT_IF(EXCEPTION_TYPE = 'Duplicated CW Invoice')                          AS DUPLICATE_INVOICE_ROWS,
+        COUNT_IF(EXCEPTION_TYPE = 'Known Discount / Bundle')                        AS KNOWN_DISCOUNT_ROWS,
+        COUNT_IF(EXCEPTION_TYPE = 'Marketplace Billing Delay')                      AS TIMING_ROWS,
+        COUNT_IF(EXCEPTION_TYPE = 'API Usage, Insufficient CW Billing')             AS API_NO_CW_ROWS,
+        COUNT_IF(EXCEPTION_TYPE = 'Vendor SKU, No CW SKU')                          AS VENDOR_SKU_NO_CW_ROWS,
+        COUNT_IF(EXCEPTION_TYPE = 'CW SKU, No Vendor SKU')                          AS CW_SKU_NO_VENDOR_ROWS,
+        COUNT_IF(EXCEPTION_TYPE = 'Vendor Billing, No CW Billing')                  AS VENDOR_NO_CW_ROWS,
+        COUNT_IF(EXCEPTION_TYPE = 'CW Billing, No Vendor Billing')                  AS CW_NO_VENDOR_ROWS,
+        COUNT_IF(EXCEPTION_TYPE = 'Vendor Billing, Insufficient CW Billing')        AS VENDOR_INSUFF_CW_ROWS,
+        COUNT_IF(EXCEPTION_TYPE = 'Other Issue')                                    AS OTHER_ISSUE_ROWS,
+        ROUND(SUM(CASE WHEN EXCEPTION_TYPE IN (
+                    'Vendor Billing, No CW Billing',
+                    'Vendor Billing, Insufficient CW Billing',
+                    'API Usage, Insufficient CW Billing',
+                    'Vendor SKU, No CW SKU')
+                  THEN ABS(COALESCE(AMOUNT_DELTA, 0)) ELSE 0 END), 2)               AS TOTAL_LEAKAGE_AMOUNT
+    FROM THIRD_PARTY_RECON_OUTPUT_PROD
+    GROUP BY VENDOR, BILLING_MONTH
+),
+usage_agg AS (
+    SELECT VENDOR, BILLING_MONTH::DATE AS BILLING_MONTH, COUNT(*) AS USAGE_ROW_COUNT
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+    GROUP BY VENDOR, BILLING_MONTH
+),
+vendor_medians AS (
+    SELECT VENDOR, MEDIAN(USAGE_ROW_COUNT) AS MEDIAN_USAGE_ROWS
+    FROM usage_agg
+    WHERE USAGE_ROW_COUNT > 0
+    GROUP BY VENDOR
+),
+grid AS (
+    SELECT VENDOR, BILLING_MONTH FROM output_agg
+    UNION
+    SELECT VENDOR, BILLING_MONTH FROM usage_agg
+)
 SELECT
-    VENDOR,
-    BILLING_MONTH,
-    COUNT(*)                                                                          AS TOTAL_ROWS,
-    COUNT_IF(EXCEPTION_TYPE = 'Clear')                                                AS PERFECT_MATCH_ROWS,
-    SUM(COALESCE(VENDOR_QUANTITY, 0))                                                 AS TOTAL_VENDOR_SEATS,
-    SUM(COALESCE(TOTAL_BILLING_QUANTITY, 0))                                          AS TOTAL_BILLING_SEATS,
-    ROUND(SUM(COALESCE(VENDOR_AMOUNT, 0)), 2)                                         AS TOTAL_VENDOR_AMOUNT,
-    ROUND(SUM(COALESCE(TOTAL_BILLING_AMOUNT, 0)), 2)                                  AS TOTAL_BILLING_AMOUNT,
-    ROUND(COUNT_IF(EXCEPTION_TYPE = 'Clear') * 100.0 / NULLIF(COUNT(*), 0), 1)       AS CLEAR_PCT,
-    -- Exception counts for drill-down reference
-    COUNT_IF(EXCEPTION_TYPE = 'Unmapped Partner')                                     AS UNMAPPED_PARTNER_ROWS,
-    COUNT_IF(EXCEPTION_TYPE = 'Duplicated CW Invoice')                                AS DUPLICATE_INVOICE_ROWS,
-    COUNT_IF(EXCEPTION_TYPE = 'Known Discount / Bundle')                              AS KNOWN_DISCOUNT_ROWS,
-    COUNT_IF(EXCEPTION_TYPE = 'Marketplace Billing Delay')                            AS TIMING_ROWS,
-    COUNT_IF(EXCEPTION_TYPE = 'API Usage Recorded, No CW Billing')                    AS API_NO_CW_ROWS,
-    COUNT_IF(EXCEPTION_TYPE = 'Vendor SKU, No CW SKU')                                AS VENDOR_SKU_NO_CW_ROWS,
-    COUNT_IF(EXCEPTION_TYPE = 'CW SKU, No Vendor SKU')                                AS CW_SKU_NO_VENDOR_ROWS,
-    COUNT_IF(EXCEPTION_TYPE = 'Vendor Billing, No CW Billing')                        AS VENDOR_NO_CW_ROWS,
-    COUNT_IF(EXCEPTION_TYPE = 'CW Billing, No Vendor Billing')                        AS CW_NO_VENDOR_ROWS,
-    COUNT_IF(EXCEPTION_TYPE = 'Vendor Billing, Insufficient CW Billing')              AS VENDOR_INSUFF_CW_ROWS,
-    COUNT_IF(EXCEPTION_TYPE = 'Other Issue')                                          AS OTHER_ISSUE_ROWS,
-    -- Revenue leakage total (Finance Queue buckets: vendor>0 but CW under-billed)
-    ROUND(SUM(CASE WHEN EXCEPTION_TYPE IN (
-                'Vendor Billing, No CW Billing',
-                'Vendor Billing, Insufficient CW Billing',
-                'API Usage Recorded, No CW Billing',
-                'Vendor SKU, No CW SKU')
-              THEN ABS(COALESCE(AMOUNT_DELTA, 0)) ELSE 0 END), 2)                     AS TOTAL_LEAKAGE_AMOUNT
-FROM THIRD_PARTY_RECON_OUTPUT_PROD
-GROUP BY VENDOR, BILLING_MONTH
-ORDER BY VENDOR, BILLING_MONTH;
+    g.VENDOR,
+    g.BILLING_MONTH,
+    COALESCE(o.TOTAL_ROWS, 0)                                                       AS TOTAL_ROWS,
+    COALESCE(o.PERFECT_MATCH_ROWS, 0)                                               AS PERFECT_MATCH_ROWS,
+    COALESCE(o.TOTAL_VENDOR_SEATS, 0)                                               AS TOTAL_VENDOR_SEATS,
+    COALESCE(o.TOTAL_BILLING_SEATS, 0)                                              AS TOTAL_BILLING_SEATS,
+    COALESCE(o.TOTAL_VENDOR_AMOUNT, 0)                                              AS TOTAL_VENDOR_AMOUNT,
+    COALESCE(o.TOTAL_BILLING_AMOUNT, 0)                                             AS TOTAL_BILLING_AMOUNT,
+    ROUND(COALESCE(o.PERFECT_MATCH_ROWS, 0) * 100.0 / NULLIF(o.TOTAL_ROWS, 0), 1)  AS CLEAR_PCT,
+    COALESCE(o.UNMAPPED_PARTNER_ROWS, 0)                                            AS UNMAPPED_PARTNER_ROWS,
+    COALESCE(o.DUPLICATE_INVOICE_ROWS, 0)                                           AS DUPLICATE_INVOICE_ROWS,
+    COALESCE(o.KNOWN_DISCOUNT_ROWS, 0)                                              AS KNOWN_DISCOUNT_ROWS,
+    COALESCE(o.TIMING_ROWS, 0)                                                      AS TIMING_ROWS,
+    COALESCE(o.API_NO_CW_ROWS, 0)                                                   AS API_NO_CW_ROWS,
+    COALESCE(o.VENDOR_SKU_NO_CW_ROWS, 0)                                            AS VENDOR_SKU_NO_CW_ROWS,
+    COALESCE(o.CW_SKU_NO_VENDOR_ROWS, 0)                                            AS CW_SKU_NO_VENDOR_ROWS,
+    COALESCE(o.VENDOR_NO_CW_ROWS, 0)                                                AS VENDOR_NO_CW_ROWS,
+    COALESCE(o.CW_NO_VENDOR_ROWS, 0)                                                AS CW_NO_VENDOR_ROWS,
+    COALESCE(o.VENDOR_INSUFF_CW_ROWS, 0)                                            AS VENDOR_INSUFF_CW_ROWS,
+    COALESCE(o.OTHER_ISSUE_ROWS, 0)                                                 AS OTHER_ISSUE_ROWS,
+    COALESCE(o.TOTAL_LEAKAGE_AMOUNT, 0)                                             AS TOTAL_LEAKAGE_AMOUNT,
+    COALESCE(u.USAGE_ROW_COUNT, 0)                                                  AS USAGE_ROW_COUNT,
+    vm.MEDIAN_USAGE_ROWS::INT                                                       AS VENDOR_MEDIAN_USAGE_ROWS,
+    CASE
+        WHEN COALESCE(u.USAGE_ROW_COUNT, 0) = 0 THEN 'NOT_LOADED'
+        WHEN vm.MEDIAN_USAGE_ROWS IS NULL     THEN 'LOADED'
+        WHEN u.USAGE_ROW_COUNT < vm.MEDIAN_USAGE_ROWS * 0.3 THEN 'PARTIAL'
+        ELSE 'LOADED'
+    END                                                                              AS DATA_LOAD_STATUS
+FROM grid g
+LEFT JOIN output_agg   o  ON o.VENDOR = g.VENDOR AND o.BILLING_MONTH = g.BILLING_MONTH
+LEFT JOIN usage_agg    u  ON u.VENDOR = g.VENDOR AND u.BILLING_MONTH = g.BILLING_MONTH
+LEFT JOIN vendor_medians vm ON vm.VENDOR = g.VENDOR
+ORDER BY g.VENDOR, g.BILLING_MONTH;
 """
-    run_sql(conn, summary_sql, "THIRD_PARTY_RECON_SUMMARY")
+    run_sql(conn, summary_sql, "THIRD_PARTY_RECON_SUMMARY_PROD")
 
     # ── Quick report ──────────────────────────────────────────────────────
     cur = conn.cursor()
     cur.execute("""
         SELECT VENDOR,
                TO_CHAR(BILLING_MONTH, 'YYYY-MM')            AS MONTH,
+               DATA_LOAD_STATUS,
+               USAGE_ROW_COUNT,
                TOTAL_ROWS,
                PERFECT_MATCH_ROWS                            AS CLEAR_ROWS,
                CLEAR_PCT,
@@ -480,7 +587,7 @@ ORDER BY VENDOR, BILLING_MONTH;
                VENDOR_INSUFF_CW_ROWS,
                UNMAPPED_PARTNER_ROWS,
                OTHER_ISSUE_ROWS
-        FROM THIRD_PARTY_RECON_SUMMARY
+        FROM THIRD_PARTY_RECON_SUMMARY_PROD
         ORDER BY VENDOR, BILLING_MONTH
     """)
     rows = cur.fetchall()
@@ -489,7 +596,7 @@ ORDER BY VENDOR, BILLING_MONTH;
 
     W = 140
     print(f"\n{'=' * W}")
-    print("  THIRD_PARTY_RECON_SUMMARY — canonical flag distribution")
+    print("  THIRD_PARTY_RECON_SUMMARY_PROD - canonical flag distribution")
     print(f"{'=' * W}")
     widths = [max(len(c), max((len(str(r[i] or '')) for r in rows), default=0))
               for i, c in enumerate(cols)]

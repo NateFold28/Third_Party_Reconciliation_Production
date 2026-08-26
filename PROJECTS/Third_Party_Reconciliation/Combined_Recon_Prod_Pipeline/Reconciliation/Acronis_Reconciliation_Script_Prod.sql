@@ -1,0 +1,642 @@
+-- =============================================================================
+-- STEP 2: ACRONIS FINAL RECONCILIATION  (Proofpoint-style, vendor-SKU grain)
+-- =============================================================================
+-- 2026-08-03 REBUILD to the Proofpoint / Auvik pattern.
+--   Vendor side = ACRONIS_USAGE   (vendor consumption; AMOUNT = qty * observed USD price)
+--   CW side     = ACRONIS_ZUORA_RESOLVED (FX->USD) + ACRONIS_MARKETPLACE_RESOLVED (CARR)
+--   Grain       = (sf_id, billing_month, sku_match_group), sku_match_group = VENDOR SKU code
+--
+-- total_billing = GREATEST(zuora, marketplace) NOT zuora+marketplace. Unlike
+-- Proofpoint/SentinelOne additive billing feeds, Acronis Zuora BillRun and
+-- CARR Marketplace can be overlapping views of the same billing. Both-present
+-- is therefore not automatically duplicate billing for Acronis; it becomes
+-- DUPLICATE_BILLING only when the two billing views materially diverge.
+--
+-- 2026-08-12: Added merged-account resolver (SentinelOne parity). The billing
+-- side already collapses to canonical sf_id in 01_billing_sources.sql; here
+-- we also canonicalize the vendor-side lookup tables (partner_map and
+-- combined_map) so vendor usage and CW billing meet on the same sf_id even
+-- after Salesforce account merges. Date-aware: pre-merge months keep their
+-- original sf_id (historical truth of who was mapped at the time).
+--
+-- Output: ACRONIS_RECON_DETAIL + ACRONIS_RECON_SUMMARY
+-- =============================================================================
+
+USE ROLE DEVELOPER;
+USE WAREHOUSE REPORTING_WH;
+USE DATABASE ANALYTICS_DEV;
+USE SCHEMA DBT_NFOLD_TRANSFORMATION;
+
+CREATE OR REPLACE TABLE ACRONIS_RECON_DETAIL AS
+
+WITH merged_account_resolver AS (
+    -- Shared table built in SentinelOne / Proofpoint 00_reference_maps.sql as a
+    -- recursive walk of ANALYTICS.DBO.CW_DW__MERGED_ACCOUNT_MAP. Date-aware:
+    -- merge_effective_month gates the merge on BILLING_MONTH so pre-merge
+    -- billing keeps the historical sf_id.
+    SELECT old_sf_id, canonical_sf_id, merge_effective_month
+    FROM ACCOUNT_MERGE_RESOLVER
+),
+partner_map AS (
+    SELECT
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(pm.partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm,
+        ANY_VALUE(COALESCE(mr.canonical_sf_id, pm.sf_id)) AS sf_id
+    FROM RECON_PARTNER_MAP pm
+    LEFT JOIN merged_account_resolver mr ON mr.old_sf_id = pm.sf_id
+    WHERE pm.sf_id ILIKE 'ACT-%' AND pm.partner_name IS NOT NULL
+    GROUP BY 1
+),
+combined_map AS (
+    SELECT
+        BILLING_MONTH::DATE AS billing_month,
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(cm.TENANT_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm,
+        UPPER(TRIM(cm.VENDOR_SKU)) AS vendor_sku,
+        -- Date-aware merge: only apply canonical for months on/after merge date
+        ANY_VALUE(
+            COALESCE(
+                CASE WHEN cm.BILLING_MONTH::DATE >= mr.merge_effective_month
+                     THEN mr.canonical_sf_id END,
+                cm.SF_ID
+            )
+        ) AS sf_id,
+        ANY_VALUE(cm.CMS_ID) AS cms_id,
+        ANY_VALUE(cm.BILLING_TYPE) AS billing_type,
+        ANY_VALUE(cm.CW_SKU) AS mapped_cw_sku
+    FROM ACRONIS_COMBINED_MAPPING_SEED cm
+    LEFT JOIN merged_account_resolver mr ON mr.old_sf_id = cm.SF_ID
+    WHERE cm.SF_ID ILIKE 'ACT-%' AND cm.TENANT_NAME IS NOT NULL AND cm.VENDOR_SKU IS NOT NULL
+    GROUP BY 1, 2, 3
+),
+
+-- ---- Vendor side: ACRONIS_USAGE -> sf_id, sku_match_group = vendor SKU code ----
+vendor_rows AS (
+    SELECT
+        u.BILLING_MONTH::DATE AS billing_month,
+        COALESCE(cm.sf_id, p.sf_id) AS sf_id,
+        COALESCE(
+            cm.sf_id,
+            p.sf_id,
+            'UNMAPPED:' || TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
+        ) AS partner_recon_key,
+        u.VENDOR_PARTNER_NAME AS VENDOR_PARTNER_NAME,
+        UPPER(TRIM(u.VENDOR_PRODUCT_SKU)) AS sku_match_group,
+        COALESCE(u.QUANTITY, 0) AS quantity,
+        COALESCE(u.AMOUNT, 0) AS amount
+    FROM ACRONIS_USAGE u
+    LEFT JOIN combined_map cm
+        ON cm.billing_month = u.BILLING_MONTH::DATE
+        AND cm.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
+        AND cm.vendor_sku = UPPER(TRIM(u.VENDOR_PRODUCT_SKU))
+    LEFT JOIN partner_map p
+        ON p.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
+    LEFT JOIN ACRONIS_CONTRACT_RATES rate
+        ON rate.vendor_product = UPPER(TRIM(u.VENDOR_PRODUCT_SKU))
+        AND u.BILLING_MONTH::DATE BETWEEN rate.valid_from AND rate.valid_to
+        AND rate.currency = 'USD'
+    WHERE COALESCE(u.QUANTITY, 0) > 0
+      AND u.VENDOR_PRODUCT_SKU IS NOT NULL
+),
+vendor_agg AS (
+    SELECT
+        sf_id, billing_month, sku_match_group,
+        LISTAGG(DISTINCT VENDOR_PARTNER_NAME, ' | ') WITHIN GROUP (ORDER BY VENDOR_PARTNER_NAME) AS vendor_partner_name,
+        sku_match_group AS vendor_product,
+        SUM(quantity) AS vendor_quantity,
+        SUM(amount)   AS vendor_amount,
+        COUNT(*)      AS vendor_row_count
+    FROM vendor_rows
+    GROUP BY partner_recon_key, sf_id, billing_month, sku_match_group
+),
+
+zuora_agg AS (
+    SELECT sf_id, billing_month, sku_match_group, zuora_skus,
+           zuora_quantity, zuora_unit_price, zuora_amount, zuora_row_count
+    FROM ACRONIS_ZUORA_RESOLVED
+),
+marketplace_agg AS (
+    SELECT sf_id, billing_month, sku_match_group, marketplace_skus,
+           marketplace_quantity, marketplace_amount
+    FROM ACRONIS_MARKETPLACE_RESOLVED
+),
+marketplace_prior_sf_month AS (
+    SELECT
+        sf_id,
+        DATEADD(month, 1, billing_month) AS billing_month,
+        SUM(marketplace_quantity) AS prior_month_marketplace_quantity,
+        SUM(marketplace_amount) AS prior_month_marketplace_amount,
+        COUNT(*) AS prior_month_marketplace_row_count,
+        ARRAY_AGG(DISTINCT sku_match_group) WITHIN GROUP (ORDER BY sku_match_group) AS prior_month_marketplace_sku_groups
+    FROM ACRONIS_MARKETPLACE_RESOLVED
+    GROUP BY 1, 2
+),
+marketplace_any_sf_month AS (
+    SELECT
+        sf_id,
+        billing_month,
+        SUM(marketplace_quantity) AS any_marketplace_quantity,
+        SUM(marketplace_amount) AS any_marketplace_amount,
+        COUNT(*) AS any_marketplace_row_count,
+        ARRAY_AGG(DISTINCT sku_match_group) WITHIN GROUP (ORDER BY sku_match_group) AS any_marketplace_sku_groups
+    FROM ACRONIS_MARKETPLACE_RESOLVED
+    GROUP BY 1, 2
+),
+
+-- Reverse lookup: sf_id -> partner_name for billing-only rows (no vendor side)
+sf_id_to_partner AS (
+    SELECT sf_id, ANY_VALUE(partner_name) AS partner_name
+    FROM RECON_PARTNER_MAP
+    WHERE sf_id ILIKE 'ACT-%' AND partner_name IS NOT NULL
+    GROUP BY sf_id
+),
+sf_account_names AS (
+    SELECT CWS_ACCOUNT_UNIQUE_IDENTIFIER_C AS sf_id, NAME AS account_name
+    FROM ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT
+    WHERE CWS_ACCOUNT_UNIQUE_IDENTIFIER_C ILIKE 'ACT-%'
+),
+
+joined AS (
+    SELECT
+        COALESCE(v.sf_id, z.sf_id, m.sf_id) AS sf_id,
+        COALESCE(v.billing_month, z.billing_month, m.billing_month) AS billing_month,
+        COALESCE(v.sku_match_group, z.sku_match_group, m.sku_match_group) AS sku_match_group,
+        COALESCE(v.vendor_partner_name, pn.partner_name, sfn.account_name) AS vendor_partner_name,
+        COALESCE(v.vendor_product, COALESCE(v.sku_match_group, z.sku_match_group, m.sku_match_group)) AS vendor_product,
+        smv.cw_skus,
+        z.zuora_skus,
+        m.marketplace_skus,
+        CASE
+            WHEN z.zuora_quantity IS NOT NULL AND m.marketplace_quantity IS NOT NULL THEN 'ZUORA_AND_MARKETPLACE'
+            WHEN z.zuora_quantity IS NOT NULL THEN 'ZUORA_ONLY'
+            WHEN m.marketplace_quantity IS NOT NULL THEN 'MARKETPLACE_ONLY'
+            ELSE 'NO_BILLING_SOURCE'
+        END AS billing_source_mix,
+        COALESCE(v.vendor_quantity, 0)::NUMBER AS vendor_quantity,
+        CASE WHEN v.vendor_quantity > 0 THEN v.vendor_amount / v.vendor_quantity ELSE NULL END::NUMBER AS vendor_unit_price,
+        COALESCE(v.vendor_amount, 0)::NUMBER AS vendor_amount,
+        z.zuora_quantity,
+        z.zuora_unit_price,
+        z.zuora_amount,
+        m.marketplace_quantity,
+        m.marketplace_amount,
+        mp.prior_month_marketplace_quantity,
+        mp.prior_month_marketplace_amount,
+        mp.prior_month_marketplace_row_count,
+        mp.prior_month_marketplace_sku_groups,
+        ma.any_marketplace_quantity,
+        ma.any_marketplace_amount,
+        ma.any_marketplace_row_count,
+        ma.any_marketplace_sku_groups,
+        -- GREATEST (overlapping views), NOT sum -> avoids ~2x double-count.
+        GREATEST(COALESCE(z.zuora_quantity, 0), COALESCE(m.marketplace_quantity, 0)) AS total_billing_quantity,
+        GREATEST(COALESCE(z.zuora_amount, 0),   COALESCE(m.marketplace_amount, 0))   AS total_billing_amount,
+        COALESCE(v.vendor_row_count, 0) AS vendor_row_count,
+        CASE WHEN v.sf_id IS NOT NULL THEN 'PARTNER_NAME'
+             WHEN pn.partner_name IS NOT NULL THEN 'SF_ID_REVERSE_LOOKUP'
+             WHEN sfn.account_name IS NOT NULL THEN 'SALESFORCE_ACCOUNT'
+             ELSE 'UNMAPPED' END AS partner_match_methods,
+        'VENDOR_USAGE_VS_ZUORA_MARKETPLACE|VENDOR_SKU' AS sku_mapping_sources
+    FROM vendor_agg v
+    FULL OUTER JOIN zuora_agg z
+        ON z.sf_id = v.sf_id AND z.billing_month = v.billing_month AND z.sku_match_group = v.sku_match_group
+    FULL OUTER JOIN marketplace_agg m
+        ON m.sf_id = COALESCE(v.sf_id, z.sf_id) AND m.billing_month = COALESCE(v.billing_month, z.billing_month)
+       AND m.sku_match_group = COALESCE(v.sku_match_group, z.sku_match_group)
+    LEFT JOIN marketplace_prior_sf_month mp
+        ON mp.sf_id = COALESCE(v.sf_id, z.sf_id, m.sf_id)
+       AND mp.billing_month = COALESCE(v.billing_month, z.billing_month, m.billing_month)
+    LEFT JOIN marketplace_any_sf_month ma
+        ON ma.sf_id = COALESCE(v.sf_id, z.sf_id, m.sf_id)
+       AND ma.billing_month = COALESCE(v.billing_month, z.billing_month, m.billing_month)
+    LEFT JOIN (SELECT sku_match_key AS sku_match_group, ARRAY_AGG(DISTINCT cw_sku) WITHIN GROUP (ORDER BY cw_sku) AS cw_skus
+               FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Acronis') GROUP BY 1) smv
+        ON smv.sku_match_group = COALESCE(v.sku_match_group, z.sku_match_group, m.sku_match_group)
+    LEFT JOIN sf_id_to_partner pn
+        ON pn.sf_id = COALESCE(v.sf_id, z.sf_id, m.sf_id)
+    LEFT JOIN sf_account_names sfn
+        ON sfn.sf_id = COALESCE(v.sf_id, z.sf_id, m.sf_id)
+),
+
+other_sku_offsets AS (
+    SELECT DISTINCT
+        j1.sf_id,
+        j1.billing_month,
+        j1.sku_match_group
+    FROM joined j1
+    INNER JOIN joined j2
+        ON j2.sf_id = j1.sf_id
+       AND j2.billing_month = j1.billing_month
+       AND j2.sku_match_group <> j1.sku_match_group
+    WHERE j1.sf_id IS NOT NULL
+      AND (
+            (
+                j1.vendor_quantity > 0
+                AND j1.total_billing_quantity = 0
+                AND j2.vendor_quantity = 0
+                AND j2.total_billing_quantity > 0
+                AND ABS(j1.vendor_quantity - j2.total_billing_quantity)
+                    <= GREATEST(5, j1.vendor_quantity * 0.05)
+            )
+            OR (
+                j1.vendor_quantity = 0
+                AND j1.total_billing_quantity > 0
+                AND j2.vendor_quantity > 0
+                AND j2.total_billing_quantity = 0
+                AND ABS(j2.vendor_quantity - j1.total_billing_quantity)
+                    <= GREATEST(5, j2.vendor_quantity * 0.05)
+            )
+      )
+),
+
+joined_with_flags AS (
+    SELECT
+        j.*,
+        (o.sf_id IS NOT NULL) AS same_account_other_sku_match_flag
+    FROM joined j
+    LEFT JOIN other_sku_offsets o
+        ON o.sf_id = j.sf_id
+       AND o.billing_month = j.billing_month
+       AND o.sku_match_group = j.sku_match_group
+),
+
+scored AS (
+    SELECT
+        *,
+        total_billing_amount / NULLIF(total_billing_quantity, 0) AS total_billing_unit_price,
+        total_billing_quantity - vendor_quantity AS qty_delta,
+        ABS(total_billing_quantity - vendor_quantity) AS abs_qty_delta,
+        total_billing_amount - vendor_amount AS amount_delta,
+        ABS(total_billing_amount - vendor_amount) AS abs_amount_delta,
+        -- Acronis-specific duplicate billing: both CW billing views present
+        -- AND materially diverge. Both-present without divergence is expected
+        -- source overlap and should flow to the normal vendor-vs-billing flags.
+        (zuora_quantity IS NOT NULL AND marketplace_quantity IS NOT NULL
+         AND ABS(COALESCE(zuora_quantity,0) - COALESCE(marketplace_quantity,0)) > GREATEST(3, COALESCE(zuora_quantity,0) * 0.05)) AS duplicate_billing_flag,
+        (
+            vendor_quantity > 0
+            AND total_billing_quantity = 0
+            AND COALESCE(prior_month_marketplace_row_count, 0) > 0
+        ) AS marketplace_timing_flag,
+        CASE
+            WHEN vendor_quantity > 0
+             AND total_billing_quantity = 0
+             AND COALESCE(prior_month_marketplace_row_count, 0) > 0
+                THEN COALESCE(prior_month_marketplace_quantity, 0)
+            ELSE 0
+        END::FLOAT AS marketplace_timing_quantity,
+        -- =====================================================================
+        -- Expanded outcome_flag taxonomy (2026-08-12).
+        -- Aligned to manual "Comments" vocabulary (JUL/JUN/MAY 2026 workbooks)
+        -- and mirrors SentinelOne structural/differential flag families.
+        --
+        -- Precedence (top -> bottom):
+        --   1. Preconditions (mapping / catalog / duplicate billing / no-activity)
+        --   2. One-sided rows (vendor-only or billing-only) -> STRUCTURAL flags
+        --   3. Two-sided rows -> tolerance / overage / material / drift bands
+        --   4. Fallback -> REVIEW_EXCEPTION
+        --
+        -- Manual "Comments" -> outcome_flag mapping:
+        --   Clear                              -> CLEAR
+        --   MP clear                           -> MARKETPLACE_ONLY_CLEAR
+        --   Overage                            -> OVERAGE_EXPECTED
+        --   MP overage                         -> MARKETPLACE_OVERAGE
+        --   Billed by CW not by vendor         -> STRUCTURAL_BILLING_ONLY
+        --   (MP-only variant)                  -> MARKETPLACE_BILLING_NO_VENDOR
+        --   Billed by Vendor not by CW /
+        --     Not Billed by CW                 -> STRUCTURAL_VENDOR_ONLY_NO_CONTRACT
+        --   No SKU Found                       -> VENDOR_PRODUCT_NO_CW_SKU
+        --   Subscription Expired / terminated  -> STRUCTURAL_BILLING_ONLY
+        --                                        (small-$ variant -> NEGLIGIBLE_DOLLAR_EXPOSURE)
+        --   Zero Usage                         -> NO_ACTIVITY (both sides = 0 filtered upstream;
+        --                                                     vendor row present w/ 0 usage passes here)
+        -- Plus S1-parity differential bands:
+        --   MATERIAL_UNDER_VENDOR   (vendor > billing >25%)
+        --   MATERIAL_OVER_VENDOR    (billing > vendor >25%)
+        --   BILLING_DIFFERENTIAL_UNDER (vendor > billing 5-25%)  -- covered by OVERAGE_EXPECTED band
+        --   BILLING_DIFFERENTIAL_OVER  (billing > vendor 5-25%)
+        --   DUPLICATE_BILLING (Zuora+Marketplace both present and divergent)
+        -- =====================================================================
+        CASE
+            -- 1. Structural preconditions
+            WHEN sf_id IS NULL THEN 'PARTNER_MAPPING_REQUIRED'
+            WHEN cw_skus IS NULL AND vendor_quantity > 0 THEN 'VENDOR_PRODUCT_NO_CW_SKU'
+            WHEN duplicate_billing_flag THEN 'DUPLICATE_BILLING'
+            WHEN same_account_other_sku_match_flag THEN 'SKU_MISMATCH_BILLING_ON_OTHER_SKU'
+            WHEN marketplace_timing_flag THEN 'MARKETPLACE_TIMING'
+
+            -- 2. Both sides zero (safety; usually filtered upstream)
+            WHEN vendor_quantity = 0 AND total_billing_quantity = 0 THEN 'NO_ACTIVITY'
+
+            -- 3. Vendor-only rows (vendor usage, no billing)
+            WHEN vendor_quantity > 0 AND total_billing_quantity = 0 THEN
+                CASE
+                    WHEN vendor_amount <= 100 THEN 'NEGLIGIBLE_DOLLAR_EXPOSURE'
+                    ELSE 'STRUCTURAL_VENDOR_ONLY_NO_CONTRACT'
+                END
+
+            -- 4. Billing-only rows (billed by CW not by vendor)
+            WHEN vendor_quantity = 0 AND total_billing_quantity > 0 THEN
+                CASE
+                    WHEN total_billing_amount <= 100 THEN 'NEGLIGIBLE_DOLLAR_EXPOSURE'
+                    WHEN billing_source_mix = 'MARKETPLACE_ONLY' THEN 'MARKETPLACE_BILLING_NO_VENDOR'
+                    ELSE 'STRUCTURAL_BILLING_ONLY'
+                END
+
+            -- 5. Two-sided CLEAR (within tolerance)
+            WHEN ABS(total_billing_quantity - vendor_quantity) <= GREATEST(5, vendor_quantity * 0.02) THEN
+                CASE WHEN billing_source_mix = 'MARKETPLACE_ONLY' THEN 'MARKETPLACE_ONLY_CLEAR' ELSE 'CLEAR' END
+            WHEN ABS(total_billing_quantity - vendor_quantity) <= GREATEST(25, vendor_quantity * 0.05) THEN
+                'MINOR_DRIFT'
+
+            -- 6. Dollar noise gate (variance exists but negligible $ exposure)
+            WHEN GREATEST(COALESCE(vendor_amount, 0), COALESCE(total_billing_amount, 0)) <= 100
+                THEN 'NEGLIGIBLE_DOLLAR_EXPOSURE'
+
+            -- 7. Vendor > billing (Overage pattern)
+            WHEN vendor_quantity > total_billing_quantity THEN
+                CASE
+                    WHEN (vendor_quantity - total_billing_quantity) <= GREATEST(10, vendor_quantity * 0.25) THEN
+                        CASE WHEN billing_source_mix = 'MARKETPLACE_ONLY' THEN 'MARKETPLACE_OVERAGE' ELSE 'OVERAGE_EXPECTED' END
+                    ELSE 'MATERIAL_UNDER_VENDOR'
+                END
+
+            -- 8. Billing > vendor
+            WHEN total_billing_quantity > vendor_quantity THEN
+                CASE
+                    WHEN (total_billing_quantity - vendor_quantity) <= GREATEST(10, vendor_quantity * 0.25)
+                        THEN 'BILLING_DIFFERENTIAL_OVER'
+                    ELSE 'MATERIAL_OVER_VENDOR'
+                END
+
+            -- 9. Fallback
+            ELSE 'REVIEW_EXCEPTION'
+        END AS outcome_flag
+    FROM joined_with_flags
+    WHERE COALESCE(vendor_quantity, 0) > 0 OR COALESCE(total_billing_quantity, 0) > 0
+)
+
+SELECT
+    'Acronis' AS VENDOR,
+    s.billing_month AS BILLING_MONTH,
+    s.sf_id,
+    s.vendor_partner_name,
+    s.vendor_product AS VENDOR_PRODUCT,
+    s.cw_skus,
+    s.zuora_skus,
+    s.marketplace_skus,
+    s.billing_source_mix,
+    s.vendor_quantity,
+    s.vendor_unit_price,
+    s.vendor_amount,
+    s.zuora_quantity,
+    s.zuora_unit_price,
+    s.zuora_amount,
+    s.marketplace_quantity,
+    s.marketplace_amount,
+    s.total_billing_quantity,
+    s.total_billing_unit_price,
+    s.total_billing_amount,
+    s.qty_delta,
+    s.abs_qty_delta,
+    s.amount_delta,
+    s.abs_amount_delta,
+    s.duplicate_billing_flag,
+    s.marketplace_timing_flag,
+    s.marketplace_timing_quantity,
+    s.prior_month_marketplace_quantity,
+    s.prior_month_marketplace_amount,
+    s.prior_month_marketplace_row_count,
+    s.prior_month_marketplace_sku_groups,
+    s.any_marketplace_quantity,
+    s.any_marketplace_amount,
+    s.any_marketplace_row_count,
+    s.any_marketplace_sku_groups,
+    s.vendor_row_count AS vendor_source_row_count,
+    s.partner_match_methods,
+    s.sku_mapping_sources,
+    cr.contract_cost_rate AS contract_cost_basis_quantity,
+    ROUND(s.vendor_quantity * COALESCE(cr.contract_cost_rate, 0), 2)::NUMBER AS contract_cost_basis_amount,
+    cr.contract_cost_rate,
+    CASE WHEN cr.contract_cost_rate IS NOT NULL AND s.total_billing_quantity > 0
+        THEN (s.total_billing_amount / s.total_billing_quantity) - cr.contract_cost_rate
+        ELSE NULL END AS billing_vs_cost_delta_per_seat,
+    CASE WHEN cr.contract_cost_rate IS NOT NULL AND s.total_billing_quantity > 0
+        THEN ((s.total_billing_amount / s.total_billing_quantity) - cr.contract_cost_rate) * s.total_billing_quantity
+        ELSE NULL END AS billing_vs_cost_dollar_impact,
+    CASE WHEN cr.contract_cost_rate IS NOT NULL AND cr.contract_cost_rate > 0 AND s.total_billing_quantity > 0
+        THEN ROUND(((s.total_billing_amount / s.total_billing_quantity) - cr.contract_cost_rate) / cr.contract_cost_rate * 100, 1)
+        ELSE NULL END AS billing_vs_cost_pct,
+    CASE
+        WHEN cr.contract_cost_rate IS NULL THEN NULL
+        WHEN s.total_billing_quantity = 0 THEN NULL
+        WHEN (s.total_billing_amount / s.total_billing_quantity) > cr.contract_cost_rate * 1.05 THEN 'ABOVE_COST'
+        WHEN (s.total_billing_amount / s.total_billing_quantity) >= cr.contract_cost_rate * 0.95 THEN 'AT_COST'
+        ELSE 'BELOW_COST_DISCOUNT'
+    END AS contract_price_flag,
+    CASE WHEN cr.contract_cost_rate IS NOT NULL AND s.total_billing_quantity > 0
+        AND (s.total_billing_amount / s.total_billing_quantity) < cr.contract_cost_rate * 0.80
+        THEN TRUE ELSE FALSE END AS material_below_cost_flag,
+    cr.source_doc AS contract_rate_source_docs,
+    CURRENT_TIMESTAMP() AS recon_run_ts,
+    s.outcome_flag,
+    CASE s.outcome_flag
+        WHEN 'CLEAR'                              THEN NULL
+        WHEN 'MARKETPLACE_ONLY_CLEAR'             THEN 'Marketplace-only billing matches vendor within tolerance; no Zuora line expected.'
+        WHEN 'OVERAGE_EXPECTED'                   THEN 'Vendor usage exceeds CW billing within expected overage band (<=25% of vendor qty). Typical for metered storage / workload SKUs against a fixed CW commit; overage qty usually onboarded to SF next cycle.'
+        WHEN 'MARKETPLACE_OVERAGE'                THEN 'Marketplace-only overage within expected band; validate tier bracket in marketplace overlay.'
+        WHEN 'MARKETPLACE_TIMING'                 THEN 'No current-month CW bill matched this vendor SKU, but prior-month Marketplace billing exists for the same account. Monitor as likely Marketplace billing delay before treating as missing bill.'
+        WHEN 'STRUCTURAL_BILLING_ONLY'            THEN 'CW is billing material qty but vendor reports zero usage. Possible legacy subscription, vendor decommission, or subscription expired/terminated. Confirm active vendor subscription.'
+        WHEN 'MARKETPLACE_BILLING_NO_VENDOR'      THEN 'Marketplace billing present but vendor reports zero usage; typical for marketplace-only fixed commits or trailing MP cycles.'
+        WHEN 'STRUCTURAL_VENDOR_ONLY_NO_CONTRACT' THEN 'Vendor usage exists but no CW contract / billing found. Requires CW subscription creation or partner onboarding.'
+        WHEN 'VENDOR_PRODUCT_NO_CW_SKU'           THEN 'Vendor SKU has no CW crosswalk in RECON_SKU_MAP (VENDOR=Acronis). Requires SKU catalog addition or product decision.'
+        WHEN 'DUPLICATE_BILLING'                  THEN 'Zuora and Marketplace both bill the same partner/month/SKU and materially diverge. Treat as duplicate invoice evidence and reconcile to a single billing source.'
+        WHEN 'SKU_MISMATCH_BILLING_ON_OTHER_SKU'  THEN 'Vendor usage and CW billing offset on the same account/month but on different SKU groups. Treat as a SKU mapping offset review first; rebook only if mapping is confirmed wrong.'
+        WHEN 'MINOR_DRIFT'                        THEN 'Minor quantity drift within 2-5% (or <=25 units). Below operational action threshold.'
+        WHEN 'MATERIAL_OVER_VENDOR'               THEN 'CW billing exceeds vendor usage by >25%. Review for stale subscription, SKU-tier mismatch, or over-billing.'
+        WHEN 'MATERIAL_UNDER_VENDOR'              THEN 'Vendor usage exceeds CW billing by >25%. Review for missing overage capture or expired SKU on invoice.'
+        WHEN 'BILLING_DIFFERENTIAL_OVER'          THEN 'CW billing exceeds vendor usage in the 5-25% band. Minor drift; validate seat count.'
+        WHEN 'BILLING_DIFFERENTIAL_UNDER'         THEN 'Vendor usage exceeds CW billing in the 5-25% band. Minor drift; validate overage line.'
+        WHEN 'PARTNER_MAPPING_REQUIRED'           THEN 'Vendor partner name has no CW SF ID mapping. Add partner map entry to ACRONIS_PARTNER_MAP_SEED or ACRONIS_COMBINED_MAPPING_SEED.'
+        WHEN 'NEGLIGIBLE_DOLLAR_EXPOSURE'         THEN 'Variance exists but total dollar exposure is <=$100. No action required.'
+        WHEN 'NO_ACTIVITY'                        THEN 'Row has zero on both vendor and billing sides; safety fallback.'
+        WHEN 'REVIEW_EXCEPTION'                   THEN 'Pattern not matched by any rule; manual review required.'
+        ELSE NULL
+    END AS investigation_reason,
+    CASE
+        WHEN s.outcome_flag IN ('CLEAR', 'MARKETPLACE_ONLY_CLEAR', 'OVERAGE_EXPECTED',
+                                'MARKETPLACE_OVERAGE', 'NEGLIGIBLE_DOLLAR_EXPOSURE',
+                                'MINOR_DRIFT', 'NO_ACTIVITY', 'MARKETPLACE_TIMING') THEN FALSE
+        ELSE TRUE
+    END AS billing_action_required,
+    NULL::NUMBER AS vendor_vs_contract_delta_per_seat,
+    NULL::NUMBER AS vendor_vs_contract_pct,
+    NULL::VARCHAR AS vendor_vs_contract_flag,
+    NULL::NUMBER AS vendor_vs_contract_dollar_impact
+FROM scored s
+LEFT JOIN ACRONIS_CONTRACT_RATES cr
+    ON cr.vendor_product = s.sku_match_group
+    AND s.billing_month BETWEEN cr.valid_from AND cr.valid_to
+    AND cr.currency = 'USD'
+QUALIFY ROW_NUMBER() OVER (PARTITION BY s.sf_id, s.billing_month, s.sku_match_group ORDER BY cr.contract_cost_rate DESC NULLS LAST) = 1;
+
+-- =============================================================================
+-- SUMMARY
+-- =============================================================================
+CREATE OR REPLACE TABLE ACRONIS_RECON_SUMMARY AS
+SELECT
+    BILLING_MONTH,
+    COUNT(*) AS total_rows,
+    COUNT_IF(outcome_flag = 'CLEAR') AS strict_clear_rows,
+    ROUND(COUNT_IF(outcome_flag = 'CLEAR') * 100.0 / NULLIF(COUNT(*), 0), 1) AS strict_clear_pct,
+    COUNT_IF(billing_action_required = FALSE) AS operational_clear_rows,
+    ROUND(COUNT_IF(billing_action_required = FALSE) * 100.0 / NULLIF(COUNT(*), 0), 1) AS operational_clear_pct,
+    COUNT_IF(outcome_flag = 'CLEAR') AS perfect_match_rows, -- legacy app compatibility; strict clear
+    ROUND(COUNT_IF(outcome_flag = 'CLEAR') * 100.0 / NULLIF(COUNT(*), 0), 1) AS perfect_match_pct,
+    SUM(abs_qty_delta) AS abs_qty_variance,
+    SUM(IFF(billing_action_required = FALSE, abs_qty_delta, 0)) AS operational_clear_abs_qty_variance,
+    SUM(IFF(billing_action_required = TRUE, abs_qty_delta, 0)) AS actionable_abs_qty_variance,
+    SUM(vendor_quantity)::NUMBER AS total_vendor_seats,
+    SUM(zuora_quantity) AS total_zuora_seats,
+    SUM(marketplace_quantity) AS total_marketplace_seats,
+    SUM(total_billing_quantity) AS total_billing_seats,
+    SUM(COALESCE(vendor_amount, 0))::NUMBER AS total_vendor_amount,
+    SUM(total_billing_amount) AS total_billing_amount,
+    COUNT_IF(duplicate_billing_flag = TRUE) AS duplicate_billing_rows,
+    SUM(IFF(duplicate_billing_flag, vendor_quantity, 0))::NUMBER AS duplicate_billing_vendor_seats,
+    SUM(IFF(duplicate_billing_flag, zuora_quantity, 0)) AS duplicate_billing_zuora_seats,
+    SUM(IFF(duplicate_billing_flag, marketplace_quantity, 0)) AS duplicate_billing_marketplace_seats,
+    SUM(IFF(duplicate_billing_flag, abs_qty_delta, 0)) AS duplicate_billing_abs_qty_variance_impact,
+    SUM(IFF(duplicate_billing_flag, abs_amount_delta, 0)) AS duplicate_billing_abs_amount_variance_impact,
+    COUNT_IF(outcome_flag = 'PARTNER_MAPPING_REQUIRED') AS unmapped_rows,
+    COUNT_IF(outcome_flag = 'NO_BILLING_NO_HISTORY') AS no_billing_rows,          -- legacy retained (=0 post-taxonomy expansion)
+    COUNT_IF(outcome_flag = 'BILLING_OVER_VENDOR') AS billing_over_rows,          -- legacy retained (=0 post-taxonomy expansion)
+    COUNT_IF(outcome_flag = 'VENDOR_OVER_BILLING') AS vendor_over_rows,           -- legacy retained (=0 post-taxonomy expansion)
+    COUNT_IF(outcome_flag = 'STRUCTURAL_VENDOR_ONLY_NO_CONTRACT') AS structural_vendor_only_rows,
+    COUNT_IF(outcome_flag = 'STRUCTURAL_BILLING_ONLY') AS structural_billing_only_rows,
+    COUNT_IF(outcome_flag = 'MARKETPLACE_BILLING_NO_VENDOR') AS marketplace_billing_no_vendor_rows,
+    COUNT_IF(outcome_flag = 'MARKETPLACE_TIMING') AS marketplace_timing_rows,
+    COUNT_IF(outcome_flag = 'MARKETPLACE_ONLY_CLEAR') AS marketplace_only_clear_rows,
+    COUNT_IF(outcome_flag = 'OVERAGE_EXPECTED') AS overage_expected_rows,
+    COUNT_IF(outcome_flag = 'MARKETPLACE_OVERAGE') AS marketplace_overage_rows,
+    COUNT_IF(outcome_flag = 'VENDOR_PRODUCT_NO_CW_SKU') AS vendor_product_no_cw_sku_rows,
+    COUNT_IF(outcome_flag = 'SKU_MISMATCH_BILLING_ON_OTHER_SKU') AS sku_mismatch_billing_on_other_sku_rows,
+    COUNT_IF(outcome_flag = 'MATERIAL_OVER_VENDOR') AS material_over_vendor_rows,
+    COUNT_IF(outcome_flag = 'MATERIAL_UNDER_VENDOR') AS material_under_vendor_rows,
+    COUNT_IF(outcome_flag = 'BILLING_DIFFERENTIAL_OVER') AS billing_differential_over_rows,
+    COUNT_IF(outcome_flag = 'BILLING_DIFFERENTIAL_UNDER') AS billing_differential_under_rows,
+    COUNT_IF(outcome_flag = 'MINOR_DRIFT') AS minor_drift_rows,
+    COUNT_IF(outcome_flag = 'NEGLIGIBLE_DOLLAR_EXPOSURE') AS negligible_dollar_exposure_rows,
+    COUNT_IF(outcome_flag = 'NO_ACTIVITY') AS no_activity_rows,
+    COUNT_IF(outcome_flag = 'REVIEW_EXCEPTION') AS review_exception_rows,
+    COUNT_IF(contract_price_flag = 'ABOVE_COST') AS contract_above_cost_rows,
+    COUNT_IF(contract_price_flag = 'AT_COST') AS contract_at_cost_rows,
+    COUNT_IF(contract_price_flag = 'BELOW_COST_DISCOUNT') AS contract_below_cost_rows,
+    COUNT_IF(material_below_cost_flag = TRUE) AS contract_material_below_cost_rows,
+    COUNT_IF(contract_price_flag IS NULL) AS contract_no_rate_rows,
+    COALESCE(SUM(IFF(contract_price_flag = 'ABOVE_COST', billing_vs_cost_dollar_impact, 0)), 0) AS contract_above_cost_margin_dollars,
+    COALESCE(SUM(IFF(contract_price_flag = 'BELOW_COST_DISCOUNT', billing_vs_cost_dollar_impact, 0)), 0) AS contract_below_cost_loss_dollars,
+    COALESCE(SUM(IFF(material_below_cost_flag = TRUE, billing_vs_cost_dollar_impact, 0)), 0) AS contract_material_below_cost_loss_dollars
+FROM ACRONIS_RECON_DETAIL
+GROUP BY BILLING_MONTH
+ORDER BY BILLING_MONTH;
+
+-- =============================================================================
+-- APP / AUDIT SUPPORT TABLES
+-- =============================================================================
+
+CREATE OR REPLACE TABLE ACRONIS_RAW_PARTNER_COVERAGE AS
+WITH merged_account_resolver AS (
+    SELECT old_sf_id, canonical_sf_id, merge_effective_month
+    FROM ACCOUNT_MERGE_RESOLVER
+),
+partner_map AS (
+    SELECT
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(pm.partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm,
+        ANY_VALUE(COALESCE(mr.canonical_sf_id, pm.sf_id)) AS sf_id
+    FROM RECON_PARTNER_MAP pm
+    LEFT JOIN merged_account_resolver mr ON mr.old_sf_id = pm.sf_id
+    WHERE pm.sf_id ILIKE 'ACT-%' AND pm.partner_name IS NOT NULL
+    GROUP BY 1
+),
+combined_map AS (
+    SELECT
+        BILLING_MONTH::DATE AS billing_month,
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(cm.TENANT_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm,
+        UPPER(TRIM(cm.VENDOR_SKU)) AS vendor_sku,
+        ANY_VALUE(
+            COALESCE(
+                CASE WHEN cm.BILLING_MONTH::DATE >= mr.merge_effective_month
+                     THEN mr.canonical_sf_id END,
+                cm.SF_ID
+            )
+        ) AS sf_id
+    FROM ACRONIS_COMBINED_MAPPING_SEED cm
+    LEFT JOIN merged_account_resolver mr ON mr.old_sf_id = cm.SF_ID
+    WHERE cm.SF_ID ILIKE 'ACT-%' AND cm.TENANT_NAME IS NOT NULL AND cm.VENDOR_SKU IS NOT NULL
+    GROUP BY 1, 2, 3
+),
+raw AS (
+    SELECT
+        u.BILLING_MONTH::DATE AS billing_month,
+        UPPER(TRIM(u.VENDOR_PRODUCT_SKU)) AS vendor_sku,
+        COALESCE(u.QUANTITY, 0) AS quantity,
+        COALESCE(cm.sf_id, p.sf_id) AS sf_id
+    FROM ACRONIS_USAGE u
+    LEFT JOIN combined_map cm
+        ON cm.billing_month = u.BILLING_MONTH::DATE
+       AND cm.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
+       AND cm.vendor_sku = UPPER(TRIM(u.VENDOR_PRODUCT_SKU))
+    LEFT JOIN partner_map p
+        ON p.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
+    WHERE COALESCE(u.QUANTITY, 0) > 0
+      AND u.VENDOR_PRODUCT_SKU IS NOT NULL
+)
+SELECT
+    billing_month,
+    COUNT(*) AS raw_usage_rows,
+    COUNT_IF(sf_id IS NOT NULL) AS mapped_usage_rows,
+    COUNT_IF(sf_id IS NULL) AS unmapped_usage_rows,
+    SUM(quantity) AS raw_usage_quantity,
+    SUM(IFF(sf_id IS NOT NULL, quantity, 0)) AS mapped_usage_quantity,
+    SUM(IFF(sf_id IS NULL, quantity, 0)) AS unmapped_usage_quantity,
+    ROUND(COUNT_IF(sf_id IS NOT NULL) * 100.0 / NULLIF(COUNT(*), 0), 2) AS partner_row_coverage_pct,
+    ROUND(SUM(IFF(sf_id IS NOT NULL, quantity, 0)) * 100.0 / NULLIF(SUM(quantity), 0), 2) AS partner_quantity_coverage_pct
+FROM raw
+GROUP BY billing_month
+ORDER BY billing_month;
+
+CREATE OR REPLACE TABLE ACRONIS_SOURCE_COVERAGE_AUDIT AS
+WITH usage_qty AS (
+    SELECT BILLING_MONTH::DATE AS billing_month, SUM(QUANTITY) AS vendor_usage_quantity
+    FROM ACRONIS_USAGE
+    GROUP BY 1
+),
+zuora_base AS (
+    SELECT BILLING_MONTH::DATE AS billing_month, SUM(QUANTITY) AS zuora_posted_billrun_quantity
+    FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE
+    WHERE VENDOR_NAME = 'Acronis'
+      AND INVOICE_STATUS = 'Posted'
+      AND INVOICE_SOURCE = 'BillRun'
+      AND BILLING_MONTH >= '2026-01-01'
+    GROUP BY 1
+),
+resolved AS (
+    SELECT BILLING_MONTH, SUM(TOTAL_BILLING_QUANTITY) AS resolved_billing_quantity
+    FROM ACRONIS_RECON_DETAIL
+    GROUP BY 1
+)
+SELECT
+    u.billing_month,
+    u.vendor_usage_quantity,
+    COALESCE(z.zuora_posted_billrun_quantity, 0) AS zuora_posted_billrun_quantity,
+    COALESCE(r.resolved_billing_quantity, 0) AS resolved_billing_quantity,
+    ROUND(COALESCE(r.resolved_billing_quantity, 0) * 100.0 / NULLIF(u.vendor_usage_quantity, 0), 2) AS resolved_billing_vs_vendor_pct,
+    CASE
+        WHEN COALESCE(r.resolved_billing_quantity, 0) < u.vendor_usage_quantity * 0.50 THEN 'INCOMPLETE_BILLING_SOURCE_COVERAGE'
+        WHEN COALESCE(r.resolved_billing_quantity, 0) < u.vendor_usage_quantity * 0.85 THEN 'LOW_BILLING_SOURCE_COVERAGE'
+        ELSE 'SOURCE_COVERAGE_OK'
+    END AS source_coverage_flag
+FROM usage_qty u
+LEFT JOIN zuora_base z ON z.billing_month = u.billing_month
+LEFT JOIN resolved r ON r.billing_month = u.billing_month
+ORDER BY u.billing_month;
+
