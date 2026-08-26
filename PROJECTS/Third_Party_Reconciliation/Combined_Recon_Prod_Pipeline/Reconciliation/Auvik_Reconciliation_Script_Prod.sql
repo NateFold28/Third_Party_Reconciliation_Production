@@ -29,16 +29,17 @@ USE SCHEMA DBT_NFOLD_TRANSFORMATION;
 CREATE OR REPLACE TABLE AUVIK_RECON_DETAIL AS
 WITH partner_name_map AS (
     SELECT
+        billing_month,
         partner_name,
         TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_normalized,
         sf_id,
         'RECON_PARTNER_MAP' AS mapping_source
-    FROM RECON_PARTNER_MAP
+    FROM RECON_PARTNER_MAP_MONTHLY
     WHERE sf_id IS NOT NULL
       AND REGEXP_LIKE(sf_id, '^ACT-[0-9A-Z-]+$')
       AND partner_name IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
+        PARTITION BY billing_month, TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
         ORDER BY partner_name
     ) = 1
 ),
@@ -163,7 +164,8 @@ vendor_base AS (
         COALESCE(vpm.mapping_sources, 'DYNAMIC_VENDOR_PRODUCT_FALLBACK') AS sku_mapping_sources
     FROM usage_deduped u
     LEFT JOIN partner_name_map pm
-        ON pm.partner_name_normalized = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.vendor_partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
+        ON pm.billing_month = u.billing_month::DATE
+       AND pm.partner_name_normalized = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.vendor_partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
     LEFT JOIN vendor_product_map vpm
         ON vpm.vendor_entity = u.modifier
        AND vpm.vendor_product_key = UPPER(TRIM(u.vendor_product_sku))
@@ -206,6 +208,63 @@ vendor_cw_skus AS (
        AND m.cw_sku IS NOT NULL
     GROUP BY 1, 2, 3
 ),
+auvik_vendor_keys AS (
+    SELECT DISTINCT sf_id, billing_month
+    FROM vendor_agg
+    WHERE sf_id IS NOT NULL
+),
+auvik_zuora_rows AS (
+        SELECT
+                z.sf_id,
+                z.billing_month::DATE AS billing_month,
+                cw.sku_match_group AS sku_match_group,
+                cw.auvik_product_group AS auvik_product_group,
+                UPPER(TRIM(z.product_sku)) AS product_sku,
+                z.charge_name AS charge_names,
+                NULL::VARCHAR AS billing_unit_types,
+                1::NUMBER AS billing_qty_multiplier,
+                COALESCE(z.qty, 0) AS zuora_native_quantity,
+                COALESCE(z.qty, 0) AS zuora_quantity,
+                COALESCE(z.unit_price_usd, 0) AS zuora_unit_price,
+                COALESCE(z.charge_amount_usd, 0) AS zuora_charge_amount,
+                1::NUMBER AS billing_row_count
+        FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD z
+        INNER JOIN cw_sku_map cw
+            ON cw.cw_sku_key = UPPER(TRIM(z.product_sku))
+        WHERE z.vendor = 'Auvik'
+            AND z.sf_id ILIKE 'ACT-%'
+            AND COALESCE(z.qty, 0) <> 0
+            AND EXISTS (
+                    SELECT 1
+                    FROM auvik_vendor_keys vk
+                    WHERE vk.sf_id = z.sf_id
+                        AND vk.billing_month = z.billing_month::DATE
+            )
+),
+auvik_marketplace_rows AS (
+        SELECT
+                m.sf_id,
+                m.billing_month::DATE AS billing_month,
+                cw.sku_match_group AS sku_match_group,
+                cw.auvik_product_group AS auvik_product_group,
+                UPPER(TRIM(m.product_sku)) AS product_sku,
+                COALESCE(m.qty, 0) AS marketplace_quantity,
+                COALESCE(m.amount, 0) AS marketplace_amount,
+                1::NUMBER AS marketplace_row_count,
+                m.transaction_source AS marketplace_transaction_sources
+        FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD m
+        INNER JOIN cw_sku_map cw
+            ON cw.cw_sku_key = UPPER(TRIM(m.product_sku))
+        WHERE m.vendor = 'Auvik'
+            AND m.sf_id ILIKE 'ACT-%'
+            AND COALESCE(m.qty, 0) <> 0
+            AND EXISTS (
+                    SELECT 1
+                    FROM auvik_vendor_keys vk
+                    WHERE vk.sf_id = m.sf_id
+                        AND vk.billing_month = m.billing_month::DATE
+            )
+),
 zuora_agg AS (
     SELECT
         b.sf_id,
@@ -221,7 +280,7 @@ zuora_agg AS (
         AVG(NULLIF(b.zuora_unit_price, 0)) AS zuora_unit_price,
         SUM(b.zuora_charge_amount) AS zuora_amount,
         SUM(b.billing_row_count) AS zuora_row_count
-    FROM AUVIK_BILLING_MATCHED b
+    FROM auvik_zuora_rows b
     GROUP BY 1, 2, 3
 ),
 marketplace_agg AS (
@@ -236,7 +295,7 @@ marketplace_agg AS (
         SUM(b.marketplace_row_count) AS marketplace_row_count,
         LISTAGG(DISTINCT b.marketplace_transaction_sources, ' | ')
             WITHIN GROUP (ORDER BY b.marketplace_transaction_sources) AS marketplace_transaction_sources
-    FROM AUVIK_MARKETPLACE_BILLING_MATCHED b
+    FROM auvik_marketplace_rows b
     GROUP BY 1, 2, 3
 ),
 same_month_any_billing AS (
@@ -285,13 +344,37 @@ nearby_billing AS (
         ORDER BY ABS(DATEDIFF(month, v.billing_month, h.billing_month)), ABS(h.billing_quantity - v.vendor_quantity)
     ) = 1
 ),
+sf_id_to_partner AS (
+    SELECT
+        sf_id,
+        partner_name
+    FROM RECON_PARTNER_MAP
+    WHERE sf_id ILIKE 'ACT-%'
+      AND partner_name IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY sf_id
+        ORDER BY
+            IFF(UPPER(partner_name) LIKE '%-INTERNAL', 1, 0),
+            IFF(UPPER(partner_name) LIKE '%-CORPORATE', 1, 0),
+            LENGTH(partner_name),
+            UPPER(partner_name)
+    ) = 1
+),
+sf_account_names AS (
+    SELECT
+        CWS_ACCOUNT_UNIQUE_IDENTIFIER_C AS sf_id,
+        NAME AS account_name
+    FROM ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT
+    WHERE CWS_ACCOUNT_UNIQUE_IDENTIFIER_C ILIKE 'ACT-%'
+      AND IS_DELETED = FALSE
+),
 joined AS (
     SELECT
         COALESCE(v.billing_month, z.billing_month, m.billing_month) AS billing_month,
         COALESCE(v.sf_id, z.sf_id, m.sf_id) AS sf_id,
         COALESCE(v.sku_match_group, z.sku_match_group, m.sku_match_group) AS sku_match_group,
         COALESCE(v.auvik_product_group, z.auvik_product_group, m.auvik_product_group) AS auvik_product_group,
-        v.vendor_partner_name,
+        COALESCE(v.vendor_partner_name, sp.partner_name, sa.account_name) AS vendor_partner_name,
         v.auvik_product,
         v.vendor_entities,
         v.currencies,
@@ -356,6 +439,10 @@ joined AS (
         ON nb.sf_id = v.sf_id
        AND nb.billing_month = v.billing_month
        AND nb.sku_match_group = v.sku_match_group
+    LEFT JOIN sf_id_to_partner sp
+        ON sp.sf_id = COALESCE(v.sf_id, z.sf_id, m.sf_id)
+    LEFT JOIN sf_account_names sa
+        ON sa.sf_id = COALESCE(v.sf_id, z.sf_id, m.sf_id)
 ),
 scored AS (
     SELECT

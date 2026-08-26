@@ -20,16 +20,9 @@ Architecture (the "one big table" you asked for):
 No STANDALONE reads in the app path. No TRANSLATIONS dict. No per-vendor
 _RECON_DETAIL_PROD sprawl. No union step.
 
-Tonight's source for every vendor's emit block is the frozen SNAPSHOT from
-2026-08-23 (Phase 0 preservation). This is intentional: it lets us prove the
-architecture works end-to-end without touching the 1000-line vendor SQL files.
-
-Tomorrow's fine-tune: for each vendor, flip its emit block from
-    SOURCE = "<VENDOR>_SNAPSHOT_20260823"
-to
-    1. run Vendor_Recon_Pipelines_Prod/<VENDOR>/<VENDOR>_Reconciliation_Script_Prod.sql
-    2. SOURCE = "<VENDOR>_RECON_DETAIL" (the vendor SQL's own output table)
-Everything downstream stays identical.
+Current production routing: all 9 vendors execute their SQL scripts from
+Reconciliation/ and emit directly from <VENDOR>_RECON_DETAIL.
+Legacy snapshot fallback paths are intentionally disabled.
 """
 from __future__ import annotations
 import subprocess
@@ -54,7 +47,7 @@ USE = (
 #
 # For each vendor we choose one of two paths into THIRD_PARTY_RECON_DETAIL_PROD:
 #
-#   "live"      -> execute Vendor_Recon_Pipelines_Prod/<VENDOR>/<VENDOR>_Reconciliation_Script_Prod.sql
+#   "live"      -> execute Reconciliation/<VENDOR>_Reconciliation_Script_Prod.sql
 #                  (which rebuilds <VENDOR>_RECON_DETAIL) and emit from that
 #                  table. This is what production will use for every vendor.
 #
@@ -62,7 +55,7 @@ USE = (
 #                  (frozen 2026-08-23 Phase 0 backup). Used for vendors whose
 #                  live SQL still needs calibration.
 #
-# Flip a vendor from "snapshot" to "live" when its numbers are cleaned up.
+# In production handoff, all vendors must remain on "live".
 # ---------------------------------------------------------------------------
 VENDOR_ROUTING: dict[str, tuple[str, str]] = {
     # vendor        : (mode, source)
@@ -95,11 +88,14 @@ CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
         WHEN OUTCOME_FLAG IN (
             'Clear', 'Unmapped Partner', 'Duplicated CW Invoice',
             'Marketplace Billing Delay', 'Known Discount / Bundle',
+            'Disabled Partner SKU',
             'API Usage, Insufficient CW Billing', 'Vendor SKU, No CW SKU',
             'CW SKU, No Vendor SKU', 'Vendor Billing, No CW Billing',
             'CW Billing, No Vendor Billing',
             'Vendor Billing, Insufficient CW Billing', 'Other Issue'
         ) THEN OUTCOME_FLAG
+        WHEN OUTCOME_FLAG IN ('DISABLED_PARTNER_SKU', 'Disabled Partner SKU')
+            THEN 'Disabled Partner SKU'
         WHEN OUTCOME_FLAG IN ('CLEAR','MATCHED','MINOR_DRIFT',
                               'NEGLIGIBLE_DOLLAR_EXPOSURE','MARKETPLACE_ONLY_CLEAR',
                               'NO_ACTIVITY','OVERAGE_EXPECTED','MATERIAL_OVER_VENDOR',

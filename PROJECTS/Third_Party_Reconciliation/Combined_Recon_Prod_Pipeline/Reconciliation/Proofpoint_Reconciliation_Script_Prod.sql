@@ -9,8 +9,8 @@
 --   - PROOFPOINT_USAGE
 --   - RECON_PARTNER_MAP
 --   - (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Proofpoint')
---   - PROOFPOINT_BILLING_MATCHED
---   - PROOFPOINT_MARKETPLACE_BILLING_MATCHED
+--   - THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
+--   - THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
 --
 -- Outputs:
 --   - PROOFPOINT_RECON_DETAIL
@@ -113,6 +113,12 @@ pp_contract_rates AS (
     FROM PROOFPOINT_CONTRACT_RATES
 ),
 
+proofpoint_loaded_billing_months AS (
+    SELECT DISTINCT billing_month::DATE AS billing_month
+    FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
+    WHERE vendor = 'Proofpoint'
+),
+
 proofpoint_base AS (
     SELECT
         ROW_NUMBER() OVER (
@@ -177,6 +183,7 @@ proofpoint_base AS (
         ON cr.child_sf_id = COALESCE(sfr.canonical_sf_id, pc.sf_id, pn.sf_id)
     WHERE COALESCE(u.quantity, 0) <> 0
       AND COALESCE(u.amount, 0) <> 0
+            AND u.billing_month::DATE IN (SELECT billing_month FROM proofpoint_loaded_billing_months)
 ),
 
 pp_product_to_group AS (
@@ -338,6 +345,44 @@ vendor_agg AS (
        AND i.sku_match_group = b.sku_match_group
 ),
 
+proofpoint_cw_sku_tokens AS (
+    SELECT DISTINCT
+        UPPER(TRIM(tok.value)) AS cw_sku_token
+    FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Proofpoint') sm,
+         LATERAL SPLIT_TO_TABLE(REPLACE(sm.cw_sku, '/', '|'), '|') tok
+    WHERE sm.cw_sku IS NOT NULL
+      AND TRIM(tok.value) <> ''
+),
+
+zuora_source AS (
+    SELECT
+        sf_id,
+        UPPER(TRIM(product_sku)) AS product_sku,
+        billing_month::DATE AS billing_month,
+        COALESCE(qty, 0) AS zuora_quantity,
+        COALESCE(unit_price_usd, 0) AS zuora_unit_price,
+        COALESCE(charge_amount_usd, 0) AS zuora_charge_amount
+    FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
+    WHERE vendor = 'Proofpoint'
+      AND sf_id ILIKE 'ACT-%'
+      AND COALESCE(qty, 0) <> 0
+            AND UPPER(TRIM(product_sku)) IN (SELECT cw_sku_token FROM proofpoint_cw_sku_tokens)
+),
+
+marketplace_source AS (
+    SELECT
+        sf_id,
+        UPPER(TRIM(product_sku)) AS product_sku,
+        billing_month::DATE AS billing_month,
+        COALESCE(qty, 0) AS marketplace_quantity,
+        COALESCE(amount, 0) AS marketplace_amount
+    FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
+    WHERE vendor = 'Proofpoint'
+      AND sf_id ILIKE 'ACT-%'
+      AND COALESCE(qty, 0) <> 0
+            AND UPPER(TRIM(product_sku)) IN (SELECT cw_sku_token FROM proofpoint_cw_sku_tokens)
+),
+
 zuora_proofpoint AS (
     SELECT
         sf_id,
@@ -346,7 +391,7 @@ zuora_proofpoint AS (
         SUM(zuora_quantity) AS zuora_quantity,
         AVG(zuora_unit_price) AS zuora_unit_price,
         SUM(zuora_charge_amount) AS zuora_amount
-    FROM PROOFPOINT_BILLING_MATCHED
+    FROM zuora_source
     GROUP BY 1, 2, 3
 ),
 
@@ -357,7 +402,7 @@ marketplace_billing AS (
         billing_month,
         SUM(marketplace_quantity) AS marketplace_quantity,
         SUM(marketplace_amount) AS marketplace_amount
-    FROM PROOFPOINT_MARKETPLACE_BILLING_MATCHED
+    FROM marketplace_source
     GROUP BY 1, 2, 3
 ),
 
@@ -369,7 +414,7 @@ zuora_any_sf_month AS (
         SUM(zuora_charge_amount) AS any_zuora_amount,
         COUNT(*) AS any_zuora_row_count,
         ARRAY_AGG(DISTINCT product_sku) WITHIN GROUP (ORDER BY product_sku) AS any_zuora_skus
-    FROM PROOFPOINT_BILLING_MATCHED
+    FROM zuora_source
     GROUP BY 1, 2
 ),
 
@@ -381,7 +426,7 @@ marketplace_any_sf_month AS (
         SUM(marketplace_amount) AS any_marketplace_amount,
         COUNT(*) AS any_marketplace_row_count,
         ARRAY_AGG(DISTINCT product_sku) WITHIN GROUP (ORDER BY product_sku) AS any_marketplace_skus
-    FROM PROOFPOINT_MARKETPLACE_BILLING_MATCHED
+    FROM marketplace_source
     GROUP BY 1, 2
 ),
 
@@ -393,7 +438,7 @@ marketplace_prior_sf_month AS (
         SUM(marketplace_amount) AS prior_month_marketplace_amount,
         COUNT(*) AS prior_month_marketplace_row_count,
         ARRAY_AGG(DISTINCT product_sku) WITHIN GROUP (ORDER BY product_sku) AS prior_month_marketplace_skus
-    FROM PROOFPOINT_MARKETPLACE_BILLING_MATCHED
+    FROM marketplace_source
     GROUP BY 1, 2
 ),
 
@@ -408,7 +453,7 @@ zuora_nearby_sf AS (
         FROM vendor_agg
         WHERE sf_id IS NOT NULL
     ) current_month
-    LEFT JOIN PROOFPOINT_BILLING_MATCHED nearby
+    LEFT JOIN zuora_source nearby
         ON nearby.sf_id = current_month.sf_id
        AND nearby.billing_month BETWEEN DATEADD(month, -2, current_month.billing_month)
                                    AND DATEADD(month, 2, current_month.billing_month)

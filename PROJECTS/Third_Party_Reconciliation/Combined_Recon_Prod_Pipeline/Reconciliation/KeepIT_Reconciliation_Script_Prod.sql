@@ -149,6 +149,106 @@ vendor_weights AS (
     FROM vendor_agg
     GROUP BY 1, 2, 3, 4
 ),
+keepit_sku_map AS (
+    SELECT DISTINCT
+        UPPER(TRIM(sku_match_key)) AS sku_match_group,
+        UPPER(TRIM(cw_sku)) AS cw_sku
+    FROM RECON_SKU_MAP
+    WHERE vendor = 'KeepIT'
+      AND sku_match_key IS NOT NULL
+      AND cw_sku IS NOT NULL
+),
+keepit_sku_map_tokens AS (
+    SELECT DISTINCT
+        sm.sku_match_group,
+        sm.cw_sku,
+        UPPER(TRIM(tok.value)) AS cw_sku_token
+    FROM keepit_sku_map sm,
+         LATERAL SPLIT_TO_TABLE(REPLACE(sm.cw_sku, '/', '|'), '|') tok
+    WHERE TRIM(tok.value) <> ''
+),
+keepit_zuora_rows AS (
+    SELECT
+        z.sf_id,
+        z.billing_month::DATE AS billing_month,
+        CASE
+            WHEN COALESCE(sm.sku_match_group, UPPER(TRIM(z.product_sku))) ILIKE 'KEEPIT_PROMO_%' THEN 'PROMO'
+            WHEN COALESCE(sm.sku_match_group, UPPER(TRIM(z.product_sku))) ILIKE 'KEEPIT_TAKEOUT_%' THEN 'TAKEOUT'
+            ELSE 'MAIN'
+        END AS source_family,
+        COALESCE(sm.sku_match_group, UPPER(TRIM(z.product_sku))) AS sku_match_group,
+        UPPER(TRIM(z.product_sku)) AS product_sku,
+        z.charge_name AS charge_name,
+        COALESCE(z.qty, 0) AS qty,
+        COALESCE(z.charge_amount_usd, 0) AS amount
+    FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD z
+    LEFT JOIN keepit_sku_map_tokens sm
+      ON sm.cw_sku_token = UPPER(TRIM(z.product_sku))
+    WHERE z.vendor = 'KeepIT'
+      AND z.sf_id ILIKE 'ACT-%'
+      AND COALESCE(z.qty, 0) <> 0
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY z.sf_id, z.billing_month::DATE, z.invoice_number, z.invoice_id, z.product_sku, z.charge_name, z.qty, z.charge_amount_usd
+        ORDER BY IFF(sm.cw_sku = UPPER(TRIM(z.product_sku)), 1, 0) DESC,
+                 LENGTH(COALESCE(sm.cw_sku, UPPER(TRIM(z.product_sku)))) ASC,
+                 sm.sku_match_group
+    ) = 1
+),
+keepit_zuora_agg AS (
+    SELECT
+        sf_id,
+        billing_month,
+        source_family,
+        sku_match_group,
+        ARRAY_AGG(DISTINCT product_sku) WITHIN GROUP (ORDER BY product_sku) AS zuora_skus,
+        LISTAGG(DISTINCT charge_name, ' | ') WITHIN GROUP (ORDER BY charge_name) AS zuora_charge_names,
+        SUM(qty) AS zuora_quantity,
+        IFF(SUM(qty)=0, NULL, SUM(amount)/NULLIF(SUM(qty),0)) AS zuora_unit_price,
+        SUM(amount) AS zuora_amount,
+        COUNT(*) AS zuora_row_count,
+        0::NUMBER AS zuora_review_row_count
+    FROM keepit_zuora_rows
+    GROUP BY 1,2,3,4
+),
+keepit_carr_rows AS (
+    SELECT
+        m.sf_id,
+        m.billing_month::DATE AS billing_month,
+        CASE
+            WHEN COALESCE(sm.sku_match_group, UPPER(TRIM(m.product_sku))) ILIKE 'KEEPIT_PROMO_%' THEN 'PROMO'
+            WHEN COALESCE(sm.sku_match_group, UPPER(TRIM(m.product_sku))) ILIKE 'KEEPIT_TAKEOUT_%' THEN 'TAKEOUT'
+            ELSE 'MAIN'
+        END AS source_family,
+        COALESCE(sm.sku_match_group, UPPER(TRIM(m.product_sku))) AS sku_match_group,
+        UPPER(TRIM(m.product_sku)) AS product_sku,
+        COALESCE(m.qty, 0) AS qty,
+        COALESCE(m.amount, 0) AS amount
+    FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD m
+    LEFT JOIN keepit_sku_map_tokens sm
+      ON sm.cw_sku_token = UPPER(TRIM(m.product_sku))
+    WHERE m.vendor = 'KeepIT'
+      AND m.sf_id ILIKE 'ACT-%'
+      AND COALESCE(m.qty, 0) <> 0
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY m.sf_id, m.billing_month::DATE, m.product_sku, m.qty, m.amount, m.transaction_source
+        ORDER BY IFF(sm.cw_sku = UPPER(TRIM(m.product_sku)), 1, 0) DESC,
+                 LENGTH(COALESCE(sm.cw_sku, UPPER(TRIM(m.product_sku)))) ASC,
+                 sm.sku_match_group
+    ) = 1
+),
+keepit_carr_agg AS (
+    SELECT
+        sf_id,
+        billing_month,
+        source_family,
+        sku_match_group,
+        ARRAY_AGG(DISTINCT product_sku) WITHIN GROUP (ORDER BY product_sku) AS carr_skus,
+        SUM(qty) AS carr_quantity,
+        SUM(amount) AS carr_amount,
+        COUNT(*) AS carr_row_count
+    FROM keepit_carr_rows
+    GROUP BY 1,2,3,4
+),
 joined_vendor AS (
     SELECT
         v.sf_id,
@@ -198,12 +298,12 @@ joined_vendor AS (
        AND w.billing_month = v.billing_month
        AND w.source_family = v.source_family
        AND w.sku_match_group = v.sku_match_group
-    LEFT JOIN KEEPIT_ZUORA_RESOLVED z
+    LEFT JOIN keepit_zuora_agg z
         ON z.sf_id = v.sf_id
        AND z.billing_month = v.billing_month
        AND z.source_family = v.source_family
        AND z.sku_match_group = v.sku_match_group
-    LEFT JOIN KEEPIT_CARR_RESOLVED c
+    LEFT JOIN keepit_carr_agg c
         ON c.sf_id = v.sf_id
        AND c.billing_month = v.billing_month
        AND c.source_family = v.source_family
@@ -255,8 +355,8 @@ zuora_only AS (
         0::NUMBER AS vendor_source_row_count,
         0::NUMBER AS vendor_partner_guid_count,
         0::NUMBER AS vendor_unmapped_partner_rows
-    FROM KEEPIT_ZUORA_RESOLVED z
-    LEFT JOIN KEEPIT_CARR_RESOLVED c
+    FROM keepit_zuora_agg z
+    LEFT JOIN keepit_carr_agg c
         ON c.sf_id = z.sf_id
        AND c.billing_month = z.billing_month
        AND c.source_family = z.source_family

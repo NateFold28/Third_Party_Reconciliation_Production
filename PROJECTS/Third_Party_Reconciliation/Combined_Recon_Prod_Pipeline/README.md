@@ -8,10 +8,11 @@ Production reconciliation system for 9 third-party vendors against ConnectWise b
 
 ```
 ├── Ingestion/          10 ingestion scripts (9 vendor usage + 1 invoice)
-├── Reconciliation/     9 vendor recon SQL files + 2 pipeline orchestrators
+├── Reconciliation/     9 vendor recon SQL files + orchestrators
 ├── Maps/
-│   ├── sql/            5 SQL files for billing sources, reference maps, compat views
+│   ├── sql/            unified billing + unified reference maps
 │   └── seeds/          2 active seed CSV files (partner map, SKU map)
+├── logs/               latest troubleshooting logs only
 └── app/                Streamlit reconciliation dashboard
 ```
 
@@ -34,6 +35,10 @@ Billing Sources (from analytics DB)
 
 Reconciliation (9 SQL files + orchestrators)
   <Vendor>_Reconciliation_Script_Prod.sql  →  <VENDOR>_RECON_DETAIL  (staging per vendor)
+                                           -> each vendor script reads only core layers:
+                                              THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
+                                              THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
+                                              (and THIRD_PARTY_RECON_SOURCE_TRT_PROD where applicable)
   _run_skeleton_pipeline.py                →  THIRD_PARTY_RECON_DETAIL_PROD (unified)
   build_third_party_recon_output_prod.py   →  THIRD_PARTY_RECON_OUTPUT_PROD (LOCKED)
                                            →  THIRD_PARTY_RECON_SUMMARY_PROD
@@ -41,6 +46,14 @@ Reconciliation (9 SQL files + orchestrators)
 App
   app/combined_recon_app.py reads OUTPUT_PROD + SUMMARY_PROD  (Streamlit)
 ```
+
+## Dependency Policy
+
+- No legacy matched/resolved billing tables are used by active vendor recon scripts.
+- Vendor recon logic is housed in each vendor's script under Reconciliation/.
+- Improvement levers are limited to:
+  1) unified partner map, 2) unified SKU map, 3) vendor recon SQL logic.
+- Any new mapping correction for Acronis must be implemented through Maps/sql/02 + Acronis_Reconciliation_Script_Prod.sql.
 
 ## Running the Pipeline
 
@@ -63,21 +76,21 @@ streamlit run "app\combined_recon_app.py"
 1. **Partner Map** — Edit `THIRD_PARTY_RECON_PARTNER_MAP_PROD` in Snowflake → re-run `Maps/sql/02_unified_reference_maps.sql` → re-run pipeline
 2. **SKU Map** — Edit `THIRD_PARTY_RECON_SKU_MAP_PROD` in Snowflake → re-run `Maps/sql/02_unified_reference_maps.sql` → re-run pipeline
 
-## Current Pipeline Performance (2026-08-24)
+## Current Pipeline Performance (2026-08-26, June billing month)
 
 | Vendor | Clear % | Note |
 |---|---|---|
-| Proofpoint | **95.2%** ✅ | Gold standard |
-| Bitdefender | 86.7% | |
-| Acronis | 82.3% | SKU map gaps |
-| SentinelOne | 79.5% | Add-on SKUs |
-| Exium | 72.2% | Small vendor |
-| Auvik | 63.8% | SKU map gaps |
-| Webroot | 47.1% | Pricing calibration |
-| KeepIT | 28.4% | Product SKU mapping |
-| ESET | 13.4% | SKU/rate calibration |
+| Auvik | **94.3%** | parity tuning pass |
+| Proofpoint | 93.5% | July behavior gated to loaded billing months |
+| Bitdefender | 91.5% | |
+| Acronis | 90.1% | source-driven + mapping hardening |
+| Exium | 83.2% | |
+| SentinelOne | 83.1% | |
+| ESET | 63.9% | |
+| Webroot | 54.5% | |
+| KeepIT | 41.0% | needs continued calibration |
 
-**OUTPUT_PROD**: 109,689 rows across 9 vendors, 12 EXCEPTION_TYPE buckets, 45 columns
+**OUTPUT_PROD (current full rebuild)**: 116,380 rows across 9 vendors.
 
 ## Snowflake Environment
 
@@ -92,4 +105,4 @@ streamlit run "app\combined_recon_app.py"
 - Do NOT reintroduce `VENDOR_FALLBACK` entries to the exception taxonomy
 - Do NOT create per-vendor staging tables beyond `<VENDOR>_RECON_DETAIL`
 - `_LEGACY_20260823` tables are historical snapshots only; do not route active pipeline logic through them
-- Compat views in `Maps/sql/03_compat_dead_object_views.sql` are transitional shims only
+- Do NOT recreate legacy matched/resolved billing tables; vendor recon scripts are source-driven from unified billing sources

@@ -117,6 +117,10 @@ CASE
          OR OUTCOME_FLAG IN ('Unmapped Partner', 'Unmapped SKU', 'PARTNER_MAPPING_REQUIRED')
     THEN 'Unmapped Partner'
 
+    -- Disabled vendor-source rows should be tracked in a dedicated bucket.
+    WHEN OUTCOME_FLAG IN ('DISABLED_PARTNER_SKU', 'Disabled Partner SKU')
+    THEN 'Disabled Partner SKU'
+
     -- ESET is quantity-first: vendor source files carry seats, while dollars
     -- come from a contract-cost overlay. Preserve ESET's quantity outcome at
     -- the app boundary instead of letting amount-first rules relabel rows.
@@ -347,6 +351,7 @@ END
 ACTION_NEEDED_CASE = """
 CASE EXCEPTION_TYPE
     WHEN 'Clear'                                        THEN 'None'
+    WHEN 'Disabled Partner SKU'                         THEN 'No action - vendor source marks this partner SKU as disabled'
     WHEN 'Unmapped Partner'                             THEN 'Data team: update partner mapping'
     WHEN 'Duplicated CW Invoice'                        THEN 'Billing Ops: cancel duplicate invoice line'
     WHEN 'Marketplace Billing Delay'                    THEN 'No action - prior-month invoice expected next cycle'

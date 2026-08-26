@@ -3,7 +3,8 @@
 -- =============================================================================
 -- 2026-08-03 REBUILD to the Proofpoint / Auvik pattern.
 --   Vendor side = ACRONIS_USAGE   (vendor consumption; AMOUNT = qty * observed USD price)
---   CW side     = ACRONIS_ZUORA_RESOLVED (FX->USD) + ACRONIS_MARKETPLACE_RESOLVED (CARR)
+--   CW side     = THIRD_PARTY_RECON_SOURCE_ZUORA_PROD + THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
+--                 resolved to Acronis sku_match_group inside this script
 --   Grain       = (sf_id, billing_month, sku_match_group), sku_match_group = VENDOR SKU code
 --
 -- total_billing = GREATEST(zuora, marketplace) NOT zuora+marketplace. Unlike
@@ -37,14 +38,58 @@ WITH merged_account_resolver AS (
     SELECT old_sf_id, canonical_sf_id, merge_effective_month
     FROM ACCOUNT_MERGE_RESOLVER
 ),
+billing_presence AS (
+    -- Billing existence signal used to stabilize partner_name fallback mapping.
+    SELECT DISTINCT sf_id, billing_month
+    FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
+    WHERE vendor = 'Acronis'
+      AND sf_id ILIKE 'ACT-%'
+
+    UNION
+
+    SELECT DISTINCT sf_id, billing_month
+    FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
+    WHERE vendor = 'Acronis'
+      AND sf_id ILIKE 'ACT-%'
+),
+acronis_sku_map AS (
+    SELECT DISTINCT
+        UPPER(TRIM(sku_match_key)) AS sku_match_key,
+        UPPER(TRIM(cw_sku)) AS cw_sku
+    FROM RECON_SKU_MAP
+    WHERE vendor = 'Acronis'
+      AND sku_match_key IS NOT NULL
+      AND cw_sku IS NOT NULL
+),
+acronis_sku_map_tokens AS (
+    SELECT DISTINCT
+        sm.sku_match_key,
+        sm.cw_sku,
+        UPPER(TRIM(tok.value)) AS cw_sku_token
+    FROM acronis_sku_map sm,
+         LATERAL SPLIT_TO_TABLE(REPLACE(sm.cw_sku, '/', '|'), '|') tok
+    WHERE TRIM(tok.value) <> ''
+),
 partner_map AS (
     SELECT
+        pm.billing_month::DATE AS billing_month,
         TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(pm.partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm,
-        ANY_VALUE(COALESCE(mr.canonical_sf_id, pm.sf_id)) AS sf_id
-    FROM RECON_PARTNER_MAP pm
+        COALESCE(mr.canonical_sf_id, pm.sf_id) AS sf_id,
+        IFF(b.sf_id IS NULL, 0, 1) AS has_billing_match,
+        IFF(pm.cms_id IS NULL OR TRIM(pm.cms_id) IN ('', '-'), 0, 1) AS has_cms_id
+    FROM RECON_PARTNER_MAP_MONTHLY pm
     LEFT JOIN merged_account_resolver mr ON mr.old_sf_id = pm.sf_id
+    LEFT JOIN billing_presence b
+      ON b.sf_id = COALESCE(mr.canonical_sf_id, pm.sf_id)
+     AND b.billing_month = pm.billing_month::DATE
     WHERE pm.sf_id ILIKE 'ACT-%' AND pm.partner_name IS NOT NULL
-    GROUP BY 1
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY pm.billing_month::DATE,
+                     TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(pm.partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
+        ORDER BY has_billing_match DESC,
+                 has_cms_id DESC,
+                 COALESCE(mr.canonical_sf_id, pm.sf_id)
+    ) = 1
 ),
 combined_map AS (
     SELECT
@@ -80,6 +125,7 @@ vendor_rows AS (
         ) AS partner_recon_key,
         u.VENDOR_PARTNER_NAME AS VENDOR_PARTNER_NAME,
         UPPER(TRIM(u.VENDOR_PRODUCT_SKU)) AS sku_match_group,
+        IFF(UPPER(TRIM(COALESCE(u.MODIFIER, ''))) = 'DISABLED', 1, 0) AS is_disabled_modifier,
         COALESCE(u.QUANTITY, 0) AS quantity,
         COALESCE(u.AMOUNT, 0) AS amount
     FROM ACRONIS_USAGE u
@@ -88,7 +134,8 @@ vendor_rows AS (
         AND cm.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
         AND cm.vendor_sku = UPPER(TRIM(u.VENDOR_PRODUCT_SKU))
     LEFT JOIN partner_map p
-        ON p.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
+        ON p.billing_month = u.BILLING_MONTH::DATE
+       AND p.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
     LEFT JOIN ACRONIS_CONTRACT_RATES rate
         ON rate.vendor_product = UPPER(TRIM(u.VENDOR_PRODUCT_SKU))
         AND u.BILLING_MONTH::DATE BETWEEN rate.valid_from AND rate.valid_to
@@ -101,6 +148,7 @@ vendor_agg AS (
         sf_id, billing_month, sku_match_group,
         LISTAGG(DISTINCT VENDOR_PARTNER_NAME, ' | ') WITHIN GROUP (ORDER BY VENDOR_PARTNER_NAME) AS vendor_partner_name,
         sku_match_group AS vendor_product,
+        MAX(is_disabled_modifier) AS has_disabled_modifier,
         SUM(quantity) AS vendor_quantity,
         SUM(amount)   AS vendor_amount,
         COUNT(*)      AS vendor_row_count
@@ -108,15 +156,94 @@ vendor_agg AS (
     GROUP BY partner_recon_key, sf_id, billing_month, sku_match_group
 ),
 
+zuora_source_rows AS (
+    SELECT
+        z.sf_id,
+        z.billing_month::DATE AS billing_month,
+        UPPER(TRIM(z.product_sku)) AS product_sku,
+        COALESCE(z.qty, 0) AS qty,
+        COALESCE(z.unit_price_usd, 0) AS unit_price_usd,
+        COALESCE(z.charge_amount_usd, 0) AS charge_amount_usd,
+        z.invoice_number,
+        z.invoice_id,
+        z.charge_name
+    FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD z
+    WHERE z.vendor = 'Acronis'
+      AND z.sf_id ILIKE 'ACT-%'
+      AND COALESCE(z.qty, 0) <> 0
+),
+zuora_mapped_rows AS (
+    SELECT
+        z.sf_id,
+        z.billing_month,
+        COALESCE(sm.sku_match_key, z.product_sku) AS sku_match_group,
+        z.product_sku,
+        z.qty,
+        z.unit_price_usd,
+        z.charge_amount_usd
+    FROM zuora_source_rows z
+    LEFT JOIN acronis_sku_map_tokens sm
+      ON sm.cw_sku_token = z.product_sku
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY z.sf_id, z.billing_month, z.invoice_number, z.invoice_id, z.product_sku, z.charge_name, z.qty, z.charge_amount_usd
+        ORDER BY IFF(sm.cw_sku = z.product_sku, 1, 0) DESC,
+                 LENGTH(COALESCE(sm.cw_sku, z.product_sku)) ASC,
+                 sm.sku_match_key
+    ) = 1
+),
 zuora_agg AS (
-    SELECT sf_id, billing_month, sku_match_group, zuora_skus,
-           zuora_quantity, zuora_unit_price, zuora_amount, zuora_row_count
-    FROM ACRONIS_ZUORA_RESOLVED
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        ARRAY_AGG(DISTINCT product_sku) WITHIN GROUP (ORDER BY product_sku) AS zuora_skus,
+        SUM(qty) AS zuora_quantity,
+        IFF(SUM(qty) = 0, NULL, SUM(charge_amount_usd) / NULLIF(SUM(qty), 0)) AS zuora_unit_price,
+        SUM(charge_amount_usd) AS zuora_amount,
+        COUNT(*) AS zuora_row_count
+    FROM zuora_mapped_rows
+    GROUP BY 1, 2, 3
+),
+marketplace_source_rows AS (
+    SELECT
+        m.sf_id,
+        m.billing_month::DATE AS billing_month,
+        UPPER(TRIM(m.product_sku)) AS product_sku,
+        COALESCE(m.qty, 0) AS qty,
+        COALESCE(m.amount, 0) AS amount
+    FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD m
+    WHERE m.vendor = 'Acronis'
+      AND m.sf_id ILIKE 'ACT-%'
+      AND COALESCE(m.qty, 0) <> 0
+),
+marketplace_mapped_rows AS (
+    SELECT
+        m.sf_id,
+        m.billing_month,
+        COALESCE(sm.sku_match_key, m.product_sku) AS sku_match_group,
+        m.product_sku,
+        m.qty,
+        m.amount
+    FROM marketplace_source_rows m
+    LEFT JOIN acronis_sku_map_tokens sm
+      ON sm.cw_sku_token = m.product_sku
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY m.sf_id, m.billing_month, m.product_sku, m.qty, m.amount
+        ORDER BY IFF(sm.cw_sku = m.product_sku, 1, 0) DESC,
+                 LENGTH(COALESCE(sm.cw_sku, m.product_sku)) ASC,
+                 sm.sku_match_key
+    ) = 1
 ),
 marketplace_agg AS (
-    SELECT sf_id, billing_month, sku_match_group, marketplace_skus,
-           marketplace_quantity, marketplace_amount
-    FROM ACRONIS_MARKETPLACE_RESOLVED
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        ARRAY_AGG(DISTINCT product_sku) WITHIN GROUP (ORDER BY product_sku) AS marketplace_skus,
+        SUM(qty) AS marketplace_quantity,
+        SUM(amount) AS marketplace_amount
+    FROM marketplace_mapped_rows
+    GROUP BY 1, 2, 3
 ),
 marketplace_prior_sf_month AS (
     SELECT
@@ -126,7 +253,7 @@ marketplace_prior_sf_month AS (
         SUM(marketplace_amount) AS prior_month_marketplace_amount,
         COUNT(*) AS prior_month_marketplace_row_count,
         ARRAY_AGG(DISTINCT sku_match_group) WITHIN GROUP (ORDER BY sku_match_group) AS prior_month_marketplace_sku_groups
-    FROM ACRONIS_MARKETPLACE_RESOLVED
+    FROM marketplace_agg
     GROUP BY 1, 2
 ),
 marketplace_any_sf_month AS (
@@ -137,7 +264,7 @@ marketplace_any_sf_month AS (
         SUM(marketplace_amount) AS any_marketplace_amount,
         COUNT(*) AS any_marketplace_row_count,
         ARRAY_AGG(DISTINCT sku_match_group) WITHIN GROUP (ORDER BY sku_match_group) AS any_marketplace_sku_groups
-    FROM ACRONIS_MARKETPLACE_RESOLVED
+    FROM marketplace_agg
     GROUP BY 1, 2
 ),
 
@@ -173,6 +300,7 @@ joined AS (
         COALESCE(v.vendor_quantity, 0)::NUMBER AS vendor_quantity,
         CASE WHEN v.vendor_quantity > 0 THEN v.vendor_amount / v.vendor_quantity ELSE NULL END::NUMBER AS vendor_unit_price,
         COALESCE(v.vendor_amount, 0)::NUMBER AS vendor_amount,
+        COALESCE(v.has_disabled_modifier, 0) AS has_disabled_modifier,
         z.zuora_quantity,
         z.zuora_unit_price,
         z.zuora_amount,
@@ -318,6 +446,7 @@ scored AS (
         CASE
             -- 1. Structural preconditions
             WHEN sf_id IS NULL THEN 'PARTNER_MAPPING_REQUIRED'
+            WHEN has_disabled_modifier = 1 THEN 'DISABLED_PARTNER_SKU'
             WHEN cw_skus IS NULL AND vendor_quantity > 0 THEN 'VENDOR_PRODUCT_NO_CW_SKU'
             WHEN duplicate_billing_flag THEN 'DUPLICATE_BILLING'
             WHEN same_account_other_sku_match_flag THEN 'SKU_MISMATCH_BILLING_ON_OTHER_SKU'
@@ -456,6 +585,7 @@ SELECT
         WHEN 'BILLING_DIFFERENTIAL_OVER'          THEN 'CW billing exceeds vendor usage in the 5-25% band. Minor drift; validate seat count.'
         WHEN 'BILLING_DIFFERENTIAL_UNDER'         THEN 'Vendor usage exceeds CW billing in the 5-25% band. Minor drift; validate overage line.'
         WHEN 'PARTNER_MAPPING_REQUIRED'           THEN 'Vendor partner name has no CW SF ID mapping. Add partner map entry to ACRONIS_PARTNER_MAP_SEED or ACRONIS_COMBINED_MAPPING_SEED.'
+        WHEN 'DISABLED_PARTNER_SKU'              THEN 'Vendor usage row is marked Disabled in source. Track separately from active billing gaps.'
         WHEN 'NEGLIGIBLE_DOLLAR_EXPOSURE'         THEN 'Variance exists but total dollar exposure is <=$100. No action required.'
         WHEN 'NO_ACTIVITY'                        THEN 'Row has zero on both vendor and billing sides; safety fallback.'
         WHEN 'REVIEW_EXCEPTION'                   THEN 'Pattern not matched by any rule; manual review required.'
@@ -464,6 +594,7 @@ SELECT
     CASE
         WHEN s.outcome_flag IN ('CLEAR', 'MARKETPLACE_ONLY_CLEAR', 'OVERAGE_EXPECTED',
                                 'MARKETPLACE_OVERAGE', 'NEGLIGIBLE_DOLLAR_EXPOSURE',
+                                'DISABLED_PARTNER_SKU',
                                 'MINOR_DRIFT', 'NO_ACTIVITY', 'MARKETPLACE_TIMING') THEN FALSE
         ELSE TRUE
     END AS billing_action_required,
@@ -524,6 +655,7 @@ SELECT
     COUNT_IF(outcome_flag = 'BILLING_DIFFERENTIAL_OVER') AS billing_differential_over_rows,
     COUNT_IF(outcome_flag = 'BILLING_DIFFERENTIAL_UNDER') AS billing_differential_under_rows,
     COUNT_IF(outcome_flag = 'MINOR_DRIFT') AS minor_drift_rows,
+    COUNT_IF(outcome_flag = 'DISABLED_PARTNER_SKU') AS disabled_partner_sku_rows,
     COUNT_IF(outcome_flag = 'NEGLIGIBLE_DOLLAR_EXPOSURE') AS negligible_dollar_exposure_rows,
     COUNT_IF(outcome_flag = 'NO_ACTIVITY') AS no_activity_rows,
     COUNT_IF(outcome_flag = 'REVIEW_EXCEPTION') AS review_exception_rows,

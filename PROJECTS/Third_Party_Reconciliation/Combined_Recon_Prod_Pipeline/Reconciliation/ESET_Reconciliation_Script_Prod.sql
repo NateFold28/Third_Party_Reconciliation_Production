@@ -2,8 +2,8 @@
 -- STEP 2: ESET FINAL RECONCILIATION  (Proofpoint-style, SKU-family grain)
 -- =============================================================================
 --   Vendor side = ESET_USAGE (MSP-summary rows; billed qty = modifier seats)
---   CW side     = ESET_BILLING_MATCHED (Zuora, USD)
---               + ESET_MARKETPLACE_BILLING_MATCHED (Marketplace, USD)
+--   CW side     = THIRD_PARTY_RECON_SOURCE_ZUORA_PROD (Zuora, USD)
+--               + THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD (Marketplace, USD)
 --   Grain       = (sf_id, billing_month, sku_match_group)
 --   total_billing_quantity = greater of Zuora / Marketplace quantity
 --   Reconciliation is on MODIFIER seats. QUANTITY is seat-days and is only
@@ -73,12 +73,103 @@ vendor_agg AS (
     GROUP BY 1, 2, 3
 ),
 
--- ESET_BILLING_MATCHED / ESET_MARKETPLACE_BILLING_MATCHED are already unique
--- per (sf_id, billing_month, sku_match_group); select directly (no flatten,
--- which would multiply quantities by the SKU-array length).
 -- Only reconcile months for which a vendor usage file exists.
 vendor_months AS (
     SELECT DISTINCT BILLING_MONTH::DATE AS billing_month FROM ESET_USAGE
+),
+
+eset_sku_map AS (
+    SELECT DISTINCT
+        UPPER(TRIM(cw_sku)) AS cw_sku,
+        UPPER(TRIM(sku_match_key)) AS sku_match_group
+    FROM RECON_SKU_MAP
+    WHERE vendor = 'ESET'
+      AND cw_sku IS NOT NULL
+      AND sku_match_key IS NOT NULL
+),
+eset_zuora_raw AS (
+    SELECT
+        z.sf_id,
+        z.billing_month::DATE AS billing_month,
+        COALESCE(sm.sku_match_group,
+                 CASE
+                     WHEN UPPER(z.product_sku) LIKE '%ONPREM%' THEN 'PROTECT_ENTRY_ONPREM'
+                     WHEN UPPER(z.product_sku) LIKE '%ADV%' THEN 'PROTECT_ADVANCED'
+                     WHEN UPPER(z.product_sku) LIKE '%COMPLETE%' THEN 'PROTECT_COMPLETE'
+                     WHEN UPPER(z.product_sku) LIKE '%ENTERPRISE%' THEN 'PROTECT_ENTERPRISE'
+                     WHEN UPPER(z.product_sku) LIKE '%MAIL%' THEN 'MAIL_SECURITY'
+                     WHEN UPPER(z.product_sku) LIKE '%INSPECT%' THEN 'INSPECT_EDR'
+                     WHEN UPPER(z.product_sku) LIKE '%SERVER%' THEN 'SERVER_SECURITY'
+                     WHEN UPPER(z.product_sku) LIKE '%ENDPOINT%' THEN 'ENDPOINT_SECURITY'
+                     WHEN UPPER(z.product_sku) LIKE '%ENCRYPT%' THEN 'ENCRYPTION'
+                     ELSE 'OTHER'
+                 END) AS sku_match_group,
+        z.zuora_account_name AS cw_account_name,
+        UPPER(TRIM(z.product_sku)) AS product_sku,
+        COALESCE(z.qty, 0) AS zuora_quantity,
+        COALESCE(z.unit_price_usd, 0) AS zuora_unit_price,
+        COALESCE(z.charge_amount_usd, 0) AS zuora_charge_amount
+    FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD z
+    LEFT JOIN eset_sku_map sm ON sm.cw_sku = UPPER(TRIM(z.product_sku))
+    WHERE z.vendor = 'ESET'
+      AND z.sf_id ILIKE 'ACT-%'
+      AND z.billing_month IN (SELECT billing_month FROM vendor_months)
+      AND COALESCE(z.qty, 0) <> 0
+),
+eset_marketplace_raw AS (
+    SELECT
+        m.sf_id,
+        m.billing_month::DATE AS billing_month,
+        COALESCE(sm.sku_match_group,
+                 CASE
+                     WHEN UPPER(m.product_sku) LIKE '%ONPREM%' THEN 'PROTECT_ENTRY_ONPREM'
+                     WHEN UPPER(m.product_sku) LIKE '%ADV%' THEN 'PROTECT_ADVANCED'
+                     WHEN UPPER(m.product_sku) LIKE '%COMPLETE%' THEN 'PROTECT_COMPLETE'
+                     WHEN UPPER(m.product_sku) LIKE '%ENTERPRISE%' THEN 'PROTECT_ENTERPRISE'
+                     WHEN UPPER(m.product_sku) LIKE '%MAIL%' THEN 'MAIL_SECURITY'
+                     WHEN UPPER(m.product_sku) LIKE '%INSPECT%' THEN 'INSPECT_EDR'
+                     WHEN UPPER(m.product_sku) LIKE '%SERVER%' THEN 'SERVER_SECURITY'
+                     WHEN UPPER(m.product_sku) LIKE '%ENDPOINT%' THEN 'ENDPOINT_SECURITY'
+                     WHEN UPPER(m.product_sku) LIKE '%ENCRYPT%' THEN 'ENCRYPTION'
+                     ELSE 'OTHER'
+                 END) AS sku_match_group,
+        NULL::VARCHAR AS cw_account_name,
+        UPPER(TRIM(m.product_sku)) AS product_sku,
+        COALESCE(m.qty, 0) AS marketplace_quantity,
+        COALESCE(m.amount, 0) AS marketplace_amount
+    FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD m
+    LEFT JOIN eset_sku_map sm ON sm.cw_sku = UPPER(TRIM(m.product_sku))
+    WHERE m.vendor = 'ESET'
+      AND m.sf_id ILIKE 'ACT-%'
+      AND m.billing_month IN (SELECT billing_month FROM vendor_months)
+      AND COALESCE(m.qty, 0) <> 0
+),
+eset_zuora_grouped AS (
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        ANY_VALUE(cw_account_name) AS cw_account_name,
+        ARRAY_AGG(DISTINCT product_sku) WITHIN GROUP (ORDER BY product_sku) AS product_skus,
+        SUM(zuora_quantity) AS zuora_quantity,
+        IFF(SUM(zuora_quantity)=0, NULL, SUM(zuora_charge_amount)/NULLIF(SUM(zuora_quantity),0)) AS zuora_unit_price,
+        SUM(zuora_charge_amount) AS zuora_charge_amount,
+        COUNT(*) AS billing_row_count
+    FROM eset_zuora_raw
+    GROUP BY 1,2,3
+),
+eset_marketplace_grouped AS (
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        ANY_VALUE(cw_account_name) AS cw_account_name,
+        ARRAY_AGG(DISTINCT product_sku) WITHIN GROUP (ORDER BY product_sku) AS product_skus,
+        SUM(marketplace_quantity) AS marketplace_quantity,
+        SUM(marketplace_amount) AS marketplace_amount,
+        COUNT(*) AS marketplace_row_count
+    FROM eset_marketplace_raw
+    GROUP BY 1,2,3
 ),
 
 zuora_agg2 AS (
@@ -90,8 +181,7 @@ zuora_agg2 AS (
         zuora_unit_price,
         zuora_charge_amount AS zuora_amount,
         billing_row_count   AS zuora_row_count
-    FROM ESET_BILLING_MATCHED
-    WHERE billing_month IN (SELECT billing_month FROM vendor_months)
+    FROM eset_zuora_grouped
 ),
 
 mp_agg2 AS (
@@ -102,8 +192,7 @@ mp_agg2 AS (
         marketplace_quantity,
         marketplace_amount,
         marketplace_row_count
-    FROM ESET_MARKETPLACE_BILLING_MATCHED
-    WHERE billing_month IN (SELECT billing_month FROM vendor_months)
+    FROM eset_marketplace_grouped
 ),
 
 -- Product family rollup: PROTECT_ENTRY is the vendor umbrella for
