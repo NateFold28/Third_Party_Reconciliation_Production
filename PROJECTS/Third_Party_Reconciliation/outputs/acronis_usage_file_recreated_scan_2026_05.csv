@@ -1,0 +1,23 @@
+billing_month,source_folder,source_file,entity,portal_tenant,schema_status,raw_rows,kept_rows,dropped_non_billable_sku_prefix,dropped_unknown_sku_prefix,dropped_folder_type,dropped_non_direct_child,dropped_root_row,dropped_excluded_tenant,unknown_entity
+2026-05-01,ASIO Data,"AUS_DEV - Summary for period report -  ASIO Portal (May 1, 2026-May 31, 2026).csv",AUS_DEV,// ASIO Portal,matched,649,77,550,0,22,0,0,0,False
+2026-05-01,ASIO Data,"CAN_DEV - Summary for period report -  ASIO PORTAL (May 1, 2026-May 31, 2026).csv",CAN_DEV,// ASIO PORTAL,matched,423,39,373,0,11,0,0,0,False
+2026-05-01,ASIO Data,"EU8_Master - Summary for period report - ASIO (May 1, 2026-May 31, 2026).csv",EU8_Master,ASIO,matched,366,35,311,0,20,0,0,0,False
+2026-05-01,ASIO Data,"UK_DEV - Summary for period report -  ASIO Portal (May 1, 2026-May 31, 2026).csv",UK_DEV,// ASIO Portal,matched,2575,289,2246,0,40,0,0,0,False
+2026-05-01,ASIO Data,"UK_GIG - Summary for period report -  ASIO Portal (May 1, 2026-May 31, 2026).csv",UK_GIG,// ASIO Portal,matched,942,80,835,0,27,0,0,0,False
+2026-05-01,ASIO Data,"US5_DEV - Summary for period report -  ASIO Portal (May 1, 2026-May 31, 2026).csv",US5_DEV,// ASIO Portal,matched,2121,213,1868,0,40,0,0,0,False
+2026-05-01,ASIO Data,"US_Master - Summary for period report - ASIO (May 1, 2026-May 31, 2026).csv.zip::Summary for period report - ASIO (May 1, 2026-May 31, 2026).csv",US_Master,ASIO,matched,7242,708,6478,0,56,0,0,0,False
+2026-05-01,Data,"CAN - Summary for period report - Capacity  Gig Partners (May 1, 2026-May 31, 2026).csv",CAN_GIG,Capacity / Gig Partners,matched,176,0,174,0,0,0,1,1,False
+2026-05-01,Data,"CAN - Summary for period report - Device  Workload Partners (May 1, 2026-May 31, 2026).csv",CAN_DEV,Device / Workload Partners,matched,456,19,412,0,13,0,12,0,False
+2026-05-01,Data,"EU1_GIG - Summary for period report - ConnectWise, Inc (May 1, 2026-May 31, 2026).csv",EU1_GIG,"ConnectWise, Inc",matched,91,3,85,0,0,0,3,0,False
+2026-05-01,Data,"EU8_Master - Summary for period report - ConnectWise, Inc (May 1, 2026-May 31, 2026).csv",EU8_Master,"ConnectWise, Inc",matched,354,7,307,0,20,0,20,0,False
+2026-05-01,Data,"Summary for period report - - CW GIG US2 (May 1, 2026-May 31, 2026).csv",US2_GIG,- CW GIG US2,matched,2581,93,2459,0,0,0,23,6,False
+2026-05-01,Data,"Summary for period report - - CW Workload US2 (May 1, 2026-May 31, 2026).csv",US2_DEV,- CW Workload US2,matched,1284,73,1195,0,0,0,15,1,False
+2026-05-01,Data,"Summary for period report - ConnectWise AU1 Per GB (May 1, 2026-May 31, 2026).csv",AUS_GIG,ConnectWise AU1 Per GB,matched,394,11,361,0,0,0,13,9,False
+2026-05-01,Data,"Summary for period report - ConnectWise AU1 Per Workload (May 1, 2026-May 31, 2026).csv",AUS_DEV,ConnectWise AU1 Per Workload,matched,296,1,251,0,22,0,22,0,False
+2026-05-01,Data,"Summary for period report - ConnectWise SG1 Per Gigabyte (May 1, 2026-May 31, 2026).csv",SG1_GIG,ConnectWise SG1 Per Gigabyte,matched,82,3,76,0,0,0,3,0,False
+2026-05-01,Data,"Summary for period report - ConnectWise, Inc (May 1, 2026-May 31, 2026).csv.zip::Summary for period report - ConnectWise, Inc (May 1, 2026-May 31, 2026).csv",US_Master,"ConnectWise, Inc",matched,5984,573,5235,0,72,0,64,40,False
+2026-05-01,Data,"Summary for period report - CW EU2 - Germany - Device  Workload (May 1, 2026-May 31, 2026).csv",EU2_DEV,CW EU2 - Germany - Device / Workload,matched,295,7,277,0,2,0,9,0,False
+2026-05-01,Data,"UK_DEV - Summary for period report - ConnectWise, Inc 2 (May 1, 2026-May 31, 2026).csv",UK_DEV,"ConnectWise, Inc /2",matched,1388,79,1211,0,40,0,48,10,False
+2026-05-01,Data,"UK_GIG - Summary for period report - ConnectWise, Inc (May 1, 2026-May 31, 2026).csv",UK_GIG,"ConnectWise, Inc",matched,1004,28,914,0,27,0,31,4,False
+2026-05-01,Data,"US5_DEV - Summary for period report - ConnectWise, Inc 1 (May 1, 2026-May 31, 2026).csv",US5_DEV,"ConnectWise, Inc /1",matched,1712,120,1503,0,40,0,49,0,False
+2026-05-01,Data,"US5_GIG - Summary for period report - ConnectWise, Inc (May 1, 2026-May 31, 2026).csv",US5_GIG,"ConnectWise, Inc",matched,308,13,284,0,0,0,11,0,False

@@ -1,0 +1,53 @@
+﻿==========================================================================================
+APP WIRING CHECK ΓÇö 2026-08-23
+==========================================================================================
+
+THIRD_PARTY_RECON_OUTPUT_PROD:
+  rows=101,938  vendors=9  buckets=12  months=2026-01-01..2026-10-01
+
+THIRD_PARTY_RECON_SUMMARY_PROD:
+  rows=69  vendors=9  months=2026-01-01..2026-10-01
+
+Per-vendor OUTPUT vs SUMMARY row parity:
+  VENDOR             OUTPUT    SUMMARY    delta
+  Acronis            17,634     17,634        0  
+  Auvik               3,503      3,503        0  
+  Bitdefender         3,385      3,385        0  
+  ESET               13,472     13,472        0  
+  Exium                 791        791        0  
+  KeepIT             21,787     21,787        0  
+  Proofpoint          5,459      5,459        0  
+  SentinelOne        19,661     19,661        0  
+  Webroot            16,246     16,246        0  
+
+Per-vendor clear rate + exception $ (as app will render):
+  VENDOR               ROWS   CLEAR%      EXCEPTION_$
+  Proofpoint          5,459    96.1% $         38,126
+  Bitdefender         3,385    86.7% $         55,464
+  Acronis            17,634    82.5% $        508,808
+  SentinelOne        19,661    78.4% $      1,666,065
+  Exium                 791    71.6% $         86,170
+  Auvik               3,503    61.7% $      1,551,841
+  Webroot            16,246    42.0% $      2,324,117
+  KeepIT             21,787    28.4% $      1,777,898
+  ESET               13,472     9.3% $              0
+
+EXCEPTION_TYPE distribution:
+  BUCKET                                             ROWS          DOLLARS
+  Clear                                            55,135 $     21,098,897
+  CW Billing, No Vendor Billing                    14,510 $              0
+  Known Discount / Bundle                          11,065 $        714,877
+  Vendor Billing, No CW Billing                     7,208 $      2,603,699
+  API Usage Recorded, No CW Billing                 5,651 $      1,650,936
+  Duplicated CW Invoice                             4,734 $        579,670
+  Vendor Billing, Insufficient CW Billing           2,964 $      1,806,035
+  Unmapped Partner                                    351 $        573,442
+  Marketplace Billing Delay                           224 $         40,168
+  Vendor SKU, No CW SKU                                90 $         39,662
+  Other Issue                                           4 $              0
+  CW SKU, No Vendor SKU                                 2 $              0
+
+DATA_LOAD_STATUS distribution in SUMMARY:
+  LOADED: 60
+  NOT_LOADED: 8
+  PARTIAL: 1

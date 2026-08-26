@@ -1,0 +1,49 @@
+ESET Ingestion Audit
+====================================================================================================
+
+Region: US (US)
+Month: 2026-05
+Source file: US_license_usage_report_summary (2).csv
+Raw rows: 1,255
+  Managed Msp (kept): 389
+  Customer (excluded/validation): 866
+Full license rows: 389
+Trial rows (quarantined): 0
+Ingested rows: 387
+Trial ingested rows: 0
+Total seat days: 3,615,577.00
+----------------------------------------------------------------------------------------------------
+Region: UK (UK)
+Month: 2026-05
+Source file: UK_license_usage_report_summary (2).csv
+Raw rows: 122
+  Managed Msp (kept): 10
+  Customer (excluded/validation): 112
+Full license rows: 10
+Trial rows (quarantined): 0
+Ingested rows: 10
+Trial ingested rows: 0
+Total seat days: 126,211.00
+----------------------------------------------------------------------------------------------------
+Region: AU_NZ (AU-NZ)
+Month: 2026-05
+Source file: AU_NZ_license_usage_report_summary (2).csv
+Raw rows: 188
+  Managed Msp (kept): 21
+  Customer (excluded/validation): 167
+Full license rows: 19
+Trial rows (quarantined): 2
+Ingested rows: 19
+Trial ingested rows: 2
+Total seat days: 200,824.00
+----------------------------------------------------------------------------------------------------
+
+SUMMARY (All Regions)
+Raw rows: 1,565
+  Managed Msp (kept): 420
+  Customer (excluded/validation): 1,145
+Full license rows: 418
+Trial rows (quarantined): 2
+Ingested rows: 416
+Trial ingested rows: 2
+Total seat days: 3,942,612.00

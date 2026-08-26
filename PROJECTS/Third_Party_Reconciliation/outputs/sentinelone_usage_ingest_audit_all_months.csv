@@ -1,0 +1,107 @@
+BILLING_MONTH,VENDOR_PRODUCT_SKU,row_count,quantity,distinct_partners
+2026-01-01,Cloud Funnel,3,11345.0,3
+2026-01-01,Complete,905,719734.0,905
+2026-01-01,Control,1654,890253.0,1654
+2026-01-01,Data Retention - 180 Days,13,3574.0,13
+2026-01-01,Data Retention - 30 Days,5,3841.0,5
+2026-01-01,Data Retention - 365 Days,2,252.0,2
+2026-01-01,Data Retention - 90 Days,27,43419.0,27
+2026-01-01,Forensics,13,17218.0,13
+2026-01-01,Purple AI,179,59372.0,179
+2026-01-01,RSO,32,26754.0,32
+2026-01-01,Ranger,62,13532.0,62
+2026-01-01,Ranger Insights,9,15327.0,9
+2026-01-01,Threat Intelligence,3,1626.0,3
+2026-02-01,Cloud Funnel,3,11483.0,3
+2026-02-01,Complete,915,727412.0,915
+2026-02-01,Control,1641,894604.0,1641
+2026-02-01,Core,2,1439.0,2
+2026-02-01,Data Retention - 180 Days,17,4826.0,17
+2026-02-01,Data Retention - 30 Days,5,3799.0,5
+2026-02-01,Data Retention - 365 Days,2,256.0,2
+2026-02-01,Data Retention - 90 Days,31,52737.0,31
+2026-02-01,Forensics,14,16094.0,14
+2026-02-01,Purple AI,217,66062.0,217
+2026-02-01,RSO,35,25799.0,35
+2026-02-01,Ranger,64,13229.0,64
+2026-02-01,Ranger Insights,10,15416.0,10
+2026-02-01,Threat Intelligence,3,1636.0,3
+2026-03-01,Cloud Funnel,5,11715.0,5
+2026-03-01,Complete,918,741058.0,918
+2026-03-01,Control,1610,897741.0,1610
+2026-03-01,Core,2,2933.0,2
+2026-03-01,Data Retention - 180 Days,19,5575.0,19
+2026-03-01,Data Retention - 30 Days,5,3784.0,5
+2026-03-01,Data Retention - 365 Days,2,267.0,2
+2026-03-01,Data Retention - 90 Days,31,53964.0,31
+2026-03-01,Forensics,14,16763.0,14
+2026-03-01,Purple AI,234,75421.0,234
+2026-03-01,RSO,36,26842.0,36
+2026-03-01,Ranger,63,13719.0,63
+2026-03-01,Ranger AD,1,5.0,1
+2026-03-01,Ranger Insights,10,15710.0,10
+2026-03-01,Threat Intelligence,5,1670.0,5
+2026-04-01,Cloud Funnel,3,11777.0,3
+2026-04-01,Complete,935,734265.0,935
+2026-04-01,Control,1622,880288.0,1622
+2026-04-01,Core,2,2909.0,2
+2026-04-01,Data Retention - 180 Days,17,6172.0,17
+2026-04-01,Data Retention - 30 Days,5,3655.0,5
+2026-04-01,Data Retention - 365 Days,2,274.0,2
+2026-04-01,Data Retention - 90 Days,26,53998.0,26
+2026-04-01,Forensics,12,17013.0,12
+2026-04-01,Purple AI,244,83779.0,244
+2026-04-01,RSO,33,27321.0,33
+2026-04-01,Ranger,64,13059.0,64
+2026-04-01,Ranger AD,1,5.0,1
+2026-04-01,Ranger Insights,9,15722.0,9
+2026-04-01,Singularity Identity,1,60.0,1
+2026-04-01,Threat Intelligence,3,1639.0,3
+2026-05-01,Cloud Funnel,4,11862.0,4
+2026-05-01,Complete,951,719516.0,951
+2026-05-01,Control,1612,881040.0,1612
+2026-05-01,Core,2,2913.0,2
+2026-05-01,Data Retention - 180 Days,19,7000.0,19
+2026-05-01,Data Retention - 30 Days,6,17424.0,6
+2026-05-01,Data Retention - 365 Days,2,274.0,2
+2026-05-01,Data Retention - 90 Days,28,40950.0,28
+2026-05-01,Forensics,13,17166.0,13
+2026-05-01,Purple AI,269,89948.0,269
+2026-05-01,RSO,36,28054.0,36
+2026-05-01,Ranger,67,13510.0,67
+2026-05-01,Ranger AD,1,5.0,1
+2026-05-01,Ranger Insights,10,15815.0,10
+2026-05-01,Singularity Identity,1,55.0,1
+2026-05-01,Threat Intelligence,4,1598.0,4
+2026-06-01,Cloud Funnel,4,11811.0,4
+2026-06-01,Complete,968,734389.0,968
+2026-06-01,Control,1575,871783.0,1575
+2026-06-01,Core,1,608.0,1
+2026-06-01,Data Retention - 180 Days,21,7390.0,21
+2026-06-01,Data Retention - 30 Days,8,22387.0,8
+2026-06-01,Data Retention - 365 Days,2,276.0,2
+2026-06-01,Data Retention - 90 Days,33,42970.0,33
+2026-06-01,Forensics,13,17236.0,13
+2026-06-01,Purple AI,283,99776.0,283
+2026-06-01,RSO,38,27914.0,38
+2026-06-01,Ranger,66,11953.0,66
+2026-06-01,Ranger AD,1,5.0,1
+2026-06-01,Ranger Insights,10,15608.0,10
+2026-06-01,Singularity Identity,1,63.0,1
+2026-06-01,Threat Intelligence,4,1566.0,4
+2026-07-01,Cloud Funnel,3,11640.0,3
+2026-07-01,Complete,965,750868.0,965
+2026-07-01,Control,1555,837952.0,1555
+2026-07-01,Core,1,619.0,1
+2026-07-01,Data Retention - 180 Days,22,8434.0,22
+2026-07-01,Data Retention - 30 Days,8,24828.0,8
+2026-07-01,Data Retention - 365 Days,3,1532.0,3
+2026-07-01,Data Retention - 90 Days,32,42573.0,32
+2026-07-01,Forensics,12,17718.0,12
+2026-07-01,Purple AI,285,107890.0,285
+2026-07-01,RSO,34,28376.0,34
+2026-07-01,Ranger,67,18397.0,67
+2026-07-01,Ranger AD,1,5.0,1
+2026-07-01,Ranger Insights,8,15546.0,8
+2026-07-01,Singularity Identity,1,66.0,1
+2026-07-01,Threat Intelligence,2,1416.0,2
