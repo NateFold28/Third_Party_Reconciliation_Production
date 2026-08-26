@@ -33,7 +33,6 @@ Semantics:
 from __future__ import annotations
 
 import argparse
-import csv
 import datetime as dt
 import io
 import re
@@ -52,13 +51,6 @@ import pandas as pd
 SENTINELONE_ROOT = Path(__file__).resolve().parents[2]
 WORKSPACE_ROOT = SENTINELONE_ROOT.parents[2]
 OUTPUT_DIR = SENTINELONE_ROOT / "outputs"
-# Note: SKU_INVOICE_RATES_PATH kept for legacy reference only — rates are now loaded
-# dynamically from THIRD_PARTY_RECON_VENDOR_INVOICES at runtime.
-SKU_INVOICE_RATES_PATH = (
-    SENTINELONE_ROOT
-    / "seeds"
-    / "sentinelone_sku_invoice_rates.csv"
-)
 
 DEFAULT_SOURCE_ROOT = Path(
     r"C:\Users\Nate.Fold\OneDrive - ConnectWise, Inc"
@@ -219,13 +211,12 @@ def _resolve_month_rate(
     return month_map[max(eligible)]
 
 
-def load_invoice_rate_history(seed_path: Path = SKU_INVOICE_RATES_PATH) -> dict[str, dict[dt.date, float]]:
+def load_invoice_rate_history() -> dict[str, dict[dt.date, float]]:
     """Return canonical key -> {billing_month: unit_price} from vendor invoices.
 
     Uses invoice month-specific rates and supports prior-month fallback.
     Canonical keys are sourced from THIRD_PARTY_RECON_SKU_MAP_PROD
-    (invoice SKU -> SKU_MATCH_KEY) with SENTINELONE_SKU_INVOICE_RATE_MAP as
-    a compatibility fallback.
+    (invoice SKU -> SKU_MATCH_KEY).
     """
     import sys as _sys
     _sys.path.insert(0, str(WORKSPACE_ROOT))
@@ -254,29 +245,10 @@ def load_invoice_rate_history(seed_path: Path = SKU_INVOICE_RATES_PATH) -> dict[
                 WHERE UPPER(COALESCE(VENDOR, '')) = 'SENTINELONE'
                   AND NULLIF(TRIM(VENDOR_SKU), '') IS NOT NULL
                   AND NULLIF(TRIM(SKU_MATCH_KEY), '') IS NOT NULL
-            ),
-            sku_map_legacy AS (
-                SELECT DISTINCT
-                    UPPER(TRIM(VENDOR_INVOICE_SKU)) AS VENDOR_INVOICE_SKU_KEY,
-                    SKU_MATCH_GROUP AS SKU_MATCH_KEY
-                FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.SENTINELONE_SKU_INVOICE_RATE_MAP
-                WHERE NULLIF(TRIM(VENDOR_INVOICE_SKU), '') IS NOT NULL
-                  AND NULLIF(TRIM(SKU_MATCH_GROUP), '') IS NOT NULL
-            ),
-            sku_map AS (
-                SELECT * FROM sku_map_prod
-                UNION ALL
-                SELECT l.*
-                FROM sku_map_legacy l
-                WHERE NOT EXISTS (
-                    SELECT 1
-                    FROM sku_map_prod p
-                    WHERE p.VENDOR_INVOICE_SKU_KEY = l.VENDOR_INVOICE_SKU_KEY
-                )
             )
             SELECT
                 inv.BILLING_MONTH,
-                sku_map.SKU_MATCH_KEY,
+                sku_map_prod.SKU_MATCH_KEY,
                 CASE
                     WHEN COUNT(DISTINCT inv.UNIT_PRICE) = 1 THEN MAX(inv.UNIT_PRICE)
                     WHEN SUM(IFF(inv.QUANTITY IS NOT NULL AND inv.QUANTITY > 0, inv.QUANTITY, 0)) > 0
@@ -285,8 +257,8 @@ def load_invoice_rate_history(seed_path: Path = SKU_INVOICE_RATES_PATH) -> dict[
                     ELSE NULL
                 END AS UNIT_PRICE
             FROM inv
-            JOIN sku_map
-              ON UPPER(TRIM(inv.VENDOR_PRODUCT_SKU)) = sku_map.VENDOR_INVOICE_SKU_KEY
+                        JOIN sku_map_prod
+                            ON UPPER(TRIM(inv.VENDOR_PRODUCT_SKU)) = sku_map_prod.VENDOR_INVOICE_SKU_KEY
             GROUP BY 1,2
         """).fetchall()
         conn.close()
@@ -305,35 +277,12 @@ def load_invoice_rate_history(seed_path: Path = SKU_INVOICE_RATES_PATH) -> dict[
             return rates
         print("[WARN] No SentinelOne rows found in VENDOR_INVOICES.", flush=True)
     except Exception as e:
-        print(f"[WARN] Could not load SentinelOne rates from VENDOR_INVOICES ({e}). "
-              "Falling back to CSV seed.", flush=True)
-
-    # Fallback: read on-disk seed CSV (stale but better than nothing)
-    if not seed_path.exists():
-        print(f"[WARN] No seed CSV at {seed_path}. SentinelOne UNIT_PRICE will be NULL.", flush=True)
-        return {}
-    rates: dict[str, dict[dt.date, float]] = {}
-    with open(seed_path, "r", encoding="utf-8-sig", newline="") as handle:
-        reader = csv.DictReader(handle)
-        for row in reader:
-            key = _sku_rate_key((row.get("SKU_MATCH_GROUP") or "").strip())
-            raw_rate = (row.get("VENDOR_INVOICE_UNIT_PRICE") or "").strip()
-            month_txt = (row.get("RATE_SOURCE_MONTH") or "").strip()
-            if not key or not raw_rate:
-                continue
-            try:
-                rate = float(raw_rate)
-            except ValueError:
-                continue
-            if month_txt:
-                parsed = pd.to_datetime(month_txt, errors="coerce")
-                if pd.notna(parsed):
-                    ts: pd.Timestamp = parsed  # type: ignore[assignment]
-                    rates.setdefault(key, {})[dt.date(ts.year, ts.month, 1)] = rate
-            else:
-                rates.setdefault(key, {})[dt.date(1900, 1, 1)] = rate
-    print(f"[WARN] Using stale CSV seed ({len(rates)} keys). Update VENDOR_INVOICES ASAP.", flush=True)
-    return rates
+        print(
+            f"[WARN] Could not load SentinelOne rates from VENDOR_INVOICES ({e}). "
+            "UNIT_PRICE will be NULL for this run.",
+            flush=True,
+        )
+    return {}
 
 
 # ---------------------------------------------------------------------------

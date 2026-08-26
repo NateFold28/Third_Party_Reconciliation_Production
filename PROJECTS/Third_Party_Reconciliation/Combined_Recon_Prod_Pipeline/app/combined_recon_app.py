@@ -58,7 +58,7 @@ FRESHNESS_TTL_SECONDS = int(os.getenv("THIRD_PARTY_RECON_DASHBOARD_FRESHNESS_TTL
 # v22: TRT source now uses seed__product_categorization SKU filter (matches
 #      manual recon Excel queries). Added Auvik cycle vendor (21st).
 #      Webroot restricted to is_server='' (SAT/DNS product line). SF_ID
-#      resolved via curated partner_map primary + CORE__RPT_CMS_USAGE fallback.
+#      resolved via curated partner_map primary + Zuora bridge.
 # v23: 2026-08-21 latency pass — pipeline pre-computes ACTION_NEEDED,
 #      IS_FINANCE_QUEUE, IS_OPS_QUEUE, IS_TIMING_QUEUE, IS_LEAKAGE and CASE_ID
 #      so the app skips per-row Python classification. Single UNION query

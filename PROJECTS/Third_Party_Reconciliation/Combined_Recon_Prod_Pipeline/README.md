@@ -11,8 +11,8 @@ Production reconciliation system for 9 third-party vendors against ConnectWise b
 ├── Reconciliation/     9 vendor recon SQL files + 2 pipeline orchestrators
 ├── Maps/
 │   ├── sql/            5 SQL files for billing sources, reference maps, compat views
-│   └── seeds/          3 seed CSV files (partner map, SKU map, SentinelOne rates)
-└── App/                Streamlit reconciliation dashboard
+│   └── seeds/          2 active seed CSV files (partner map, SKU map)
+└── app/                Streamlit reconciliation dashboard
 ```
 
 ## Architecture
@@ -39,7 +39,7 @@ Reconciliation (9 SQL files + orchestrators)
                                            →  THIRD_PARTY_RECON_SUMMARY_PROD
 
 App
-  App/combined_recon_app.py reads OUTPUT_PROD + SUMMARY_PROD  (Streamlit)
+  app/combined_recon_app.py reads OUTPUT_PROD + SUMMARY_PROD  (Streamlit)
 ```
 
 ## Running the Pipeline
@@ -55,7 +55,7 @@ App
 .venv\Scripts\python.exe "Reconciliation\_run_skeleton_pipeline.py"
 
 # 4. Launch the app
-streamlit run "App\combined_recon_app.py"
+streamlit run "app\combined_recon_app.py"
 ```
 
 ## The Two Levers for Improvement
@@ -91,4 +91,5 @@ streamlit run "App\combined_recon_app.py"
 - Do NOT modify `Reconciliation/build_third_party_recon_output_prod.py` (locked classifier)
 - Do NOT reintroduce `VENDOR_FALLBACK` entries to the exception taxonomy
 - Do NOT create per-vendor staging tables beyond `<VENDOR>_RECON_DETAIL`
-- All `_LEGACY_20260823` tables and V5 compat views have been dropped — do not reference them
+- `_LEGACY_20260823` tables are historical snapshots only; do not route active pipeline logic through them
+- Compat views in `Maps/sql/03_compat_dead_object_views.sql` are transitional shims only

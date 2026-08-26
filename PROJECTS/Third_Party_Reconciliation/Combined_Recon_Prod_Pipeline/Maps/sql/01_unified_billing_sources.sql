@@ -1,11 +1,10 @@
 -- =============================================================================
--- UNIFIED BILLING SOURCE TABLES (FOUR-VENDOR SCOPE)
+-- UNIFIED BILLING SOURCE TABLES (PRODUCTION SCOPE)
 -- =============================================================================
 -- Centralized billing-source layer used by:
---   * Auvik
---   * Bitdefender
---   * Webroot
---   * KeepIT
+--   * All 9 production vendors (via vendor-specific source selection)
+--   * Marketplace-focused subset: Auvik, Bitdefender, Webroot, KeepIT,
+--     Proofpoint, SentinelOne, Acronis, ESET, Exium
 --
 -- Output tables:
 --   THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
