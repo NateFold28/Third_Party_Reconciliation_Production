@@ -8,7 +8,7 @@ Snowflake target:
     ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.ACRONIS_USAGE
 
 Published grain:
-    BILLING_MONTH x VENDOR x MODIFIER(Entity) x VENDOR_PARTNER_NAME x VENDOR_PRODUCT_SKU
+    BILLING_MONTH x VENDOR x MODIFIER(Status) x VENDOR_PARTNER_NAME x VENDOR_PRODUCT_SKU
 """
 
 from __future__ import annotations
@@ -820,7 +820,9 @@ def build_vendor_usage_frame(df: pd.DataFrame) -> pd.DataFrame:
             "VENDOR": "Acronis",
             "VENDOR_PARTNER_NAME": df["Tenant name"].map(_clean_text),
             "VENDOR_PRODUCT_SKU": df["SKU"].astype(str).str.strip().str.upper(),
-            "MODIFIER": df["Entity"].map(_clean_text),
+            # Status is the most informative Acronis split for downstream analysis
+            # (Enabled vs Disabled). Keep Entity in raw recreated outputs only.
+            "MODIFIER": df["Status"].map(_clean_text),
             "QUANTITY": pd.to_numeric(df["Total usage"], errors="coerce").fillna(0.0),
         }
     )
