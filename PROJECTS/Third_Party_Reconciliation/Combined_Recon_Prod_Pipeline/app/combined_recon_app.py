@@ -3309,8 +3309,8 @@ def _sum_preserve_null(series: pd.Series) -> float:
 def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
     st.markdown("### Vendor Invoice vs. Vendor Raw Usage Files")
     st.caption(
-        "Selected-period SKU rollup. "
-        "Delta = raw vendor usage minus parsed vendor invoice; null invoice fields mean no parsed invoice row exists for that vendor/month/SKU yet."
+        "Selected-period SKU rollup (one row per invoice/usage SKU combination). "
+        "Delta = raw vendor usage minus parsed vendor invoice; invoice-side metric NULLs still mean no parsed invoice row exists for that vendor/month/SKU yet."
     )
 
     raw = _load_vendor_invoice_usage_intra(
@@ -3346,12 +3346,23 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
     for col in metric_cols:
         work[col] = pd.to_numeric(work.get(col), errors="coerce")
 
+    # Keep one display row per concrete SKU combination (no pipe-concatenated SKU lists).
+    # Label fallbacks use SKU so rows stay attributable even when invoice/usage SKU fields are blank.
+    work["VENDOR_INVOICE_SKU"] = work["VENDOR_INVOICE_SKU"].str.strip()
+    work["VENDOR_USAGE_SKU"] = work["VENDOR_USAGE_SKU"].str.strip()
+    work["INVOICE_SKU_DISPLAY"] = work["VENDOR_INVOICE_SKU"].where(
+        work["VENDOR_INVOICE_SKU"].ne(""),
+        work["SKU"],
+    )
+    work["USAGE_SKU_DISPLAY"] = work["VENDOR_USAGE_SKU"].where(
+        work["VENDOR_USAGE_SKU"].ne(""),
+        work["SKU"],
+    )
+
     sku_rollup = (
-        work.groupby("SKU", dropna=False)
+        work.groupby(["SKU", "INVOICE_SKU_DISPLAY", "USAGE_SKU_DISPLAY"], dropna=False)
         .agg(
             **{
-                "Vendor Invoice SKU": ("VENDOR_INVOICE_SKU", lambda s: " | ".join(sorted({v for v in s if v}))),
-                "Vendor Usage SKU": ("VENDOR_USAGE_SKU", lambda s: " | ".join(sorted({v for v in s if v}))),
                 "Vendor Invoice Seats": ("VENDOR_INVOICE_SEATS", _sum_preserve_null),
                 "Vendor Raw Usage Seats": ("VENDOR_RAW_USAGE_SEATS", _sum_preserve_null),
                 "Vendor Invoice Amount": ("VENDOR_INVOICE_AMOUNT", _sum_preserve_null),
@@ -3359,6 +3370,12 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
             }
         )
         .reset_index()
+        .rename(
+            columns={
+                "INVOICE_SKU_DISPLAY": "Vendor Invoice SKU",
+                "USAGE_SKU_DISPLAY": "Vendor Usage SKU",
+            }
+        )
     )
     sku_rollup["Delta Seats"] = (
         sku_rollup["Vendor Raw Usage Seats"].fillna(0)
@@ -3371,8 +3388,8 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
     sku_rollup["_abs_delta_amount"] = sku_rollup["Delta Amount"].abs()
     sku_rollup["_abs_delta_seats"] = sku_rollup["Delta Seats"].abs()
     sku_rollup = sku_rollup.sort_values(
-        ["_abs_delta_amount", "_abs_delta_seats", "SKU"],
-        ascending=[False, False, True],
+        ["_abs_delta_amount", "_abs_delta_seats", "SKU", "Vendor Invoice SKU", "Vendor Usage SKU"],
+        ascending=[False, False, True, True, True],
     ).drop(columns=["_abs_delta_amount", "_abs_delta_seats"])
 
     total = {
