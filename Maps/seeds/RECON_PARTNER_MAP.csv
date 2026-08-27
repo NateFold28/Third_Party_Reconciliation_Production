@@ -538,7 +538,7 @@ Acronis,Beartech Inc,,ACT-00269371,29651,
 Acronis,Custom Solutions,,ACT-00180877,,
 Acronis,FLR Spectron Ltd,,ACT-00012675,25067,
 Acronis,IT Automation,,ACT-00181497,24276,
-Acronis,Temple & Associates,,ACT-00118650,32122,
+Acronis,Temple & Associates - Legacy ThreatAdvice,,ACT-00118650,32122,
 Acronis,Infinite Systems Inc,,ACT-00077188,29783,
 Acronis,Educational Records Bureau,,ACT-00263860,-,
 Acronis,CyberNET,,ACT-00459313,32925,
@@ -2354,7 +2354,7 @@ ESET,Yara Computers,,ACT-00184644,,Yara Computers
 ESET,ABSI Corporation,,ACT-00183393,,All Business Systems
 ESET,"Last Line Solutions, Inc.",,ACT-00021458,,"Last Line Solutions, Inc."
 ESET,Nextx Communications Inc.,Ingram Micro,ACT-00245571,,Nextx Communications Inc.
-ESET,M3 networks,,ACT-00224711,,M3 Networks
+ESET,M3 networks,,ACT-00192321,23310,M3 Networks
 ESET,RockIT Ltd,,ACT-00043440,,RockIT Ltd
 ESET,"Allied Technology Group, LLC",,ACT-00073163,,"Allied Technology Group, LLC"
 ESET,Now IT Works,,ACT-00150247,,Now IT Works
@@ -6537,7 +6537,7 @@ Exium,"Salco Properties, LLC",None,ACT-00084579,24177,Salco Solutions
 Exium,Sapphire Computing Solutions,None,ACT-00141023,23215,Sapphire Computing Solutions
 Exium,Scalable Solutions,None,ACT-00122778,15253,Scalable Solutions
 Exium,"SelTec, Inc.",None,ACT-00081372,27203,SelTec
-Exium,Sharp Europe,None,None,None,None
+Exium,Sharp Europe,,ACT-00056702,17924,Sharp Business Systems Sweden AB
 Exium,ABLETECHNOLOGY,None,ACT-00218576,10755,ABLE Technology Partners
 Exium,CCCS,None,ACT-00234776,15969,"Cape Cod Computer Specialists, LLC"
 Exium,CFL Technology,None,ACT-00120139,None,CFL Technology
@@ -8275,7 +8275,7 @@ KeepIT,"Agility Technology Group, LLC",,,,
 KeepIT,Bigfoot Technology Group,0,ACT-00259318,27829,Bigfoot Technology Group
 KeepIT,DigiDog Tech Ltd,,ACT-00188658,500000205,DigiDog Tech Ltd
 KeepIT,EBC Group,0,ACT-00022528,25222,EBC Group (UK) Ltd
-KeepIT,First Solution Technologies Ltd,,,,
+KeepIT,First Solution Technologies Ltd,,ACT-00209449,16634,Emerge Digital Limited
 KeepIT,Cyber Command,0,ACT-00095626,14081,Cyber Command
 KeepIT,Plum Networks Ltd,,ACT-00414543,500000680,Plum Networks Ltd
 KeepIT,RevolutionIT,0,ACT-00149026,20956,Revolution IT Ltd
@@ -8293,7 +8293,7 @@ KeepIT,"ActiveCare Business IT Services, LLC",0,ACT-00444891,31672,"ActiveCare B
 KeepIT,"After The Warranty, LLC",0,ACT-00442077,31682,"After The Warranty, LLC"
 KeepIT,Keystone Digital Imaging Inc,0,ACT-00099576,30766,Keystone Digital Imaging Inc
 KeepIT,Technical Sales APAC rmm,0,ACT-00411934,22646,Technical Sales APAC rmm
-KeepIT,Technology Associates,,,,
+KeepIT,Technology Associates,,ACT-00218879,,Technology Associates
 KeepIT,Up Time Technology,,ACT-00092011,28299,Up Time Technology
 KeepIT,Computer Troubleshooters UK Dudley,0,ACT-00178321,13353,Computer Troubleshooters - Dudley UK
 KeepIT,Current Technologies FL,0,ACT-00038655,25194,Current Technologies Corp.
@@ -8305,7 +8305,7 @@ KeepIT,PM ConnectWise,,,,
 KeepIT,Referentia Systems Incorporated,0,ACT-00228279,31299,Referentia Systems Inc
 KeepIT,Ronin Consulting Services LLC,0,ACT-00104428,16729,"Ronin Consulting Services, LLC"
 KeepIT,Sedona Technologies,,,,
-KeepIT,Computerland of East Texas,,,,
+KeepIT,Computerland of East Texas,,ACT-00002557,25439,Computerland of East Texas
 KeepIT,Kellstrom Aerospace,0,ACT-00288851,26444,Kellstrom Aerospace
 KeepIT,ManagedITExperts,0,ACT-00055279,20977,Managed IT Experts Ltd
 KeepIT,"MainSpring, Inc.",,,,
@@ -8472,7 +8472,7 @@ KeepIT,Bruns Construction Enterprises In,,,,
 KeepIT,Cabco Communications Group,,ACT-00288703,26169,Cabco Communications Group
 KeepIT,Harris Technology Services,0,ACT-00265744,23878,"Harris Technology Services, LLC"
 KeepIT,SENSEI ENTERPRISES,0,ACT-00071722,2965,"Sensei Enterprises, Inc"
-KeepIT,World Synergy,,,,
+KeepIT,World Synergy,,ACT-00159769,,World Synergy
 KeepIT,Diddly Squat Consulting,0,ACT-00365297,32817,Diddly Squat Consulting
 KeepIT,IT Business Advisors,,,,
 KeepIT,Tuck Technologies,0,ACT-00107740,23642,Tuck Technologies
@@ -8481,7 +8481,7 @@ KeepIT,CompuNET Consulting,0,ACT-00122707,32678,CompuNET Consulting
 KeepIT,Blueclone Networks,#N/A,ACT-00010319,7384,Blueclone Networks
 KeepIT,CGB Tech Solutions Inc.,,,,
 KeepIT,H E S IT Services,0,ACT-00268575,27958,H E S IT Services
-KeepIT,ICS (TechMD),,,,
+KeepIT,ICS (TechMD),,ACT-00203594,21562,TechMD
 KeepIT,NA_ETERNALS_TEST_PARTNER,,ACT-00438301,31153,NA_ETERNALS_TEST_PARTNER
 KeepIT,Securium IT Solutions,0,ACT-00296698,27310,Securium IT Solutions
 KeepIT,Teknabyte Consulting,,,,
@@ -8527,7 +8527,7 @@ KeepIT,Maverick Gardner,#N/A,ACT-00275949,26542,Maverick Gardner
 KeepIT,ET Works,0,ACT-00287785,500000583,ET Works
 KeepIT,Copy Systems Inc,0,ACT-00180388,11044,"Copy Systems, Inc."
 KeepIT,LYLAB Technology Solutions,,,,
-KeepIT,ThreatAdvice Technologies,0,,,ThreatAdvice
+KeepIT,ThreatAdvice Technologies,0,ACT-00118650,32122,ThreatAdvice
 KeepIT,SomersetLLC,0,ACT-00223810,23984,Somerset Systems
 KeepIT,Tech 2U,0,ACT-00046889,12108,Tech 2U
 KeepIT,"CAi Software, LLC",,,,
@@ -8548,13 +8548,13 @@ KeepIT,"TRUSTit, LLC",,,,
 KeepIT,World Line Networks,0,ACT-00290407,27755,World Line Networks
 KeepIT,Your IT Department,,,,
 KeepIT,BridgeTech,0,ACT-00070690,28163,BridgeTech
-KeepIT,"Granite Information Technology, LLC",,,,
+KeepIT,"Granite Information Technology, LLC",,ACT-00114156,13113,"Granite Information Technology, LLC"
 KeepIT,Z-TECH Associates,,,,
 KeepIT,Key Data IT,0,ACT-00171616,31615,Key Data IT
 KeepIT,"Mainstay Technologies, LLC",0,ACT-00147466,31082,Savitek
 KeepIT,TR COMPUTER SALES LLC,0,ACT-00216411,2720,Tr Computer Sales Llc
 KeepIT,Circle Technologies ltd,0,ACT-00246156,27039,"Circle Technologies, Ltd"
-KeepIT,"Control Solutions, Inc",,,,
+KeepIT,"Control Solutions, Inc",,ACT-00079030,26361,"Control Solutions, Inc"
 KeepIT,ENT Networks,0,ACT-00204987,17367,ENT Networks Inc
 KeepIT,Itek Systems Management,0,ACT-00040282,15016,Itek Systems Management Group
 KeepIT,Pacific Office Automation,0,ACT-00037637,17542,Pacific Office Automation
@@ -8634,20 +8634,20 @@ KeepIT,Cued Collective,0,ACT-00295868,500000213,Cued Collective
 KeepIT,EBC Group (UK) Ltd,,ACT-00122752,16271,Netpoint Solutions (dba NPSOL )
 KeepIT,Flex1 Technology Solutions,,,,
 KeepIT,CCS Business Solutions,0,ACT-00098821,2892,CCS Business Solutions
-KeepIT,Ited Solution Inc,,,,
+KeepIT,Ited Solution Inc,,ACT-00019966,20965,ited solutions inc
 KeepIT,K and M Communications,0,ACT-00268129,23764,The Navicon Group
 KeepIT,KHCB Network,0,ACT-00448419,31996,KHCB Network
 KeepIT,MySherpa,,ACT-00069994,22700,"Palmetto Technology Group, Inc."
 KeepIT,Peak Network Solutions Ltd,0,ACT-00286734,25268,Peak Network Solutions Ltd
 KeepIT,Specific Gravity Group,0,ACT-00238605,13336,Specific Gravity Group
 KeepIT,Texvo,0,ACT-00158478,21065,Texvo
-KeepIT,"Techguides, Inc.",,,,
+KeepIT,"Techguides, Inc.",,ACT-00144806,21092,"Techguides, Inc."
 KeepIT,Community Care Partners,,ACT-00257051,32845,Community Care Partners
 KeepIT,David Allen IT Solutions,0,ACT-00182774,500000678,David Allen IT Solutions
 KeepIT,Heart Technologies Inc.,,ACT-00238542,21551,Heart Technologies Inc.
 KeepIT,Micro Serv Consulting,0,ACT-00112813,18495,Micro Serv Consulting T/A Warwick Computer Service
 KeepIT,NXT IT Solutions,,ACT-00071766,300000155,NXT IT Solutions
-KeepIT,Pickard Solutions,,,,
+KeepIT,Pickard Solutions,,ACT-00336886,28401,Pickard Solutions
 KeepIT,612 Network,0,ACT-00115611,11374,612 Network
 KeepIT,Sol Schwartz and Assoc,0,ACT-00136570,31491,Sol Schwartz & Assoc
 KeepIT,TriCore,,ACT-00148077,500000298,TriCore
@@ -8676,7 +8676,7 @@ KeepIT,Network Alliance,0,ACT-00230631,28578,Network Alliance
 KeepIT,SinglePoint Global,,ACT-00265539,30290,Klugman IT Consulting
 KeepIT,Stash Ventures,0,ACT-00259262,31529,Stash Ventures
 KeepIT,Worldband,0,ACT-00138366,27446,Worldband
-KeepIT,Advanced Networks,,,,
+KeepIT,Advanced Networks,,ACT-00101925,,Advanced Networks
 KeepIT,Danmark Communications,,ACT-00163457,374,Rubino Network Consulting dba RNC Inc
 KeepIT,Pure Cloud Solutions,,,,
 KeepIT,WISE TECH CORP,,,,
@@ -8685,7 +8685,7 @@ KeepIT,Acrivos Systems,0,ACT-00336560,32704,Acrivos Systems
 KeepIT,Derive Technologies,0,ACT-00140761,30179,Derive Technologies
 KeepIT,"eb Logix, Inc.",0,ACT-00069210,27541,"eb Logix, Inc."
 KeepIT,Aloft AeroArchitects,0,ACT-00225640,30757,Aloft AeroArchitects
-KeepIT,Crowder Gulf,,,,
+KeepIT,Crowder Gulf,,ACT-00302313,27834,Crowder Gulf
 KeepIT,VectorPro LLC,0,ACT-00286639,26168,UMIT Technologies
 KeepIT,FreshEdge LLC,,ACT-00334162,28608,FreshEdge LLC
 KeepIT,Hashtech,0,ACT-00115988,11300,"AAA Business Systems, Inc."
@@ -8723,10 +8723,10 @@ KeepIT,Touchlines Ltd,0,ACT-00109843,24390,Touchlines Ltd
 KeepIT,GammalTech,0,ACT-00379444,32568,GammalTech
 KeepIT,CentraLink,0,ACT-00087044,28013,CentraLink
 KeepIT,Entre Computer Services,,,,
-KeepIT,"Kelley Connect dba Core Business Services, LLC",,,,
+KeepIT,"Kelley Connect dba Core Business Services, LLC",,ACT-00245191,16624,Kelley Create
 KeepIT,Nanna Networks Inc,0,ACT-00047411,28626,Nanna Networks Inc.
 KeepIT,OnSite IT,0,ACT-00078846,22670,OnSite Computer Solutions Inc
-KeepIT,"Richline Technical Services, LLC",,,,
+KeepIT,"Richline Technical Services, LLC",,ACT-00011178,20332,"Richline Technical Services, LLC"
 KeepIT,Sharp IT Services (UK) Limited,,ACT-00108868,500000084,Sharp IT Services (UK) Limited
 KeepIT,Umbrella Technologies,0,ACT-00208029,25098,Umbrella Technologies
 KeepIT,Spheroid UK Ltd,0,ACT-00143600,17255,Spheroid UK Ltd
@@ -8734,7 +8734,7 @@ KeepIT,Strayer Communications Inc,0,ACT-00043581,31515,"Strayer Communications, 
 KeepIT,CBH Computers,,ACT-00252171,500000232,CBH Computers Ltd
 KeepIT,Technology Partners Associates,0,ACT-00239460,23870,Technology Partners Associates
 KeepIT,Ritz-Craft,,ACT-00287335,25940,Ritz-Craft
-KeepIT,Simplified IT Consulting,,,,
+KeepIT,Simplified IT Consulting,,ACT-00008759,,Simplified IT Consulting
 KeepIT,CIC,,ACT-00295915,31502,CIC
 KeepIT,Commercial Networks LTD,,ACT-00209449,16634,Emerge Digital Limited
 KeepIT,Full Tilt Computing,#N/A,ACT-00103592,15504,Full Tilt Computing
@@ -8824,7 +8824,7 @@ KeepIT,Serverli Inc,0,ACT-00434501,31018,Serverli Inc
 KeepIT,The Hill Country Tech,,ACT-00253010,25327,The Hill Country Tech
 KeepIT,CTECH Consulting Group Inc.,,,,
 KeepIT,Onboarding and Consulting Demo Portal-Test,#N/A,ACT-00288585,26139,Onboarding & Consulting Demo Portal-Test
-KeepIT,Cloud & More,,,,
+KeepIT,Cloud & More,,ACT-00253411,,Cloud & More
 KeepIT,PDS Consulting LLC,0,ACT-00058353,23066,PDS Consulting
 KeepIT,Access Tech,0,ACT-00165553,27810,Access Tech
 KeepIT,Alpha & Omega Technology LLC,,,,
@@ -8904,7 +8904,7 @@ KeepIT,"RedEye, Inc.",,,,
 KeepIT,HeadIT,,ACT-00242876,28108,HeadIT
 KeepIT,Technology Professionals LLC,0,ACT-00246847,10005,Technology Professionals LLC
 KeepIT,IMP Solutions,#N/A,ACT-00161401,18599,IMP Solutions
-KeepIT,"IT Kauai, Inc.",,,,
+KeepIT,"IT Kauai, Inc.",,ACT-00033691,26895,"IT Kauai, Inc."
 KeepIT,"US itek, Inc.",,,,
 KeepIT,ChaceTech,0,ACT-00246713,25304,ChaceTech
 KeepIT,Fluid IT Services,0,ACT-00246740,24339,Fluid IT Services
@@ -8948,7 +8948,7 @@ KeepIT,Pinpoint IT Australia,0,ACT-00101581,300000221,Pinpoint IT Australia
 KeepIT,CaffComm Systems Inc,0,ACT-00297572,32468,CaffComm Systems Inc
 KeepIT,RMON Networks Inc,0,ACT-00124746,11527,RMON Networks Inc
 KeepIT,Computer Logic,0,ACT-00026766,24371,Computer Logic
-KeepIT,Neuways Ltd,,,,
+KeepIT,Neuways Ltd,,ACT-00048607,25272,Zenzero Solutions Ltd (Neuways)
 KeepIT,Envirovision 2010 INC,,ACT-00069495,26876,Envirovision 2010 INC
 KeepIT,Fusion Computing Limited,,,,
 KeepIT,GURU Inc,0,ACT-00041946,23824,"GURU, Inc"
@@ -8970,10 +8970,11 @@ KeepIT,BetterWorld Technologies,0,ACT-00020697,1297,Computer Troubleshooters - M
 KeepIT,Green Six Solutions,0,ACT-00288155,26273,Green Six Solutions
 KeepIT,Genesis BCS,0,ACT-00247720,20834,Genesis BCS
 KeepIT,Smart Start Networks,0,ACT-00175660,14298,Smart Start Networks Inc
-KeepIT,GoodSuite,,,,
+KeepIT,GoodSuite,,ACT-00134200,,GoodSuite
 KeepIT,nTav Inc.,,,,
 KeepIT,kelty,0,ACT-00063902,12557,Kelty Business Solutions.
 KeepIT,Tab Computer Systems Inc,,,,
+KeepIT,Abacus IT Inc,,ACT-00197019,,abacusit
 Proofpoint,Coastal Carolina IT,Q4-24-CW-Promo,ACT-00287910,25960,Coastal Carolina IT
 Proofpoint,Cyber Advisors,,ACT-00224068,24522,
 Proofpoint,IDT Support,,ACT-00109129,24141,IDT Support
@@ -25892,3 +25893,37 @@ Webroot,Zenith Networks Ltd,None,ACT-00125668,26913,Zenith Networks Ltd
 Webroot,CMIT Solutions of Encino,CMIT Headquarters,ACT-00240258,18470,"CMIT Solutions of Encino, Sherman Oaks and West Van Nuys"
 Webroot,CMIT Solutions of Kelowna - Okanagan,CMIT Headquarters,ACT-00240759,19576,CMIT Solutions of Kelowna - Okanagan
 Webroot,Sharp Business Systems of Dallas,SEC through SBS (SBS HQ MITS),ACT-00245303,17375,Sharp Business Systems of Dallas
+
+Auvik,NetOps Consulting,,ACT-00124838,,"NetOps Consulting, LLC"
+Auvik,"Intrinsic Technology Group, Inc.",,ACT-00053452,,Intrinsic Technology Group
+Auvik,Intrinsic Technology Group,,ACT-00053452,,Intrinsic Technology Group
+Auvik,"International Computer Services, Inc. (ICSI)",,ACT-00006517,,"International Computer Services, Inc"
+Auvik,International Computer Services (ICSI),,ACT-00006517,,"International Computer Services, Inc"
+Auvik,HighPoint Technology Group,,ACT-00153532,,"Highpoint Technology Group, LLC"
+Auvik,Business Information Group,,ACT-00058011,,"Business Information Group, Inc (BIG)"
+Auvik,Tusker Technology,,ACT-00180484,,"ACP CreativIT, LLC d/b/a Tusker Technology"
+Auvik,Bramatt Computing,,ACT-00108546,,Bramatt Computing Ltd
+Auvik,Cinos,,ACT-00112875,,Cinos Limited
+Auvik,ISI,,ACT-00118822,,Innovative Systems dba ISI
+Auvik,New England Network Solutions,,ACT-00107793,,New England Network Solutions
+Exium,Entech,,ACT-00080802,,Entech Computer Services
+
+Auvik,CTMS LLC,,ACT-00285415,,CTMS LLC
+Auvik,"Global Market Innovators, Inc.",,ACT-00086330,,"Global Market Innovators, Inc"
+Auvik,Wifinium,,ACT-00317087,,"Wifinium, LLC"
+Auvik,HarborTech Mobility,,ACT-00282154,,HarborTech Mobility
+Auvik,"HarborTech Mobility, Inc.",,ACT-00236872,,"HarborTech Mobility, Inc."
+Auvik,Computer Network Services,,ACT-00135612,,Computer Network Services
+Auvik,Torix Managed Services,,ACT-00429318,,TORIX MANAGED SERVICES LTD
+Auvik,Function 4,,ACT-00134960,,Function 4
+Auvik,Espire IT,,ACT-00045234,,Espire IT
+Auvik,Saratoga Technologies,,ACT-00091059,,"Saratoga Technologies, Inc A Sharp Co"
+Auvik,Sharp Business Systems of South Carolina,,ACT-00245303,,Sharp Business Systems of South Carolina
+Auvik,SES Group,,ACT-00658939,,SES group
+Auvik,Sharp Business Solutions - New Jersey,SEC through SBS,ACT-00286012,,Sharp Business Systems of NJ
+Auvik,Sharp Business Solutions - North Carolina,SEC through SBS,ACT-00102370,,Sharp Business Systems of NC
+Auvik,Sharp Business Systems - DC,SEC through SBS,ACT-00233129,,Sharp Business Systems of Washington DC
+Auvik,Sharp Business Systems,SEC through SBS,ACT-00042366,,Sharp Business Systems
+Acronis,Convergence Info-Tech,,ACT-00151226,,Convergence Info-Tech
+Acronis,DPC INC,,ACT-00240145,,DPC Inc
+Acronis,"Compufit, LLC.",,ACT-00277357,,"Compufit, LLC"

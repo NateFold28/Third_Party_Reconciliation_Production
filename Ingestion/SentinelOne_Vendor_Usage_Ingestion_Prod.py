@@ -33,7 +33,6 @@ Semantics:
 from __future__ import annotations
 
 import argparse
-import csv
 import datetime as dt
 import io
 import re
@@ -52,13 +51,6 @@ import pandas as pd
 SENTINELONE_ROOT = Path(__file__).resolve().parents[2]
 WORKSPACE_ROOT = SENTINELONE_ROOT.parents[2]
 OUTPUT_DIR = SENTINELONE_ROOT / "outputs"
-# Note: SKU_INVOICE_RATES_PATH kept for legacy reference only — rates are now loaded
-# dynamically from THIRD_PARTY_RECON_VENDOR_INVOICES at runtime.
-SKU_INVOICE_RATES_PATH = (
-    SENTINELONE_ROOT
-    / "seeds"
-    / "sentinelone_sku_invoice_rates.csv"
-)
 
 DEFAULT_SOURCE_ROOT = Path(
     r"C:\Users\Nate.Fold\OneDrive - ConnectWise, Inc"
@@ -166,14 +158,65 @@ def _sku_rate_key(vendor_product_sku: object) -> str:
     return re.sub(r"_+", "_", re.sub(r"[^A-Z0-9]+", "_", product_upper)).strip("_")
 
 
-def load_invoice_rate_map(seed_path: Path = SKU_INVOICE_RATES_PATH) -> dict[str, float]:
-    """Return sku_match_group -> vendor invoice unit price from THIRD_PARTY_RECON_VENDOR_INVOICES.
+def _load_usage_product_alias_map() -> dict[str, str]:
+    """Return usage product key -> canonical sku_match_group key.
 
-    Joins VENDOR_INVOICES through SENTINELONE_SKU_INVOICE_RATE_MAP so the
-    invoice SKU codes (e.g. S1ES-CMP-EN-T8-SA) are resolved to the product
-    group labels (e.g. 'Complete') that the usage workbook uses.
-    This mirrors 00b_backfill_invoice_prices.sql Block A exactly.
-    Falls back to the on-disk CSV seed only if the Snowflake query fails.
+    Example: RSO -> REMOTEOPS.
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(WORKSPACE_ROOT))
+    candidates: dict[str, set[str]] = {}
+    try:
+        from TEMPLATES.Python.connection import get_snowflake_connection as _conn
+        conn = _conn(role="DEVELOPER", warehouse="REPORTING_WH",
+                     database="ANALYTICS_DEV", schema="DBT_NFOLD_TRANSFORMATION")
+        rows = conn.cursor().execute("""
+            SELECT DISTINCT VENDOR_PRODUCT, SKU_MATCH_KEY
+            FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_SKU_MAP_PROD
+            WHERE UPPER(COALESCE(VENDOR, '')) = 'SENTINELONE'
+              AND NULLIF(TRIM(VENDOR_PRODUCT), '') IS NOT NULL
+              AND NULLIF(TRIM(SKU_MATCH_KEY), '') IS NOT NULL
+        """).fetchall()
+        conn.close()
+        for vendor_product, sku_match_key in rows:
+            vp_key = _sku_rate_key(vendor_product)
+            sm_key = _sku_rate_key(sku_match_key)
+            if vp_key and sm_key:
+                candidates.setdefault(vp_key, set()).add(sm_key)
+    except Exception as e:
+        print(f"[WARN] Could not load SentinelOne usage alias map ({e}).", flush=True)
+
+    aliases: dict[str, str] = {}
+    for vp_key, options in candidates.items():
+        # Prefer business/canonical keys over internal S1_* variants.
+        picked = sorted(options, key=lambda k: (k.startswith("S1_"), k))[0]
+        aliases[vp_key] = picked
+    return aliases
+
+
+def _resolve_month_rate(
+    canonical_key: str,
+    bill_month: dt.date,
+    rate_history: dict[str, dict[dt.date, float]],
+) -> float | None:
+    """Return exact-month rate, else most recent prior-month rate."""
+    month_map = rate_history.get(canonical_key)
+    if not month_map:
+        return None
+    if bill_month in month_map:
+        return month_map[bill_month]
+    eligible = [m for m in month_map.keys() if m <= bill_month]
+    if not eligible:
+        return None
+    return month_map[max(eligible)]
+
+
+def load_invoice_rate_history() -> dict[str, dict[dt.date, float]]:
+    """Return canonical key -> {billing_month: unit_price} from vendor invoices.
+
+    Uses invoice month-specific rates and supports prior-month fallback.
+    Canonical keys are sourced from THIRD_PARTY_RECON_SKU_MAP_PROD
+    (invoice SKU -> SKU_MATCH_KEY).
     """
     import sys as _sys
     _sys.path.insert(0, str(WORKSPACE_ROOT))
@@ -181,46 +224,65 @@ def load_invoice_rate_map(seed_path: Path = SKU_INVOICE_RATES_PATH) -> dict[str,
         from TEMPLATES.Python.connection import get_snowflake_connection as _conn
         conn = _conn(role="DEVELOPER", warehouse="REPORTING_WH",
                      database="ANALYTICS_DEV", schema="DBT_NFOLD_TRANSFORMATION")
-        # JOIN through the SKU map to get SKU_MATCH_GROUP -> unit_price
         rows = conn.cursor().execute("""
-            SELECT m.SKU_MATCH_GROUP,
-                   AVG(NULLIF(i.UNIT_PRICE, 0)) AS UNIT_PRICE
-            FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES i
-            JOIN ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.SENTINELONE_SKU_INVOICE_RATE_MAP m
-              ON m.VENDOR_INVOICE_SKU = i.VENDOR_PRODUCT_SKU
-            WHERE i.VENDOR ILIKE '%sentinelone%'
-              AND i.UNIT_PRICE IS NOT NULL AND i.UNIT_PRICE > 0
-            GROUP BY 1
+            WITH inv AS (
+                SELECT
+                    i.BILLING_MONTH::DATE AS BILLING_MONTH,
+                    i.VENDOR_PRODUCT_SKU,
+                    NULLIF(i.UNIT_PRICE, 0) AS UNIT_PRICE,
+                    i.QUANTITY,
+                    i.AMOUNT
+                FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES i
+                WHERE i.VENDOR ILIKE '%sentinelone%'
+                  AND i.UNIT_PRICE IS NOT NULL
+                  AND i.UNIT_PRICE > 0
+            ),
+            sku_map_prod AS (
+                SELECT DISTINCT
+                    UPPER(TRIM(VENDOR_SKU)) AS VENDOR_INVOICE_SKU_KEY,
+                    SKU_MATCH_KEY
+                FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_SKU_MAP_PROD
+                WHERE UPPER(COALESCE(VENDOR, '')) = 'SENTINELONE'
+                  AND NULLIF(TRIM(VENDOR_SKU), '') IS NOT NULL
+                  AND NULLIF(TRIM(SKU_MATCH_KEY), '') IS NOT NULL
+            )
+            SELECT
+                inv.BILLING_MONTH,
+                sku_map_prod.SKU_MATCH_KEY,
+                CASE
+                    WHEN COUNT(DISTINCT inv.UNIT_PRICE) = 1 THEN MAX(inv.UNIT_PRICE)
+                    WHEN SUM(IFF(inv.QUANTITY IS NOT NULL AND inv.QUANTITY > 0, inv.QUANTITY, 0)) > 0
+                        THEN SUM(IFF(inv.AMOUNT IS NOT NULL AND inv.QUANTITY IS NOT NULL AND inv.QUANTITY > 0, inv.AMOUNT, 0))
+                             / SUM(IFF(inv.QUANTITY IS NOT NULL AND inv.QUANTITY > 0, inv.QUANTITY, 0))
+                    ELSE NULL
+                END AS UNIT_PRICE
+            FROM inv
+                        JOIN sku_map_prod
+                            ON UPPER(TRIM(inv.VENDOR_PRODUCT_SKU)) = sku_map_prod.VENDOR_INVOICE_SKU_KEY
+            GROUP BY 1,2
         """).fetchall()
         conn.close()
         if rows:
-            rates: dict[str, float] = {}
-            for sku_group, price in rows:
+            rates: dict[str, dict[dt.date, float]] = {}
+            for billing_month, sku_group, price in rows:
                 key = _sku_rate_key(sku_group)
-                if key and price is not None:
-                    rates[key] = float(price)
-            print(f"[INFO] Loaded {len(rates)} SentinelOne rates from VENDOR_INVOICES "
-                  f"(via SENTINELONE_SKU_INVOICE_RATE_MAP).", flush=True)
+                if key and billing_month is not None and price is not None and float(price) > 0:
+                    month_first = dt.date(billing_month.year, billing_month.month, 1)
+                    rates.setdefault(key, {})[month_first] = float(price)
+            print(
+                f"[INFO] Loaded SentinelOne monthly rates from VENDOR_INVOICES "
+                f"for {len(rates)} canonical keys.",
+                flush=True,
+            )
             return rates
         print("[WARN] No SentinelOne rows found in VENDOR_INVOICES.", flush=True)
     except Exception as e:
-        print(f"[WARN] Could not load SentinelOne rates from VENDOR_INVOICES ({e}). "
-              "Falling back to CSV seed.", flush=True)
-
-    # Fallback: read on-disk seed CSV (stale but better than nothing)
-    if not seed_path.exists():
-        print(f"[WARN] No seed CSV at {seed_path}. SentinelOne UNIT_PRICE will be NULL.", flush=True)
-        return {}
-    rates = {}
-    with open(seed_path, "r", encoding="utf-8-sig", newline="") as handle:
-        reader = csv.DictReader(handle)
-        for row in reader:
-            key = (row.get("SKU_MATCH_GROUP") or "").strip().upper()
-            raw_rate = (row.get("VENDOR_INVOICE_UNIT_PRICE") or "").strip()
-            if key and raw_rate:
-                rates[key] = float(raw_rate)
-    print(f"[WARN] Using stale CSV seed ({len(rates)} rates). Update VENDOR_INVOICES ASAP.", flush=True)
-    return rates
+        print(
+            f"[WARN] Could not load SentinelOne rates from VENDOR_INVOICES ({e}). "
+            "UNIT_PRICE will be NULL for this run.",
+            flush=True,
+        )
+    return {}
 
 
 # ---------------------------------------------------------------------------
@@ -478,10 +540,29 @@ def parse_usage_workbook(path: Path) -> pd.DataFrame:
         .reset_index()
         .rename(columns={SITE_ACCOUNT_COL: "VENDOR_PARTNER_NAME"})
     )
-    rates = load_invoice_rate_map()
+    rate_history = load_invoice_rate_history()
+    usage_alias_map = _load_usage_product_alias_map()
     agg["VENDOR"] = "SentinelOne"
     agg["MODIFIER"] = None
-    agg["UNIT_PRICE"] = agg["VENDOR_PRODUCT_SKU"].map(lambda value: rates.get(_sku_rate_key(value)))
+
+    def _resolve_row_rate(row: pd.Series) -> float | None:
+        key = _sku_rate_key(row.get("VENDOR_PRODUCT_SKU"))
+        bm = row.get("BILLING_MONTH")
+        if pd.isna(bm):
+            return None
+        month_first = dt.date(bm.year, bm.month, 1)
+
+        # Prefer direct key first; only use alias when direct key has no rate.
+        direct = _resolve_month_rate(key, month_first, rate_history)
+        if direct is not None:
+            return direct
+
+        canonical_key = usage_alias_map.get(key)
+        if canonical_key:
+            return _resolve_month_rate(canonical_key, month_first, rate_history)
+        return None
+
+    agg["UNIT_PRICE"] = agg.apply(_resolve_row_rate, axis=1)
     agg["AMOUNT"] = agg["QUANTITY"] * agg["UNIT_PRICE"]
     agg["CURRENCY"] = "USD"
 

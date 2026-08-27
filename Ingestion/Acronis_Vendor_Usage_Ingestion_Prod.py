@@ -8,7 +8,7 @@ Snowflake target:
     ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.ACRONIS_USAGE
 
 Published grain:
-    BILLING_MONTH x VENDOR x MODIFIER(Entity) x VENDOR_PARTNER_NAME x VENDOR_PRODUCT_SKU
+    BILLING_MONTH x VENDOR x MODIFIER(Status) x VENDOR_PARTNER_NAME x VENDOR_PRODUCT_SKU
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from typing import Literal
 
 import openpyxl
 import pandas as pd
+from invoice_rate_backfill import fill_missing_prices_dynamic
 
 
 ACRONIS_ROOT = Path(__file__).resolve().parents[2]
@@ -667,27 +668,47 @@ def load_price_seed() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         conn = _conn(role="DEVELOPER", warehouse="REPORTING_WH",
                      database="ANALYTICS_DEV", schema="DBT_NFOLD_TRANSFORMATION")
         inv = pd.read_sql("""
-            SELECT BILLING_MONTH, VENDOR_PRODUCT_SKU AS VENDOR_SKU, AVG(UNIT_PRICE) AS UNIT_PRICE
+            SELECT
+                BILLING_MONTH,
+                VENDOR_PRODUCT_SKU AS VENDOR_SKU,
+                CASE
+                    -- Prefer direct invoice unit prices when present; this is
+                    -- robust even if quantity OCR has occasional scale issues.
+                    WHEN COUNT(IFF(UNIT_PRICE IS NOT NULL AND UNIT_PRICE > 0, 1, NULL)) > 0
+                        THEN MEDIAN(IFF(UNIT_PRICE IS NOT NULL AND UNIT_PRICE > 0, UNIT_PRICE, NULL))
+                    -- Fallback only if direct prices are absent.
+                    WHEN SUM(IFF(QUANTITY IS NOT NULL AND QUANTITY > 0 AND AMOUNT IS NOT NULL, QUANTITY, 0)) > 0
+                        THEN SUM(IFF(QUANTITY IS NOT NULL AND QUANTITY > 0 AND AMOUNT IS NOT NULL, AMOUNT, 0))
+                             / SUM(IFF(QUANTITY IS NOT NULL AND QUANTITY > 0 AND AMOUNT IS NOT NULL, QUANTITY, 0))
+                    ELSE NULL
+                END AS UNIT_PRICE
             FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES
-            WHERE VENDOR ILIKE '%acronis%' AND UNIT_PRICE IS NOT NULL AND UNIT_PRICE > 0
+            WHERE VENDOR ILIKE '%acronis%'
+                            AND (
+                                        (UNIT_PRICE IS NOT NULL AND UNIT_PRICE > 0)
+                                        OR (QUANTITY IS NOT NULL AND QUANTITY > 0 AND AMOUNT IS NOT NULL)
+                                    )
             GROUP BY 1, 2
         """, conn)
         conn.close()
     except Exception as e:
         print(f"[WARN] Could not load Acronis invoice rates from Snowflake ({e}). UNIT_PRICE will be NULL.", flush=True)
+        empty_entity = pd.DataFrame(columns=["BILLING_MONTH", "VENDOR_SKU", "ENTITY", "UNIT_PRICE", "CURRENCY"])
         empty = pd.DataFrame(columns=["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "CURRENCY"])
         fallback = pd.DataFrame(columns=["VENDOR_SKU", "UNIT_PRICE", "CURRENCY"])
-        return empty, empty, fallback
+        return empty_entity, empty, fallback
 
     if inv.empty:
         print("[WARN] No Acronis rows found in THIRD_PARTY_RECON_VENDOR_INVOICES. UNIT_PRICE will be NULL.", flush=True)
+        empty_entity = pd.DataFrame(columns=["BILLING_MONTH", "VENDOR_SKU", "ENTITY", "UNIT_PRICE", "CURRENCY"])
         empty = pd.DataFrame(columns=["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE", "CURRENCY"])
         fallback = pd.DataFrame(columns=["VENDOR_SKU", "UNIT_PRICE", "CURRENCY"])
-        return empty, empty, fallback
+        return empty_entity, empty, fallback
 
     inv["BILLING_MONTH"] = pd.to_datetime(inv["BILLING_MONTH"]).dt.date
     inv["VENDOR_SKU"] = inv["VENDOR_SKU"].astype(str).str.strip().str.upper()
     inv["UNIT_PRICE"] = pd.to_numeric(inv["UNIT_PRICE"], errors="coerce")
+    inv = inv[inv["UNIT_PRICE"].notna() & (inv["UNIT_PRICE"] > 0)]
     inv["CURRENCY"] = "USD"
     inv = inv.dropna(subset=["BILLING_MONTH", "VENDOR_SKU", "UNIT_PRICE"])
 
@@ -799,7 +820,9 @@ def build_vendor_usage_frame(df: pd.DataFrame) -> pd.DataFrame:
             "VENDOR": "Acronis",
             "VENDOR_PARTNER_NAME": df["Tenant name"].map(_clean_text),
             "VENDOR_PRODUCT_SKU": df["SKU"].astype(str).str.strip().str.upper(),
-            "MODIFIER": df["Entity"].map(_clean_text),
+            # Status is the most informative Acronis split for downstream analysis
+            # (Enabled vs Disabled). Keep Entity in raw recreated outputs only.
+            "MODIFIER": df["Status"].map(_clean_text),
             "QUANTITY": pd.to_numeric(df["Total usage"], errors="coerce").fillna(0.0),
         }
     )
@@ -917,26 +940,15 @@ def load_snowflake(df: pd.DataFrame, *, reset: bool) -> None:
         schema=TARGET_SCHEMA,
     )
     try:
+        load_df = fill_missing_prices_dynamic(load_df, TARGET_VENDOR, conn=conn)
         cur = conn.cursor()
         cur.execute(f"CREATE SCHEMA IF NOT EXISTS {TARGET_DATABASE}.{TARGET_SCHEMA}")
-        if reset:
-            cur.execute(
-                f"DELETE FROM {FQN} WHERE UPPER(COALESCE(VENDOR, '')) = UPPER(%s)",
-                (TARGET_VENDOR,),
-            )
         cur.execute(snowflake_ddl())
-        if not reset:
-            cur.execute(
-                f"SELECT DISTINCT BILLING_MONTH FROM {FQN} "
-                "WHERE UPPER(COALESCE(VENDOR, '')) = UPPER(%s)",
-                (TARGET_VENDOR,),
-            )
-            existing = {
-                row[0].isoformat() if hasattr(row[0], "isoformat") else str(row[0])
-                for row in cur.fetchall()
-            }
-            incoming = set(pd.to_datetime(load_df["BILLING_MONTH"]).dt.date.astype(str))
-            load_df = load_df[load_df["BILLING_MONTH"].astype(str).isin(sorted(incoming - existing))]
+        # Always refresh this vendor so newly-landed invoices can recalculate prior months.
+        cur.execute(
+            f"DELETE FROM {FQN} WHERE UPPER(COALESCE(VENDOR, '')) = UPPER(%s)",
+            (TARGET_VENDOR,),
+        )
         if load_df.empty:
             print("Nothing to load; all incoming months already exist.")
             return

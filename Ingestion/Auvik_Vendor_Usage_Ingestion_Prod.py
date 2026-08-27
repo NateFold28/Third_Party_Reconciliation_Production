@@ -288,7 +288,18 @@ def _vendor_product_sku(product: object) -> str | None:
     return re.sub(r"^\s*Overage\s*-\s*", "", text, flags=re.IGNORECASE).strip() or None
 
 
-def _billable_quantity(charge_type: object, quantity: object, overage_quantity: object) -> float | None:
+def _billable_quantity(
+    charge_type: object,
+    quantity: object,
+    overage_quantity: object,
+    total_charge_amount: object,
+) -> float | None:
+    # Auvik usage rows can include negative overage quantities that net to a
+    # zero-dollar line; these should contribute 0 billable units downstream.
+    total = _to_number(total_charge_amount)
+    if total is not None and abs(total) < 1e-9:
+        return 0.0
+
     charge = (_clean_text(charge_type) or "").lower()
     if charge == "usage":
         return _to_number(overage_quantity)
@@ -719,11 +730,12 @@ def parse_usage_workbook(
             "VENDOR_PRODUCT_SKU": raw_df["Product"].map(_vendor_product_sku),
             "MODIFIER": raw_df["_stream"],
             "QUANTITY": [
-                _billable_quantity(charge_type, quantity, overage_quantity)
-                for charge_type, quantity, overage_quantity in zip(
+                _billable_quantity(charge_type, quantity, overage_quantity, total_charge_amount)
+                for charge_type, quantity, overage_quantity, total_charge_amount in zip(
                     raw_df["Charge Type"],
                     raw_df["Quantity"],
                     raw_df["Overage Quantity"],
+                    raw_df["Total Charge Amount"],
                     strict=True,
                 )
             ],
@@ -1036,7 +1048,7 @@ def load_snowflake(
                         in new_months
                     )
                 ].reset_index(drop=True)
-                load_df = _fill_missing_prices(load_df, VENDOR_NAME, conn=conn)
+                load_df = _fill_missing_prices(load_df, TARGET_VENDOR, conn=conn)
                 success, chunks, rows, output = write_pandas(
                     conn,
                     load_df,
@@ -1146,81 +1158,9 @@ def write_local_audit(usage_df: pd.DataFrame, audit_df: pd.DataFrame, label: str
 # Dynamic invoice rate fill (universal safety net)
 # ---------------------------------------------------------------------------
 def _fill_missing_prices(df, vendor_name, conn=None):
-    """Fill NULL UNIT_PRICE/AMOUNT rows from THIRD_PARTY_RECON_VENDOR_INVOICES.
+    from invoice_rate_backfill import fill_missing_prices_dynamic
 
-    Only fires on rows where both UNIT_PRICE and AMOUNT are NULL/0.
-    Rows already populated by the source file are never overwritten.
-    Exact (billing_month, sku) match first, then carry-forward to most
-    recent prior month for same SKU.
-    """
-    import sys as _sys, pandas as _pd
-    _ws = Path(__file__).resolve()
-    for _ in range(8):
-        _ws = _ws.parent
-        if (_ws / "TEMPLATES").exists():
-            break
-    _sys.path.insert(0, str(_ws))
-    try:
-        _owned = conn is None
-        if _owned:
-            from TEMPLATES.Python.connection import get_snowflake_connection as _gc
-            _c = _gc(role="DEVELOPER", warehouse="REPORTING_WH",
-                     database="ANALYTICS_DEV", schema="DBT_NFOLD_TRANSFORMATION")
-        else:
-            _c = conn
-        _rows = _c.cursor().execute(
-            "SELECT BILLING_MONTH, VENDOR_PRODUCT_SKU, AVG(UNIT_PRICE) AS UNIT_PRICE "
-            "FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES "
-            "WHERE VENDOR ILIKE %s AND UNIT_PRICE IS NOT NULL AND UNIT_PRICE > 0 "
-            "GROUP BY 1, 2 ORDER BY 1 DESC, 2",
-            (f"%{vendor_name}%",),
-        ).fetchall()
-        if _owned:
-            _c.close()
-    except Exception as _e:
-        print(f"[WARN] _fill_missing_prices: {_e}. Prices unchanged.", flush=True)
-        return df
-    if not _rows:
-        return df
-    inv = _pd.DataFrame(_rows, columns=["BILLING_MONTH", "VENDOR_PRODUCT_SKU", "UNIT_PRICE"])
-    inv["BILLING_MONTH"] = _pd.to_datetime(inv["BILLING_MONTH"]).dt.normalize()
-    inv["VENDOR_PRODUCT_SKU"] = inv["VENDOR_PRODUCT_SKU"].astype(str).str.strip()
-    inv["UNIT_PRICE"] = _pd.to_numeric(inv["UNIT_PRICE"], errors="coerce")
-    inv = inv.dropna(subset=["UNIT_PRICE"])
-    exact = {(r.VENDOR_PRODUCT_SKU, r.BILLING_MONTH): float(r.UNIT_PRICE) for r in inv.itertuples(index=False)}
-    latest: dict = {}
-    for r in inv.itertuples(index=False):
-        if r.VENDOR_PRODUCT_SKU not in latest:
-            latest[r.VENDOR_PRODUCT_SKU] = float(r.UNIT_PRICE)
-    df = df.copy()
-    for col in ("UNIT_PRICE", "AMOUNT"):
-        if col not in df.columns:
-            df[col] = None
-    # Normalise for comparison only - do NOT reassign BILLING_MONTH (would break write_pandas DATE cast)
-    _billing_norm = _pd.to_datetime(df["BILLING_MONTH"]).dt.normalize()
-    df["VENDOR_PRODUCT_SKU"] = df["VENDOR_PRODUCT_SKU"].astype(str).str.strip()
-    mask = ((df["UNIT_PRICE"].isna() | (df["UNIT_PRICE"] == 0)) &
-            (df["AMOUNT"].isna() | (df["AMOUNT"] == 0)))
-    filled = 0
-    for _i, idx in enumerate(df[mask].index):
-        sku = df.at[idx, "VENDOR_PRODUCT_SKU"]
-        mo  = _billing_norm.iloc[df.index.get_loc(idx)]
-        price = exact.get((sku, mo))
-        if price is None:
-            bm, bp = None, None
-            for (s, m), p in exact.items():
-                if s == sku and m <= mo and (bm is None or m > bm):
-                    bm, bp = m, p
-            price = bp or latest.get(sku)
-        if price:
-            df.at[idx, "UNIT_PRICE"] = price
-            qty = df.at[idx, "QUANTITY"] if "QUANTITY" in df.columns else None
-            if qty is not None and not _pd.isna(qty):
-                df.at[idx, "AMOUNT"] = float(qty) * price
-            filled += 1
-    if filled:
-        print(f"[INFO] _fill_missing_prices: filled {filled:,} rows for {vendor_name}.", flush=True)
-    return df
+    return fill_missing_prices_dynamic(df=df, vendor_name=vendor_name, conn=conn)
 
 def main() -> None:
     parser = argparse.ArgumentParser(

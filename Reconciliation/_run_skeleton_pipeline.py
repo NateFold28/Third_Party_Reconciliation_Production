@@ -20,16 +20,9 @@ Architecture (the "one big table" you asked for):
 No STANDALONE reads in the app path. No TRANSLATIONS dict. No per-vendor
 _RECON_DETAIL_PROD sprawl. No union step.
 
-Tonight's source for every vendor's emit block is the frozen SNAPSHOT from
-2026-08-23 (Phase 0 preservation). This is intentional: it lets us prove the
-architecture works end-to-end without touching the 1000-line vendor SQL files.
-
-Tomorrow's fine-tune: for each vendor, flip its emit block from
-    SOURCE = "<VENDOR>_SNAPSHOT_20260823"
-to
-    1. run Vendor_Recon_Pipelines_Prod/<VENDOR>/<VENDOR>_Reconciliation_Script_Prod.sql
-    2. SOURCE = "<VENDOR>_RECON_DETAIL" (the vendor SQL's own output table)
-Everything downstream stays identical.
+Current production routing: all 9 vendors execute their SQL scripts from
+Reconciliation/ and emit directly from <VENDOR>_RECON_DETAIL.
+Legacy snapshot fallback paths are intentionally disabled.
 """
 from __future__ import annotations
 import subprocess
@@ -54,7 +47,7 @@ USE = (
 #
 # For each vendor we choose one of two paths into THIRD_PARTY_RECON_DETAIL_PROD:
 #
-#   "live"      -> execute Vendor_Recon_Pipelines_Prod/<VENDOR>/<VENDOR>_Reconciliation_Script_Prod.sql
+#   "live"      -> execute Reconciliation/<VENDOR>_Reconciliation_Script_Prod.sql
 #                  (which rebuilds <VENDOR>_RECON_DETAIL) and emit from that
 #                  table. This is what production will use for every vendor.
 #
@@ -62,7 +55,7 @@ USE = (
 #                  (frozen 2026-08-23 Phase 0 backup). Used for vendors whose
 #                  live SQL still needs calibration.
 #
-# Flip a vendor from "snapshot" to "live" when its numbers are cleaned up.
+# In production handoff, all vendors must remain on "live".
 # ---------------------------------------------------------------------------
 VENDOR_ROUTING: dict[str, tuple[str, str]] = {
     # vendor        : (mode, source)
@@ -92,14 +85,23 @@ VENDOR_FALLBACK: dict[str, str] = {}
 # ---------------------------------------------------------------------------
 CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
     CASE
+        -- Duplicate-billing is intentionally not a primary outcome category.
+        -- Keep DUPLICATE_BILLING_FLAG for visibility, but do not mask core
+        -- reconciliation outcomes by forcing a duplicate bucket here.
+        -- WHEN COALESCE(ZUORA_AMOUNT, 0) > 0
+        --      AND COALESCE(MARKETPLACE_AMOUNT, 0) > 0
+        --     THEN 'Duplicated CW Invoice'
         WHEN OUTCOME_FLAG IN (
             'Clear', 'Unmapped Partner', 'Duplicated CW Invoice',
             'Marketplace Billing Delay', 'Known Discount / Bundle',
-            'API Usage Recorded, No CW Billing', 'Vendor SKU, No CW SKU',
+            'Disabled Partner SKU',
+            'API Usage, Insufficient CW Billing', 'Vendor SKU, No CW SKU',
             'CW SKU, No Vendor SKU', 'Vendor Billing, No CW Billing',
             'CW Billing, No Vendor Billing',
             'Vendor Billing, Insufficient CW Billing', 'Other Issue'
         ) THEN OUTCOME_FLAG
+        WHEN OUTCOME_FLAG IN ('DISABLED_PARTNER_SKU', 'Disabled Partner SKU')
+            THEN 'Disabled Partner SKU'
         WHEN OUTCOME_FLAG IN ('CLEAR','MATCHED','MINOR_DRIFT',
                               'NEGLIGIBLE_DOLLAR_EXPOSURE','MARKETPLACE_ONLY_CLEAR',
                               'NO_ACTIVITY','OVERAGE_EXPECTED','MATERIAL_OVER_VENDOR',
@@ -108,6 +110,19 @@ CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
                               'Clear - Discounted / Bundled') THEN 'Clear'
         WHEN OUTCOME_FLAG IN ('MARKETPLACE_TIMING','BILLING_TIMING_ADJACENT_MONTH')
             THEN 'Marketplace Billing Delay'
+        WHEN STARTSWITH(OUTCOME_FLAG, 'CLEAR|') THEN 'Clear'
+        WHEN STARTSWITH(OUTCOME_FLAG, 'NO_BILLING_NO_HISTORY|')
+            THEN 'Vendor Billing, No CW Billing'
+        WHEN STARTSWITH(OUTCOME_FLAG, 'VENDOR_OVER_BILLING|')
+             AND COALESCE(TOTAL_BILLING_QUANTITY,0) = 0
+            THEN 'Vendor Billing, No CW Billing'
+        WHEN STARTSWITH(OUTCOME_FLAG, 'VENDOR_OVER_BILLING|')
+            THEN 'Vendor Billing, Insufficient CW Billing'
+        WHEN STARTSWITH(OUTCOME_FLAG, 'BILLING_OVER_VENDOR|')
+             AND COALESCE(VENDOR_QUANTITY,0) = 0
+            THEN 'CW Billing, No Vendor Billing'
+        WHEN STARTSWITH(OUTCOME_FLAG, 'BILLING_OVER_VENDOR|')
+            THEN 'Clear'
         WHEN OUTCOME_FLAG IN ('PARTNER_MAPPING_REQUIRED','Unmapped SKU')
              AND (SF_ID IS NULL OR UPPER(TRIM(COALESCE(SF_ID,''))) IN ('','UNKNOWN','NONE','UNMAPPED','NULL'))
             THEN 'Unmapped Partner'
@@ -117,15 +132,17 @@ CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
             THEN 'Vendor SKU, No CW SKU'
         WHEN OUTCOME_FLAG IN ('CW_ONLY_ADDON_NO_VENDOR','CW_SKU_NO_VENDOR_SKU')
             THEN 'CW SKU, No Vendor SKU'
-        WHEN OUTCOME_FLAG IN ('DUPLICATE_BILLING','Duplicate Billing')
-            THEN 'Duplicated CW Invoice'
+        -- Duplicate-billing remains a side-signal only.
+        -- WHEN OUTCOME_FLAG IN ('DUPLICATE_BILLING','Duplicate Billing')
+        --     THEN 'Duplicated CW Invoice'
         WHEN OUTCOME_FLAG IN ('RMM_DISCOUNTED','KNOWN_DISCOUNT_BUNDLE','MDR_BUNDLE',
                               'CW_INCLUDED_ZERO_DOLLAR','INTENTIONAL_DISCOUNT')
             THEN 'Known Discount / Bundle'
         WHEN OUTCOME_FLAG IN ('TRT_VENDOR_USAGE_NOT_BILLED',
                               'STRUCTURAL_VENDOR_ONLY_TRT_CONFIRMED',
-                              'Missing CW Billing - API Confirmed')
-            THEN 'API Usage Recorded, No CW Billing'
+                              'Missing CW Billing - API Confirmed',
+                              'API Usage Recorded, No CW Billing')
+            THEN 'API Usage, Insufficient CW Billing'
         WHEN OUTCOME_FLAG IN ('STRUCTURAL_BILLING_ONLY','BILLING_ONLY_NO_VENDOR_USAGE',
                               'STRUCTURAL_BILLING_ONLY_TRT_CONFIRMED',
                               'MARKETPLACE_BILLING_NO_VENDOR',
@@ -230,7 +247,12 @@ SELECT
                     / TOTAL_BILLING_AMOUNT * 100, 1)
          ELSE NULL END::FLOAT                                                 AS CW_MARGIN_PCT,
     'FALSE'::VARCHAR                                                          AS HAS_DISCOUNT,        -- flipped below for Webroot/BD
-    IFF(DUPLICATE_BILLING_FLAG, 'TRUE', 'FALSE')::VARCHAR                     AS DUPLICATE_BILLING_FLAG,
+    IFF(
+        DUPLICATE_BILLING_FLAG
+        OR (COALESCE(ZUORA_AMOUNT, 0) > 0 AND COALESCE(MARKETPLACE_AMOUNT, 0) > 0),
+        'TRUE',
+        'FALSE'
+    )::VARCHAR                                                                 AS DUPLICATE_BILLING_FLAG,
     ({CANONICAL_OUTCOME_FLAG_NORMALIZATION})                                  AS OUTCOME_FLAG,
     INVESTIGATION_REASON                                                      AS INVESTIGATION_REASON
 FROM {source_table};
@@ -265,14 +287,37 @@ def live_emit_block(vendor: str, live_table: str) -> str:
         "Exium": "EXIUM_PRODUCT",
     }.get(vendor, "VENDOR_PRODUCT")
     marketplace_skus_expr = {
+        "ESET": "MARKETPLACE_SKUS",
         "KeepIT": "NULL::VARCHAR",
     }.get(vendor, "ARRAY_TO_STRING(MARKETPLACE_SKUS, ',')")
     cw_skus_expr = {
+        "ESET": "CW_SKUS",
         "Webroot": "NULL::VARCHAR",
     }.get(vendor, "ARRAY_TO_STRING(CW_SKUS, ',')")
+    zuora_skus_expr = {
+        "ESET": "ZUORA_SKUS",
+    }.get(vendor, "ARRAY_TO_STRING(ZUORA_SKUS, ',')")
     sku_match_group_expr = {
         "ESET": "SKU_MATCH_GROUP",
+        "SentinelOne": "SKU_MATCH_GROUP",
+        "Webroot": "SKU_MATCH_GROUP",
+        "Auvik": "SKU_MATCH_GROUP",
     }.get(vendor, "NULL::VARCHAR")
+    vendor_unit_price_expr = {
+        # ESET source files are quantity-first. Carry the contract-cost overlay
+        # into the shared mart for margin visibility, while classification stays
+        # quantity-driven through OUTCOME_FLAG handling in the classifier.
+        "ESET": "CONTRACT_COST_RATE",
+    }.get(vendor, "VENDOR_UNIT_PRICE")
+    vendor_amount_expr = {
+        "ESET": "CONTRACT_COST_BASIS_AMOUNT",
+    }.get(vendor, "VENDOR_AMOUNT")
+    amount_delta_expr = {
+        "ESET": "COALESCE(TOTAL_BILLING_AMOUNT, 0) - COALESCE(CONTRACT_COST_BASIS_AMOUNT, 0)",
+    }.get(vendor, "AMOUNT_DELTA")
+    abs_amount_delta_expr = {
+        "ESET": "ABS(COALESCE(TOTAL_BILLING_AMOUNT, 0) - COALESCE(CONTRACT_COST_BASIS_AMOUNT, 0))",
+    }.get(vendor, "ABS_AMOUNT_DELTA")
     return f"""{USE}
 
 -- Idempotent: remove any prior rows for this vendor.
@@ -301,14 +346,14 @@ SELECT
     {vendor_product_expr}                                                     AS VENDOR_PRODUCT,
     {sku_match_group_expr}                                                     AS SKU_MATCH_GROUP,
     {cw_skus_expr}                                                             AS CW_SKUS,
-    ARRAY_TO_STRING(ZUORA_SKUS, ',')                                           AS ZUORA_SKUS,
+    {zuora_skus_expr}                                                          AS ZUORA_SKUS,
     {marketplace_skus_expr}                                                    AS MARKETPLACE_SKUS,
     BILLING_SOURCE_MIX                                                         AS BILLING_SOURCE_MIX,
     NULL::FLOAT                                                                AS API_QUANTITY,
     NULL::FLOAT                                                                AS AVG_API_QUANTITY,
     COALESCE(VENDOR_QUANTITY, 0)::FLOAT                                        AS VENDOR_QUANTITY,
-    VENDOR_UNIT_PRICE::FLOAT                                                   AS VENDOR_UNIT_PRICE,
-    COALESCE(VENDOR_AMOUNT, 0)::FLOAT                                          AS VENDOR_AMOUNT,
+    {vendor_unit_price_expr}::FLOAT                                            AS VENDOR_UNIT_PRICE,
+    COALESCE({vendor_amount_expr}, 0)::FLOAT                                   AS VENDOR_AMOUNT,
     COALESCE(ZUORA_QUANTITY, 0)::FLOAT                                         AS ZUORA_QUANTITY,
     ZUORA_UNIT_PRICE::FLOAT                                                    AS ZUORA_UNIT_PRICE,
     COALESCE(ZUORA_AMOUNT, 0)::FLOAT                                           AS ZUORA_AMOUNT,
@@ -320,14 +365,19 @@ SELECT
     COALESCE(TOTAL_BILLING_AMOUNT, 0)::FLOAT                                   AS TOTAL_BILLING_AMOUNT,
     QTY_DELTA::FLOAT                                                           AS QTY_DELTA,
     ABS_QTY_DELTA::FLOAT                                                       AS ABS_QTY_DELTA,
-    AMOUNT_DELTA::FLOAT                                                        AS AMOUNT_DELTA,
-    ABS_AMOUNT_DELTA::FLOAT                                                    AS ABS_AMOUNT_DELTA,
+    {amount_delta_expr}::FLOAT                                                 AS AMOUNT_DELTA,
+    {abs_amount_delta_expr}::FLOAT                                             AS ABS_AMOUNT_DELTA,
     CASE WHEN COALESCE(TOTAL_BILLING_AMOUNT, 0) > 0
          THEN ROUND((COALESCE(TOTAL_BILLING_AMOUNT, 0) - COALESCE(VENDOR_AMOUNT, 0))
                     / TOTAL_BILLING_AMOUNT * 100, 1)
          ELSE NULL END::FLOAT                                                  AS CW_MARGIN_PCT,
     'FALSE'::VARCHAR                                                           AS HAS_DISCOUNT,
-    IFF(DUPLICATE_BILLING_FLAG, 'TRUE', 'FALSE')::VARCHAR                      AS DUPLICATE_BILLING_FLAG,
+    IFF(
+        DUPLICATE_BILLING_FLAG
+        OR (COALESCE(ZUORA_AMOUNT, 0) > 0 AND COALESCE(MARKETPLACE_AMOUNT, 0) > 0),
+        'TRUE',
+        'FALSE'
+    )::VARCHAR                                                                  AS DUPLICATE_BILLING_FLAG,
     ({CANONICAL_OUTCOME_FLAG_NORMALIZATION})                                   AS OUTCOME_FLAG,
     INVESTIGATION_REASON                                                       AS INVESTIGATION_REASON
 FROM {live_table};
@@ -343,6 +393,13 @@ def run_vendor_sql_file(conn, vendor: str) -> bool:
     path = REPO / "Reconciliation" / f"{vendor}_Reconciliation_Script_Prod.sql"
     sql = USE + "\n" + path.read_text(encoding="utf-8")
     return run_sql(conn, sql, f"execute {vendor} SQL file")
+
+
+def run_repo_sql_file(conn, relative_path: str, label: str) -> bool:
+    """Execute a repository SQL script with the standard Snowflake context."""
+    path = REPO / relative_path
+    sql = USE + "\n" + path.read_text(encoding="utf-8")
+    return run_sql(conn, sql, label)
 
 
 # ---------------------------------------------------------------------------
@@ -425,6 +482,52 @@ FROM (
 WHERE d.VENDOR = 'Webroot'
   AND d.SF_ID = e.sf_id
   AND d.BILLING_MONTH = e.billing_month;
+"""
+
+INV_ID_BACKFILL_SQL = f"""{USE}
+UPDATE THIRD_PARTY_RECON_DETAIL_PROD d
+SET INV_ID = z.inv_id
+FROM (
+        SELECT
+                vendor,
+                sf_id,
+                billing_month,
+                CASE
+                        WHEN COUNT(DISTINCT invoice_number) = 1 THEN MAX(invoice_number)
+                        ELSE 'MULTI_INV_' || COUNT(DISTINCT invoice_number)::VARCHAR
+                END AS inv_id
+        FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
+        WHERE invoice_number IS NOT NULL
+            AND sf_id IS NOT NULL
+        GROUP BY 1,2,3
+) z
+WHERE d.INV_ID IS NULL
+    AND d.VENDOR = z.vendor
+    AND d.SF_ID = z.sf_id
+    AND d.BILLING_MONTH = z.billing_month
+    AND COALESCE(d.ZUORA_AMOUNT, 0) <> 0;
+
+UPDATE THIRD_PARTY_RECON_DETAIL_PROD d
+SET INV_ID = m.inv_id
+FROM (
+        SELECT
+                vendor,
+                sf_id,
+                billing_month,
+                CASE
+                        WHEN COUNT(DISTINCT marketplace_invoice_id) = 1 THEN MAX(marketplace_invoice_id)
+                        ELSE 'MULTI_MP_INV_' || COUNT(DISTINCT marketplace_invoice_id)::VARCHAR
+                END AS inv_id
+        FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
+        WHERE marketplace_invoice_id IS NOT NULL
+            AND sf_id IS NOT NULL
+        GROUP BY 1,2,3
+) m
+WHERE d.INV_ID IS NULL
+    AND d.VENDOR = m.vendor
+    AND d.SF_ID = m.sf_id
+    AND d.BILLING_MONTH = m.billing_month
+    AND COALESCE(d.MARKETPLACE_AMOUNT, 0) <> 0;
 """
 
 INIT_SQL = f"""{USE}
@@ -511,13 +614,22 @@ def main() -> int:
         run_sql(conn, API_BACKFILL_SQL, "backfill API_QUANTITY / AVG_API_QUANTITY (S1/BD/Webroot/Auvik)")
         run_sql(conn, BITDEFENDER_MDR_BUNDLE_SQL, "Bitdefender MDR bundle flag")
         run_sql(conn, WEBROOT_RMM_DISCOUNT_SQL, "Webroot RMM discount flag")
+        run_sql(conn, INV_ID_BACKFILL_SQL, "backfill INV_ID from Zuora billing source")
+
+        print("\n=== STEP 2b: build vendor invoice vs raw usage control (invoice gate) ===")
+        if not run_repo_sql_file(
+            conn,
+            r"Reconciliation\10_vendor_invoice_usage_intra_prod.sql",
+            "build THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD",
+        ):
+            return 1
 
         print("\n=== STEP 3: build THIRD_PARTY_RECON_OUTPUT_PROD (classifier) ===")
         # The classifier already knows how to turn DETAIL_PROD into the 45-column
         # OUTPUT_PROD shape the app reads. It also builds THIRD_PARTY_RECON_SUMMARY_PROD.
         result = subprocess.run(
-            [sys.executable, str(REPO / "scripts" / "build_third_party_recon_output_prod.py")],
-            capture_output=True, text=True, cwd=str(REPO / "scripts"),
+            [sys.executable, str(REPO / "Reconciliation" / "build_third_party_recon_output_prod.py")],
+            capture_output=True, text=True, cwd=str(REPO / "Reconciliation"),
         )
         if result.returncode == 0:
             print(result.stdout.rstrip())
@@ -532,8 +644,11 @@ def main() -> int:
         det_rows, det_vendors = cur.fetchone()
         cur.execute("SELECT COUNT(*), COUNT(DISTINCT VENDOR) FROM THIRD_PARTY_RECON_OUTPUT_PROD")
         out_rows, out_vendors = cur.fetchone()
+        cur.execute("SELECT COUNT(*), COUNT(DISTINCT VENDOR) FROM THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD")
+        intra_rows, intra_vendors = cur.fetchone()
         print(f"  DETAIL_PROD:  {det_rows:>7,} rows across {det_vendors} vendors")
         print(f"  OUTPUT_PROD:  {out_rows:>7,} rows across {out_vendors} vendors")
+        print(f"  INTRA_PROD:   {intra_rows:>7,} rows across {intra_vendors} vendors")
 
         print("\n  OUTCOME_FLAG in DETAIL_PROD (only canonical 12 should appear):")
         cur.execute("""

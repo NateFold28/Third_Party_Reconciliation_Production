@@ -58,13 +58,15 @@ FRESHNESS_TTL_SECONDS = int(os.getenv("THIRD_PARTY_RECON_DASHBOARD_FRESHNESS_TTL
 # v22: TRT source now uses seed__product_categorization SKU filter (matches
 #      manual recon Excel queries). Added Auvik cycle vendor (21st).
 #      Webroot restricted to is_server='' (SAT/DNS product line). SF_ID
-#      resolved via curated partner_map primary + CORE__RPT_CMS_USAGE fallback.
+#      resolved via curated partner_map primary + Zuora bridge.
 # v23: 2026-08-21 latency pass — pipeline pre-computes ACTION_NEEDED,
 #      IS_FINANCE_QUEUE, IS_OPS_QUEUE, IS_TIMING_QUEUE, IS_LEAKAGE and CASE_ID
 #      so the app skips per-row Python classification. Single UNION query
 #      loads every vendor in one round-trip. Cache TTLs bumped so freshness
 #      key alone drives invalidation.
-SLICE_SCHEMA_VERSION = "v25"
+# v26: ESET is quantity-first and now carries contract-cost overlay dollars.
+# v27: adds vendor invoice vs raw vendor usage SKU-level intra-vendor control.
+SLICE_SCHEMA_VERSION = "v27"
 
 # Reconciliation check keys shown on every vendor row.
 CHECKS = [
@@ -95,8 +97,8 @@ OUTCOME_FLAG_GLOSSARY: list[tuple[str, str]] = [
      "Vendor partner name cannot be resolved to a Salesforce ID. The account cannot be matched to any CW billing. Data team must add the partner mapping."),
     ("Duplicated CW Invoice",
      "Both Zuora AND Marketplace billed the same account/product/month. Billing Ops must identify the duplicate source and cancel one."),
-    ("API Usage Recorded, No CW Billing",
-     "TRT/API endpoint data confirms active usage but CW has no corresponding billing (amount = $0). Finance must create billing for the confirmed usage."),
+    ("API Usage, Insufficient CW Billing",
+     "TRT/API endpoint data confirms active usage but CW billing is missing or materially short. Finance must close billing for the confirmed usage."),
     ("Vendor SKU, No CW SKU",
      "Vendor is billing CW for a product that has no corresponding CW rebill SKU. Product/Catalog must create the rebill SKU before CW can charge the partner."),
     ("CW SKU, No Vendor SKU",
@@ -119,7 +121,7 @@ EXCEPTION_TYPE_GLOSSARY: list[tuple[str, str]] = [
     ("Known Discount / Bundle", "Intentional pricing: RMM bundle discount (Webroot), MDR bundle (SentinelOne), or CW-included zero-dollar line. No action required."),
     ("Vendor SKU, No CW SKU", "Vendor invoiced CW for a product with no corresponding CW rebill SKU. Product/Catalog must create the rebill SKU."),
     ("CW SKU, No Vendor SKU", "CW billed a rebill SKU for which the vendor has no matching invoice line. Ops must verify whether this subscription should still be active."),
-    ("API Usage Recorded, No CW Billing", "TRT/API usage data confirms active endpoint usage but CW billing = $0. Finance must create billing for the confirmed usage."),
+    ("API Usage, Insufficient CW Billing", "TRT/API usage data confirms active endpoint usage but CW billing is missing or materially short. Finance must close billing for the confirmed usage."),
     ("Vendor Billing, No CW Billing", "Vendor charged CW (vendor amount > $0) but CW billing to the partner = $0. Finance/Sales must onboard or restore the billing contract."),
     ("CW Billing, No Vendor Billing", "CW billed the partner (CW amount > $0) but vendor amount = $0. Stale subscription or vendor attribution gap \u2014 Ops must verify."),
     ("Vendor Billing, Insufficient CW Billing", "Vendor charges CW more than 25% above what CW bills the partner (both sides > $0). Finance/Sales must close the gap \u2014 CW is losing margin."),
@@ -702,7 +704,8 @@ def fetch_freshness_key() -> str:
                   'THIRD_PARTY_RECON_DETAIL_PROD',
                   'THIRD_PARTY_RECON_OUTPUT_PROD',
                   'THIRD_PARTY_RECON_SUMMARY_PROD',
-                  'THIRD_PARTY_RECON_VENDOR_USAGE_PROD'
+                  'THIRD_PARTY_RECON_VENDOR_USAGE_PROD',
+                  'THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD'
               )
         """)
         if df.empty:
@@ -1284,12 +1287,12 @@ def outcome_qty(detail: pd.DataFrame, flag: str) -> float:
 
 BUCKET_CLEAR                 = "Clear"
 BUCKET_UNMAPPED              = "Unmapped Partner"
-BUCKET_DUPLICATE             = "Duplicated CW Invoice"
+BUCKET_DUPLICATE             = "Duplicated CW Invoice"  # legacy-only fallback label
 BUCKET_MARKETPLACE_TIMING    = "Marketplace Billing Delay"
 BUCKET_KNOWN_DISCOUNT        = "Known Discount / Bundle"
 BUCKET_VENDOR_SKU_NO_CW      = "Vendor SKU, No CW SKU"
 BUCKET_CW_SKU_NO_VENDOR      = "CW SKU, No Vendor SKU"
-BUCKET_TRT_NO_BILLING        = "API Usage Recorded, No CW Billing"
+BUCKET_TRT_NO_BILLING        = "API Usage, Insufficient CW Billing"
 BUCKET_VENDOR_NO_CW_BILLING  = "Vendor Billing, No CW Billing"
 BUCKET_CW_NO_VENDOR_BILLING  = "CW Billing, No Vendor Billing"
 BUCKET_VENDOR_NO_CW          = "Vendor Billing, Insufficient CW Billing"
@@ -1299,7 +1302,6 @@ BUCKET_VENDOR_NO_CW          = "Vendor Billing, Insufficient CW Billing"
 # does not flag legitimate catch-all rows as unclassified.
 EXCEPTION_BUCKETS = [
     BUCKET_UNMAPPED,
-    BUCKET_DUPLICATE,
     BUCKET_MARKETPLACE_TIMING,
     BUCKET_KNOWN_DISCOUNT,
     BUCKET_VENDOR_SKU_NO_CW,
@@ -1332,7 +1334,8 @@ FLAG_PLAIN: dict[str, str] = {
     "MARKETPLACE_OVERAGE": BUCKET_CLEAR,
     # Structural data integrity
     "PARTNER_MAPPING_REQUIRED": BUCKET_UNMAPPED,
-    "DUPLICATE_BILLING": BUCKET_DUPLICATE,
+    # Duplicate is informational now (Y/N column), not a primary exception bucket.
+    "DUPLICATE_BILLING": "Other Issue",
     "MARKETPLACE_TIMING": BUCKET_MARKETPLACE_TIMING,
     "MARKETPLACE_BILLING_NO_VENDOR": BUCKET_MARKETPLACE_TIMING,
     "BILLING_TIMING_ADJACENT_MONTH": BUCKET_MARKETPLACE_TIMING,
@@ -1349,6 +1352,7 @@ FLAG_PLAIN: dict[str, str] = {
     "CW_ONLY_ADDON_NO_VENDOR": BUCKET_CW_SKU_NO_VENDOR,
     "CW_SKU_NO_VENDOR_SKU": BUCKET_CW_SKU_NO_VENDOR,
     # TRT / API usage evidence
+    "API Usage Recorded, No CW Billing": BUCKET_TRT_NO_BILLING,
     "TRT_VENDOR_USAGE_NOT_BILLED": BUCKET_TRT_NO_BILLING,
     "STRUCTURAL_VENDOR_ONLY_TRT_CONFIRMED": BUCKET_TRT_NO_BILLING,
     # No-billing structural flags
@@ -1377,12 +1381,12 @@ FLAG_PLAIN: dict[str, str] = {
 FLAG_DISPLAY_ACTION: dict[str, str] = {
     BUCKET_CLEAR: "None",
     BUCKET_UNMAPPED: "Data team: update partner mapping",
-    BUCKET_DUPLICATE: "Billing Ops: cancel duplicate invoice line",
+    BUCKET_DUPLICATE: "Billing Ops: review duplicate overlap signal",
     BUCKET_MARKETPLACE_TIMING: "No action \u2014 prior-month invoice expected next cycle",
     BUCKET_KNOWN_DISCOUNT: "No action \u2014 intentional discount or bundle pricing",
     BUCKET_VENDOR_SKU_NO_CW: "Product / Catalog: add a CW rebill SKU for this vendor product",
     BUCKET_CW_SKU_NO_VENDOR: "Ops: verify whether this CW rebill SKU should still be active",
-    BUCKET_TRT_NO_BILLING: "Finance: create billing for TRT-confirmed endpoint usage",
+    BUCKET_TRT_NO_BILLING: "Finance: close billing gap for TRT/API-confirmed usage",
     BUCKET_VENDOR_NO_CW_BILLING: "Finance / Sales: onboard billing \u2014 vendor charged CW with no CW rebill to partner",
     BUCKET_CW_NO_VENDOR_BILLING: "Ops: verify vendor-side attribution or retire the stale CW subscription",
     BUCKET_VENDOR_NO_CW: "Finance / Sales: close billing gap \u2014 vendor materially ahead of CW",
@@ -1401,7 +1405,6 @@ FINANCE_QUEUE_CATEGORIES = [
 OPS_QUEUE_CATEGORIES = [
     BUCKET_CW_NO_VENDOR_BILLING,
     BUCKET_CW_SKU_NO_VENDOR,
-    BUCKET_DUPLICATE,
     BUCKET_VENDOR_SKU_NO_CW,  # Catalog gap -- needs Ops/Product action
     BUCKET_UNMAPPED,
 ]
@@ -1415,7 +1418,7 @@ KNOWN_NO_ACTION_CATEGORIES = [BUCKET_KNOWN_DISCOUNT]
 # Uses canonical OUTCOME_FLAG / EXCEPTION_TYPE values from the pipeline.
 LEAKAGE_FLAGS = [
     "Vendor Billing, No CW Billing",
-    "API Usage Recorded, No CW Billing",
+    "API Usage, Insufficient CW Billing",
     "Vendor Billing, Insufficient CW Billing",
 ]
 # Timing-only rows self-resolve; separate from actionable exceptions.
@@ -1556,8 +1559,9 @@ def _classify_bucket_series(detail: pd.DataFrame) -> pd.Series:
             "Billed by Vendor, Missing CW Billing": BUCKET_VENDOR_NO_CW_BILLING,
             "Billed by CW, Missing Vendor Billing": BUCKET_CW_NO_VENDOR_BILLING,
             "Missing CW Billing - API Confirmed": BUCKET_TRT_NO_BILLING,
+            "API Usage Recorded, No CW Billing": BUCKET_TRT_NO_BILLING,
             "Unmapped SKU": BUCKET_UNMAPPED,
-            "Duplicate Billing": BUCKET_DUPLICATE,
+            "Duplicate Billing": "Other Issue",
             "Clear - Discounted / Bundled": BUCKET_KNOWN_DISCOUNT,
         })
     # Fallback: EXCEPTION_TYPE not in table — derive from OUTCOME_FLAG.
@@ -1720,7 +1724,7 @@ def check_status(
         # Canonical flags where vendor usage exceeds or vendor is unbilled vs CW.
         under_flags = [
             "Vendor Billing, No CW Billing",
-            "API Usage Recorded, No CW Billing",
+            "API Usage, Insufficient CW Billing",
             "Vendor Billing, Insufficient CW Billing",
         ]
         accts = flag_accounts(detail, under_flags)
@@ -2144,7 +2148,7 @@ with st.expander(f"\U0001f50d Data source audit  (schema {SLICE_SCHEMA_VERSION})
             st.caption(
                 "If the values above are NOT from the canonical 12-bucket taxonomy "
                 "(Clear, Unmapped Partner, Duplicated CW Invoice, Known Discount / Bundle, "
-                "Marketplace Billing Delay, API Usage Recorded No CW Billing, Vendor SKU No CW SKU, "
+                "Marketplace Billing Delay, API Usage Insufficient CW Billing, Vendor SKU No CW SKU, "
                 "CW SKU No Vendor SKU, Vendor Billing No CW Billing, CW Billing No Vendor Billing, "
                 "Vendor Billing Insufficient CW Billing, Other Issue) \u2014 "
                 "the pipeline (`build_third_party_recon_output_prod.py`) needs to be re-run."
@@ -2760,6 +2764,13 @@ def render_exception_detail(
     drill["BILLING_MONTH"] = pd.to_datetime(
         drill["BILLING_MONTH"], errors="coerce"
     ).dt.strftime("%Y-%m")
+    drill["DUPLICATE_BILLING"] = (
+        drill.get("DUPLICATE_BILLING", drill.get("DUPLICATE_BILLING_FLAG", "N"))
+        .astype(str)
+        .str.upper()
+        .map({"TRUE": "Y", "FALSE": "N", "Y": "Y", "N": "N"})
+        .fillna("N")
+    )
     # OUTCOME_FLAG intentionally last so the primary business dimensions
     # (month, account, product, seats, amounts) render leftmost.
     # If the input carries a _VENDOR column (portfolio view), surface it early.
@@ -2780,6 +2791,7 @@ def render_exception_detail(
         "VENDOR_UNIT_PRICE", "TOTAL_BILLING_UNIT_PRICE",
         "VENDOR_AMOUNT", "TOTAL_BILLING_AMOUNT", "AMOUNT_DELTA",
         "VENDOR_INVOICE_SKU", "VENDOR_INVOICE_RATE_SOURCE",
+        "DUPLICATE_BILLING",
         "INVESTIGATION_REASON", "OUTCOME_FLAG",
     ]
     detail_cols = [c for c in _col_source if c in drill.columns]
@@ -2820,6 +2832,10 @@ def render_exception_detail(
             "AMOUNT_DELTA": st.column_config.NumberColumn("Amount Delta", format="$%.2f"),
             "VENDOR_INVOICE_SKU": st.column_config.TextColumn("Vendor Invoice SKU"),
             "VENDOR_INVOICE_RATE_SOURCE": st.column_config.TextColumn("Rate Source"),
+            "DUPLICATE_BILLING": st.column_config.TextColumn(
+                "Duplicate Billing",
+                help="Informational signal: Y means both CW billing views overlapped on this row.",
+            ),
             "INVESTIGATION_REASON": st.column_config.TextColumn("Investigation Reason"),
             "OUTCOME_FLAG": st.column_config.TextColumn("Outcome Flag"),
         },
@@ -2908,7 +2924,7 @@ with tab_close:
                 "red",
                 fmt_short_money(finance_amt),
                 f"Revenue Leakage \u2014 Finance Queue ({finance_accts} accounts)",
-                "Vendor Billing No CW Billing + Vendor Billing Insufficient CW Billing + API Usage No CW Billing + Vendor SKU No CW SKU.",
+                "Vendor Billing No CW Billing + Vendor Billing Insufficient CW Billing + API Usage Insufficient CW Billing + Vendor SKU No CW SKU.",
                 hint="Vendor is billing CW for seats/products CW is not re-billing to the partner. Requires Finance review to close the gap.",
             ),
             card_html(
@@ -3239,6 +3255,195 @@ def render_seat_trend(vendor_key: str) -> None:
         '<table class="recon"><thead>' + header + '</thead><tbody>'
         + "".join(body) + '</tbody></table>',
         unsafe_allow_html=True,
+    )
+
+
+@st.cache_data(ttl=DATA_TTL_SECONDS, show_spinner=False)
+def _load_vendor_invoice_usage_intra(
+    vendor_name: str,
+    months_key: str,
+    freshness_: str,
+) -> pd.DataFrame:
+    """Load the precomputed vendor-internal invoice-vs-usage control.
+
+    The table is vendor/month/SKU grain upstream. The app keeps the Snowflake
+    query narrow, then rolls the selected months up to SKU for display.
+    Months without parsed invoice lines remain included so invoice-side fields
+    stay NULL and clearly signal invoice absence for that period.
+    """
+    vendor_sql = str(vendor_name).replace("'", "''")
+    if months_key:
+        month_values = []
+        for month in months_key.split("|"):
+            ts = pd.to_datetime(month, errors="coerce")
+            if pd.notna(ts):
+                month_values.append(f"'{ts:%Y-%m-%d}'")
+        month_sql = (
+            f" AND BILLING_MONTH IN ({','.join(month_values)})"
+            if month_values
+            else ""
+        )
+    else:
+        month_sql = ""
+
+    df = upper_cols(_try_query(
+        f"""
+        SELECT
+            VENDOR,
+            BILLING_MONTH,
+            SKU,
+            VENDOR_INVOICE_SKU,
+            VENDOR_USAGE_SKU,
+            VENDOR_INVOICE_SEATS,
+            VENDOR_RAW_USAGE_SEATS,
+            VENDOR_INVOICE_AMOUNT,
+            VENDOR_RAW_USAGE_AMOUNT,
+            DELTA_SEATS,
+            DELTA_AMOUNT,
+            SOURCE_STATUS
+                FROM {SCHEMA}.THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD t
+                WHERE t.VENDOR = '{vendor_sql}'{month_sql}
+        ORDER BY BILLING_MONTH, ABS(DELTA_AMOUNT) DESC, ABS(DELTA_SEATS) DESC, SKU
+        """,
+        freshness_,
+    ))
+    if not df.empty and "BILLING_MONTH" in df.columns:
+        df["BILLING_MONTH"] = pd.to_datetime(df["BILLING_MONTH"], errors="coerce")
+    return df
+
+
+def _sum_preserve_null(series: pd.Series) -> float:
+    values = pd.to_numeric(series, errors="coerce")
+    return values.sum(min_count=1)
+
+
+def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
+    st.markdown("### Vendor Invoice vs. Vendor Raw Usage Files")
+    st.caption(
+        "Selected-period SKU rollup (one row per invoice/usage SKU combination). "
+        "Delta = raw vendor usage minus parsed vendor invoice; invoice-side metric NULLs still mean no parsed invoice row exists for that vendor/month/SKU yet."
+    )
+
+    raw = _load_vendor_invoice_usage_intra(
+        vendor_name,
+        _months_key(selected_month_ts_list),
+        freshness,
+    )
+    if raw.empty:
+        st.markdown(
+            '<div class="note">No invoice-vs-raw-usage rows are available for this vendor in the selected period.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    work = raw.copy()
+    work["SKU"] = work.get("SKU", pd.Series("", index=work.index)).fillna("(missing sku)").astype(str)
+    work["VENDOR_INVOICE_SKU"] = (
+        work.get("VENDOR_INVOICE_SKU", pd.Series("", index=work.index))
+        .fillna("")
+        .astype(str)
+    )
+    work["VENDOR_USAGE_SKU"] = (
+        work.get("VENDOR_USAGE_SKU", pd.Series("", index=work.index))
+        .fillna("")
+        .astype(str)
+    )
+    metric_cols = [
+        "VENDOR_INVOICE_SEATS",
+        "VENDOR_RAW_USAGE_SEATS",
+        "VENDOR_INVOICE_AMOUNT",
+        "VENDOR_RAW_USAGE_AMOUNT",
+    ]
+    for col in metric_cols:
+        work[col] = pd.to_numeric(work.get(col), errors="coerce")
+
+    # Keep one display row per concrete SKU combination (no pipe-concatenated SKU lists).
+    # Label fallbacks use SKU so rows stay attributable even when invoice/usage SKU fields are blank.
+    work["VENDOR_INVOICE_SKU"] = work["VENDOR_INVOICE_SKU"].str.strip()
+    work["VENDOR_USAGE_SKU"] = work["VENDOR_USAGE_SKU"].str.strip()
+    work["INVOICE_SKU_DISPLAY"] = work["VENDOR_INVOICE_SKU"].where(
+        work["VENDOR_INVOICE_SKU"].ne(""),
+        work["SKU"],
+    )
+    work["USAGE_SKU_DISPLAY"] = work["VENDOR_USAGE_SKU"].where(
+        work["VENDOR_USAGE_SKU"].ne(""),
+        work["SKU"],
+    )
+
+    sku_rollup = (
+        work.groupby(["SKU", "INVOICE_SKU_DISPLAY", "USAGE_SKU_DISPLAY"], dropna=False)
+        .agg(
+            **{
+                "Vendor Invoice Seats": ("VENDOR_INVOICE_SEATS", _sum_preserve_null),
+                "Vendor Raw Usage Seats": ("VENDOR_RAW_USAGE_SEATS", _sum_preserve_null),
+                "Vendor Invoice Amount": ("VENDOR_INVOICE_AMOUNT", _sum_preserve_null),
+                "Vendor Raw Usage Amount": ("VENDOR_RAW_USAGE_AMOUNT", _sum_preserve_null),
+            }
+        )
+        .reset_index()
+        .rename(
+            columns={
+                "INVOICE_SKU_DISPLAY": "Vendor Invoice SKU",
+                "USAGE_SKU_DISPLAY": "Vendor Usage SKU",
+            }
+        )
+    )
+    sku_rollup["Delta Seats"] = (
+        sku_rollup["Vendor Raw Usage Seats"].fillna(0)
+        - sku_rollup["Vendor Invoice Seats"].fillna(0)
+    )
+    sku_rollup["Delta Amount"] = (
+        sku_rollup["Vendor Raw Usage Amount"].fillna(0)
+        - sku_rollup["Vendor Invoice Amount"].fillna(0)
+    )
+    sku_rollup["_abs_delta_amount"] = sku_rollup["Delta Amount"].abs()
+    sku_rollup["_abs_delta_seats"] = sku_rollup["Delta Seats"].abs()
+    sku_rollup = sku_rollup.sort_values(
+        ["_abs_delta_amount", "_abs_delta_seats", "SKU", "Vendor Invoice SKU", "Vendor Usage SKU"],
+        ascending=[False, False, True, True, True],
+    ).drop(columns=["_abs_delta_amount", "_abs_delta_seats"])
+
+    total = {
+        "SKU": "TOTAL",
+        "Vendor Invoice SKU": "",
+        "Vendor Usage SKU": "",
+        "Vendor Invoice Seats": _sum_preserve_null(sku_rollup["Vendor Invoice Seats"]),
+        "Vendor Raw Usage Seats": _sum_preserve_null(sku_rollup["Vendor Raw Usage Seats"]),
+        "Vendor Invoice Amount": _sum_preserve_null(sku_rollup["Vendor Invoice Amount"]),
+        "Vendor Raw Usage Amount": _sum_preserve_null(sku_rollup["Vendor Raw Usage Amount"]),
+    }
+    total["Delta Seats"] = (
+        (0 if pd.isna(total["Vendor Raw Usage Seats"]) else total["Vendor Raw Usage Seats"])
+        - (0 if pd.isna(total["Vendor Invoice Seats"]) else total["Vendor Invoice Seats"])
+    )
+    total["Delta Amount"] = (
+        (0 if pd.isna(total["Vendor Raw Usage Amount"]) else total["Vendor Raw Usage Amount"])
+        - (0 if pd.isna(total["Vendor Invoice Amount"]) else total["Vendor Invoice Amount"])
+    )
+    display = pd.concat([sku_rollup, pd.DataFrame([total])], ignore_index=True)
+
+    for col in ["Vendor Invoice Seats", "Vendor Raw Usage Seats", "Delta Seats"]:
+        display[col] = display[col].map(lambda v: "" if pd.isna(v) else fmt_num(float(v)))
+    for col in ["Vendor Invoice Amount", "Vendor Raw Usage Amount", "Delta Amount"]:
+        display[col] = display[col].map(lambda v: "" if pd.isna(v) else fmt_money(float(v)))
+
+    st.dataframe(
+        display[
+            [
+                "SKU",
+                "Vendor Invoice SKU",
+                "Vendor Usage SKU",
+                "Vendor Invoice Seats",
+                "Vendor Raw Usage Seats",
+                "Vendor Invoice Amount",
+                "Vendor Raw Usage Amount",
+                "Delta Seats",
+                "Delta Amount",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+        height=360,
     )
 
 
@@ -3811,6 +4016,8 @@ with tab_vendor:
     selected_vendor_conf = dd_vendor_conf
 
     st.markdown(f'### {selected_vendor_conf["name"]} deep dive - {period_label}')
+
+    render_vendor_invoice_usage_intra(selected_vendor_conf["name"])
 
     parity_pct = (
         (active_slice.billing_seats / active_slice.vendor_seats) * 100

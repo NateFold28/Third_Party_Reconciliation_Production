@@ -58,7 +58,16 @@ sku_map AS (
         UPPER(TRIM(VENDOR_SKU))    AS vendor_product_key,
         VENDOR_SKU                 AS vendor_sku_invoices,
         CW_SKU                     AS cw_sku,
-        SKU_MATCH_KEY              AS sku_match_group,
+        -- Some seed rows carry SentinelOne vendor-side endpoint groups as
+        -- S1_COMPLETE/S1_CONTROL while CW billing rows use COMPLETE/CONTROL.
+        -- Normalize at the map boundary so vendor seats and billing seats join
+        -- to one account-month-product grain instead of emitting duplicate
+        -- vendor-only plus matched rows for the same usage.
+        CASE
+            WHEN SKU_MATCH_KEY = 'S1_COMPLETE' THEN 'COMPLETE'
+            WHEN SKU_MATCH_KEY = 'S1_CONTROL' THEN 'CONTROL'
+            ELSE SKU_MATCH_KEY
+        END                         AS sku_match_group,
         MAPPING_NOTES              AS mapping_source,
         CW_RETAIL_RATE             AS vendor_invoice_unit_price,
         VENDOR_SKU                 AS vendor_invoice_sku,
@@ -94,10 +103,18 @@ sku_group_map AS (
 ),
 
 vendor_product_group_map AS (
-    SELECT DISTINCT
+    SELECT
         vendor_product_key,
-        sku_match_group
-    FROM sku_map
+        MAX(sku_match_group) AS sku_match_group
+    FROM (
+        SELECT vendor_product_key, sku_match_group
+        FROM sku_map
+        UNION ALL
+        SELECT UPPER(TRIM(sku_match_group)) AS vendor_product_key, sku_match_group
+        FROM sku_map
+    )
+    WHERE vendor_product_key IS NOT NULL
+    GROUP BY vendor_product_key
 ),
 
 cw_sku_group_map AS (
@@ -257,10 +274,9 @@ vendor_usage_mapped_pre AS (
     WITH vendor_deduped AS (
         SELECT v.*,
             COALESCE(m.sku_match_group, 'UNMAPPED_VENDOR_PRODUCT') AS sku_match_group_resolved
-        FROM vendor_usage_normalized v
-        LEFT JOIN vendor_product_group_map m
-            ON m.vendor_product_key = UPPER(TRIM(v.vendor_product))
-            OR UPPER(TRIM(m.sku_match_group)) = UPPER(TRIM(v.vendor_product))
+    FROM vendor_usage_normalized v
+    LEFT JOIN vendor_product_group_map m
+        ON m.vendor_product_key = UPPER(TRIM(v.vendor_product))
     ),
     forensics_partners AS (
         -- Partners that have Forensics usage in a given month
@@ -620,7 +636,9 @@ detail_pre AS (
                  AND pj.total_billing_quantity = 0
                  AND pj.sku_match_group IN (
                     'CLOUD_FUNNEL','PURPLE_AI','RANGER_INSIGHTS',
-                    'RANGER_AD','SINGULARITY_IDENTITY','THREAT_INTELLIGENCE','CORE'
+                    'RANGER_AD','SINGULARITY_IDENTITY','THREAT_INTELLIGENCE','CORE',
+                    'S1_PURPLE_AI','S1_RANGER_INS','S1_RANGER_INSIGHTS',
+                    'S1_RANGER_AD','WATCHTOWER'
                  ) THEN 'VENDOR_ADDON_NO_CW_SKU'
             -- NOTE: REMOTEOPS (Forensics/RSO) intentionally NOT listed above.
             -- CW HAS the SKUs (SP-RSO-ND-T1-C at $0.60 retail). S1 charges $0.30

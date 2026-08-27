@@ -11,19 +11,18 @@ Canonical EXCEPTION_TYPE taxonomy (mutually exclusive buckets, priority order):
   1.  Unmapped Partner                     — no valid SF_ID
   2.  Clear                                — CW amount >= vendor amount (always clear regardless of bundle flag)
   2b. Clear (partner-month rollup)         — CW/vendor totals reconcile at partner-month grain
-  3.  Duplicated CW Invoice                — DUPLICATE_BILLING_FLAG=TRUE (vendor-specific detector)
-  4.  Known Discount / Bundle              — HAS_DISCOUNT=TRUE AND amounts DON'T already reconcile
+    3.  Known Discount / Bundle              — HAS_DISCOUNT=TRUE AND amounts DON'T already reconcile
                                              (Amit-defined Clear Internal: variance is intentional bundle/discount)
-  5.  Marketplace Billing Delay            — prior-period timing artifact
-  6.  API Usage Recorded, No CW Billing    — API qty > 0 at partner-month grain, CW = 0
-  7.  Vendor SKU, No CW SKU                — vendor product has no CW rebill SKU
-  8.  CW SKU, No Vendor SKU                — CW subscription has no vendor counterpart
-  9.  Vendor Billing, No CW Billing        — vendor_amount > 0, cw_amount = 0
-  10. CW Billing, No Vendor Billing        — cw_amount > 0, vendor_amount = 0
-  11. Vendor Billing, Insufficient CW Billing  — vendor > CW by >25%, both have billing
-  12. Clear (minor drift)                  — vendor > CW by 0-25%, both > 0 (Proofpoint tolerance band)
-  13. Clear (both-zero)                    — both sides $0 (audit-trail rows with no exposure)
-  14. Other Issue                          — catch-all (should be empty after 12/13)
+    4.  Marketplace Billing Delay            — prior-period timing artifact
+    5.  API Usage, Insufficient CW Billing   — API qty > 0 and CW billing is missing or materially short
+    6.  Vendor SKU, No CW SKU                — vendor product has no CW rebill SKU
+    7.  CW SKU, No Vendor SKU                — CW subscription has no vendor counterpart
+    8.  Vendor Billing, No CW Billing        — vendor_amount > 0, cw_amount = 0
+    9.  CW Billing, No Vendor Billing        — cw_amount > 0, vendor_amount = 0
+    10. Vendor Billing, Insufficient CW Billing  — vendor > CW by >25%, both have billing
+    11. Clear (minor drift)                  — vendor > CW by 0-25%, both > 0 (Proofpoint tolerance band)
+    12. Clear (both-zero)                    — both sides $0 (audit-trail rows with no exposure)
+    13. Other Issue                          — catch-all (should be empty after 11/12)
 
 Design rules:
   - Clear takes precedence over Discount (audit 2026-08-20). Prior version fired
@@ -103,6 +102,21 @@ _EXCLUSION_REGEX = "(" + "|".join(INTERNAL_TEST_PARTNER_PATTERNS) + ")"
 # ---------------------------------------------------------------------------
 CANONICAL_EXCEPTION_TYPE = """
 CASE
+    -- KeepIT restored ingestion preserves Feb-Jun takeout promo invoices as
+    -- aggregate vendor rows. They intentionally do not have account-level SF_IDs,
+    -- so classify them on matched billing dollars before the generic unmapped
+    -- partner rule.
+    WHEN VENDOR = 'KeepIT'
+         AND LOWER(COALESCE(VENDOR_PARTNER_NAME, '')) LIKE '%connectwise%continuum%consolidat%'
+         AND COALESCE(VENDOR_AMOUNT, 0) > 0
+         AND COALESCE(TOTAL_BILLING_AMOUNT, 0) >= COALESCE(VENDOR_AMOUNT, 0)
+    THEN 'Clear'
+    WHEN VENDOR = 'KeepIT'
+         AND LOWER(COALESCE(VENDOR_PARTNER_NAME, '')) LIKE '%connectwise%continuum%consolidat%'
+         AND COALESCE(VENDOR_AMOUNT, 0) > 0
+         AND COALESCE(TOTAL_BILLING_AMOUNT, 0) > 0
+    THEN 'Vendor Billing, Insufficient CW Billing'
+
     -- ── 1. Unmapped Partner ────────────────────────────────────────────────
     -- No valid SF_ID means the account can't be linked to any CW billing row.
     -- KeepIT and Auvik pre-write synthetic 'UNMAPPED_<name>_...' ids for
@@ -116,6 +130,48 @@ CASE
           OR STARTSWITH(UPPER(TRIM(COALESCE(SF_ID, ''))), 'UNMAPPED '))
          OR OUTCOME_FLAG IN ('Unmapped Partner', 'Unmapped SKU', 'PARTNER_MAPPING_REQUIRED')
     THEN 'Unmapped Partner'
+
+    -- Disabled vendor-source rows should be tracked in a dedicated bucket.
+    WHEN OUTCOME_FLAG IN ('DISABLED_PARTNER_SKU', 'Disabled Partner SKU')
+    THEN 'Disabled Partner SKU'
+
+    -- ESET is quantity-first: vendor source files carry seats, while dollars
+    -- come from a contract-cost overlay. Preserve ESET's quantity outcome at
+    -- the app boundary instead of letting amount-first rules relabel rows.
+    WHEN VENDOR = 'ESET' AND OUTCOME_FLAG = 'Clear'
+    THEN 'Clear'
+    WHEN VENDOR = 'ESET' AND OUTCOME_FLAG = 'Vendor Billing, No CW Billing'
+    THEN 'Vendor Billing, No CW Billing'
+    WHEN VENDOR = 'ESET' AND OUTCOME_FLAG = 'Vendor Billing, Insufficient CW Billing'
+    THEN 'Vendor Billing, Insufficient CW Billing'
+    WHEN VENDOR = 'ESET' AND OUTCOME_FLAG = 'CW Billing, No Vendor Billing'
+    THEN 'CW Billing, No Vendor Billing'
+
+    -- Duplicate-billing is intentionally not a primary exception bucket.
+    -- Keep DUPLICATE_BILLING_FLAG for side-signal visibility only.
+    -- WHEN (COALESCE(ZUORA_AMOUNT, 0) > 0 AND COALESCE(MARKETPLACE_AMOUNT, 0) > 0)
+    --      OR (COALESCE(DUPLICATE_BILLING_FLAG, 'FALSE') = 'TRUE'
+    --          OR OUTCOME_FLAG IN ('Duplicated CW Invoice', 'Duplicate Billing', 'DUPLICATE_BILLING'))
+    -- THEN 'Duplicated CW Invoice'
+
+    -- SentinelOne add-ons are invoice-backed catalog gaps. Their usage rows can
+    -- carry zero vendor amount because the cost rate is invoice-derived, and
+    -- partner-month rollups can otherwise clear them against unrelated SKUs.
+    WHEN VENDOR = 'SentinelOne'
+         AND COALESCE(VENDOR_QUANTITY, 0) > 0
+         AND COALESCE(TOTAL_BILLING_QUANTITY, 0) = 0
+         AND (
+             UPPER(COALESCE(SKU_MATCH_GROUP, '')) IN (
+                 'S1_PURPLE_AI', 'PURPLE_AI',
+                 'S1_RANGER_INS', 'S1_RANGER_INSIGHTS', 'RANGER_INSIGHTS',
+                 'S1_RANGER_AD', 'RANGER_AD',
+                 'WATCHTOWER'
+             )
+             OR UPPER(COALESCE(VENDOR_PRODUCT, '')) IN (
+                 'PURPLE AI', 'RANGER INSIGHTS', 'RANGER AD', 'WATCHTOWER'
+             )
+         )
+    THEN 'Vendor SKU, No CW SKU'
 
     -- ── 2. Clear (checked BEFORE Discount) ─────────────────────────────────
     -- CW amount >= vendor amount is always "Clear" regardless of bundle flag.
@@ -150,15 +206,14 @@ CASE
               OVER (PARTITION BY VENDOR, SF_ID, BILLING_MONTH) > 0
     THEN 'Clear'
 
-    -- ── 3. Duplicated CW Invoice ───────────────────────────────────────────
-    -- The pipeline-set DUPLICATE_BILLING_FLAG is the authoritative signal.
-    -- Do NOT use the raw ZUORA_AMOUNT > 0 AND MARKETPLACE_AMOUNT > 0 check:
-    -- many vendors legitimately bill through both channels for different SKUs
-    -- (S1 license + MDR bundle, Webroot license + RMM bundle). Using amount-based
-    -- logic would incorrectly classify hundreds of valid rows as duplicates.
-    WHEN COALESCE(DUPLICATE_BILLING_FLAG, 'FALSE') = 'TRUE'
-         OR OUTCOME_FLAG IN ('Duplicated CW Invoice', 'Duplicate Billing', 'DUPLICATE_BILLING')
-    THEN 'Duplicated CW Invoice'
+    -- Duplicate-billing category intentionally disabled to avoid masking more
+    -- actionable reconciliation gaps. Signal remains available in
+    -- DUPLICATE_BILLING_FLAG and DUPLICATE_BILLING columns.
+    -- WHEN (COALESCE(DUPLICATE_BILLING_FLAG, 'FALSE') = 'TRUE'
+    --       OR OUTCOME_FLAG IN ('Duplicated CW Invoice', 'Duplicate Billing', 'DUPLICATE_BILLING'))
+    --      AND COALESCE(ZUORA_AMOUNT, 0) > 0
+    --      AND COALESCE(MARKETPLACE_AMOUNT, 0) > 0
+    -- THEN 'Duplicated CW Invoice'
 
     -- ── 4. Known Discount / Bundle (Amit "Clear Internal") ─────────────────
     -- Intentional pricing — MDR bundle, RMM bundle discount, CW-included zero-dollar
@@ -171,22 +226,25 @@ CASE
     -- RMM SuperBundle or 3-year promo bundle — vendor is paid via bundle
     -- economics, not a separate line). Catches KeepIT ~$472K M365/Google/Azure
     -- backup rides inside CW-RMM-SB / M2M-RMM-SB / *-3P-UMM / *-EG-UMM bundles.
-    WHEN COALESCE(HAS_DISCOUNT, 'FALSE') = 'TRUE'
-         OR OUTCOME_FLAG IN (
-             'Known Discount / Bundle', 'Clear - Discounted / Bundled',
-             'RMM_DISCOUNTED', 'KNOWN_DISCOUNT_BUNDLE', 'MDR_BUNDLE',
-             'CW_INCLUDED_ZERO_DOLLAR', 'INTENTIONAL_DISCOUNT'
+    WHEN VENDOR <> 'KeepIT'
+         AND (
+             COALESCE(HAS_DISCOUNT, 'FALSE') = 'TRUE'
+             OR OUTCOME_FLAG IN (
+                 'Known Discount / Bundle', 'Clear - Discounted / Bundled',
+                 'RMM_DISCOUNTED', 'KNOWN_DISCOUNT_BUNDLE', 'MDR_BUNDLE',
+                 'CW_INCLUDED_ZERO_DOLLAR', 'INTENTIONAL_DISCOUNT'
+             )
+             OR (COALESCE(VENDOR_AMOUNT, 0) = 0
+                 AND COALESCE(TOTAL_BILLING_AMOUNT, 0) > 0
+                 AND (
+                     UPPER(COALESCE(CW_SKUS, '')) LIKE '%RMM-SB-%'
+                  OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%-3Y-PROMO-%'
+                  OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%PROMO-BUNDLE%'
+                  OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%3P-UMM-BCDR-SAAS%'
+                  OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%EG-UMM-SOLP-SAAS%'
+                  OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%EG-BDR-SOLP-SAAS%'
+                 ))
          )
-         OR (COALESCE(VENDOR_AMOUNT, 0) = 0
-             AND COALESCE(TOTAL_BILLING_AMOUNT, 0) > 0
-             AND (
-                 UPPER(COALESCE(CW_SKUS, '')) LIKE '%RMM-SB-%'
-              OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%-3Y-PROMO-%'
-              OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%PROMO-BUNDLE%'
-              OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%3P-UMM-BCDR-SAAS%'
-              OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%EG-UMM-SOLP-SAAS%'
-              OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%EG-BDR-SOLP-SAAS%'
-             ))
     THEN 'Known Discount / Bundle'
 
     -- ── 5. Marketplace Billing Delay ──────────────────────────────────────
@@ -196,11 +254,11 @@ CASE
     )
     THEN 'Marketplace Billing Delay'
 
-    -- ── 6. API Usage Recorded, No CW Billing ──────────────────────────────
-    -- TRT / API confirms active usage but THIS ROW has no CW billing.
-    -- Check at row level: if API_QUANTITY > 0 (vendor has API activity),
-    -- and this specific product row has ZERO CW billing, then it's an API-driven
-    -- gap (vendor's product is active but CW hasn't billed it yet).
+    -- ── 6. API Usage, Insufficient CW Billing ─────────────────────────────
+    -- TRT / API confirms active usage and CW billing is either missing or
+    -- materially short at this row's account/product grain. This intentionally
+    -- captures both true no-bill rows and insufficient-bill rows where the API
+    -- proves usage exists.
     --
     -- NOTE: API_QUANTITY is backfilled to all rows for a partner-month, so
     -- a partner-month with API activity on Product A will have that same
@@ -211,15 +269,21 @@ CASE
     -- so it falls to Rule 9 (Vendor Billing / CW Billing mismatch).
     WHEN (COALESCE(VENDOR_QUANTITY, 0) > 0
           AND COALESCE(API_QUANTITY, 0) > 0
-          AND COALESCE(TOTAL_BILLING_QUANTITY, 0) = 0
-          AND COALESCE(TOTAL_BILLING_AMOUNT, 0) = 0)
+          AND (
+              COALESCE(TOTAL_BILLING_QUANTITY, 0) <= 0
+              OR COALESCE(VENDOR_QUANTITY, 0) > COALESCE(TOTAL_BILLING_QUANTITY, 0) * 1.25
+              OR COALESCE(TOTAL_BILLING_AMOUNT, 0) <= 0
+              OR (COALESCE(VENDOR_AMOUNT, 0) > 0
+                  AND COALESCE(VENDOR_AMOUNT, 0) > COALESCE(TOTAL_BILLING_AMOUNT, 0) * 1.25)
+          ))
          OR OUTCOME_FLAG IN (
+             'API Usage, Insufficient CW Billing',
              'API Usage Recorded, No CW Billing',
              'Missing CW Billing - API Confirmed',
              'TRT_VENDOR_USAGE_NOT_BILLED',
              'STRUCTURAL_VENDOR_ONLY_TRT_CONFIRMED'
          )
-    THEN 'API Usage Recorded, No CW Billing'
+    THEN 'API Usage, Insufficient CW Billing'
 
     -- ── 7. Vendor SKU, No CW SKU ──────────────────────────────────────────
     -- Vendor is charging CW for a product that has no CW rebill SKU.
@@ -255,8 +319,8 @@ CASE
     -- ── 11. Vendor Billing, Insufficient CW Billing ───────────────────────
     -- Vendor charges CW materially more than CW bills the partner (>25% gap).
     -- Both sides must have real billing — zero on either side is handled above.
-    -- Guaranteed mutually exclusive with "API Usage Recorded, No CW Billing"
-    -- because that rule requires partner-month CW = 0.
+    -- Guaranteed mutually exclusive with "API Usage, Insufficient CW Billing"
+    -- because that rule fires first when API/TRT confirms the usage signal.
     WHEN COALESCE(VENDOR_AMOUNT, 0) > 0
          AND COALESCE(TOTAL_BILLING_AMOUNT, 0) > 0
          AND COALESCE(VENDOR_AMOUNT, 0) > COALESCE(TOTAL_BILLING_AMOUNT, 0) * 1.25
@@ -309,13 +373,14 @@ END
 ACTION_NEEDED_CASE = """
 CASE EXCEPTION_TYPE
     WHEN 'Clear'                                        THEN 'None'
+    WHEN 'Disabled Partner SKU'                         THEN 'No action - vendor source marks this partner SKU as disabled'
     WHEN 'Unmapped Partner'                             THEN 'Data team: update partner mapping'
-    WHEN 'Duplicated CW Invoice'                        THEN 'Billing Ops: cancel duplicate invoice line'
+    WHEN 'Duplicated CW Invoice'                        THEN 'Billing Ops: review duplicate overlap (informational flag)'
     WHEN 'Marketplace Billing Delay'                    THEN 'No action - prior-month invoice expected next cycle'
     WHEN 'Known Discount / Bundle'                      THEN 'No action - intentional discount or bundle pricing'
     WHEN 'Vendor SKU, No CW SKU'                        THEN 'Product / Catalog: add a CW rebill SKU for this vendor product'
     WHEN 'CW SKU, No Vendor SKU'                        THEN 'Ops: verify whether this CW rebill SKU should still be active'
-    WHEN 'API Usage Recorded, No CW Billing'            THEN 'Finance: create billing for TRT-confirmed endpoint usage'
+    WHEN 'API Usage, Insufficient CW Billing'           THEN 'Finance: close billing gap for API-confirmed usage'
     WHEN 'Vendor Billing, No CW Billing'                THEN 'Finance / Sales: onboard billing - vendor charged CW with no CW rebill to partner'
     WHEN 'CW Billing, No Vendor Billing'                THEN 'Ops: verify vendor-side attribution or retire the stale CW subscription'
     WHEN 'Vendor Billing, Insufficient CW Billing'      THEN 'Finance / Sales: close billing gap - vendor materially ahead of CW'
@@ -326,13 +391,12 @@ END
 FINANCE_QUEUE_BUCKETS_SQL = (
     "'Vendor Billing, No CW Billing', "
     "'Vendor Billing, Insufficient CW Billing', "
-    "'API Usage Recorded, No CW Billing', "
+    "'API Usage, Insufficient CW Billing', "
     "'Vendor SKU, No CW SKU'"
 )
 OPS_QUEUE_BUCKETS_SQL = (
     "'CW Billing, No Vendor Billing', "
     "'CW SKU, No Vendor SKU', "
-    "'Duplicated CW Invoice', "
     "'Vendor SKU, No CW SKU', "
     "'Unmapped Partner'"
 )
@@ -383,8 +447,17 @@ WITH filtered AS (
     -- lowercase the input and use case-insensitive patterns.
     SELECT *
     FROM THIRD_PARTY_RECON_DETAIL_PROD
-    WHERE NOT RLIKE(LOWER(COALESCE(VENDOR_PARTNER_NAME, '')),
-                    '{_EXCLUSION_REGEX}')
+    WHERE NOT (
+        RLIKE(LOWER(COALESCE(VENDOR_PARTNER_NAME, '')), '{_EXCLUSION_REGEX}')
+        -- KeepIT February 2026 lacks a partner-level Promo summary; the vendor
+        -- invoice PDF is real vendor usage at aggregate partner grain and must
+        -- remain visible in app totals instead of being filtered as test data.
+        AND NOT (
+            VENDOR = 'KeepIT'
+            AND LOWER(COALESCE(VENDOR_PARTNER_NAME, '')) LIKE '%connectwise%continuum%consolidat%'
+            AND COALESCE(VENDOR_QUANTITY, 0) > 0
+        )
+    )
 ), resolved AS (
     SELECT
         d.* EXCLUDE (SF_ID),
@@ -406,7 +479,12 @@ WITH filtered AS (
 -- per-row classification / label / group-id work out of the Streamlit
 -- app and into Snowflake so tab / filter changes stay O(1) in Python.
 SELECT
-    *,
+    VENDOR,
+    BILLING_MONTH,
+    INV_ID,
+    SF_ID,
+    * EXCLUDE (VENDOR, BILLING_MONTH, INV_ID, SF_ID),
+    IFF(COALESCE(DUPLICATE_BILLING_FLAG, 'FALSE') = 'TRUE', 'Y', 'N')            AS DUPLICATE_BILLING,
     {ACTION_NEEDED_CASE}                                                                AS ACTION_NEEDED,
     CASE WHEN EXCEPTION_TYPE IN ({FINANCE_QUEUE_BUCKETS_SQL}) THEN TRUE ELSE FALSE END  AS IS_LEAKAGE,
     CASE WHEN EXCEPTION_TYPE IN ({FINANCE_QUEUE_BUCKETS_SQL}) THEN TRUE ELSE FALSE END  AS IS_FINANCE_QUEUE,
@@ -457,10 +535,10 @@ WITH output_agg AS (
         ROUND(SUM(COALESCE(VENDOR_AMOUNT, 0)), 2)                                   AS TOTAL_VENDOR_AMOUNT,
         ROUND(SUM(COALESCE(TOTAL_BILLING_AMOUNT, 0)), 2)                            AS TOTAL_BILLING_AMOUNT,
         COUNT_IF(EXCEPTION_TYPE = 'Unmapped Partner')                               AS UNMAPPED_PARTNER_ROWS,
-        COUNT_IF(EXCEPTION_TYPE = 'Duplicated CW Invoice')                          AS DUPLICATE_INVOICE_ROWS,
+        COUNT_IF(COALESCE(DUPLICATE_BILLING_FLAG, 'FALSE') = 'TRUE')               AS DUPLICATE_INVOICE_ROWS,
         COUNT_IF(EXCEPTION_TYPE = 'Known Discount / Bundle')                        AS KNOWN_DISCOUNT_ROWS,
         COUNT_IF(EXCEPTION_TYPE = 'Marketplace Billing Delay')                      AS TIMING_ROWS,
-        COUNT_IF(EXCEPTION_TYPE = 'API Usage Recorded, No CW Billing')              AS API_NO_CW_ROWS,
+        COUNT_IF(EXCEPTION_TYPE = 'API Usage, Insufficient CW Billing')             AS API_NO_CW_ROWS,
         COUNT_IF(EXCEPTION_TYPE = 'Vendor SKU, No CW SKU')                          AS VENDOR_SKU_NO_CW_ROWS,
         COUNT_IF(EXCEPTION_TYPE = 'CW SKU, No Vendor SKU')                          AS CW_SKU_NO_VENDOR_ROWS,
         COUNT_IF(EXCEPTION_TYPE = 'Vendor Billing, No CW Billing')                  AS VENDOR_NO_CW_ROWS,
@@ -470,7 +548,7 @@ WITH output_agg AS (
         ROUND(SUM(CASE WHEN EXCEPTION_TYPE IN (
                     'Vendor Billing, No CW Billing',
                     'Vendor Billing, Insufficient CW Billing',
-                    'API Usage Recorded, No CW Billing',
+                    'API Usage, Insufficient CW Billing',
                     'Vendor SKU, No CW SKU')
                   THEN ABS(COALESCE(AMOUNT_DELTA, 0)) ELSE 0 END), 2)               AS TOTAL_LEAKAGE_AMOUNT
     FROM THIRD_PARTY_RECON_OUTPUT_PROD

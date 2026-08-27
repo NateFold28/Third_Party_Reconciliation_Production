@@ -1,11 +1,10 @@
 -- =============================================================================
--- UNIFIED BILLING SOURCE TABLES (FOUR-VENDOR SCOPE)
+-- UNIFIED BILLING SOURCE TABLES (PRODUCTION SCOPE)
 -- =============================================================================
 -- Centralized billing-source layer used by:
---   * Auvik
---   * Bitdefender
---   * Webroot
---   * KeepIT
+--   * All 9 production vendors (via vendor-specific source selection)
+--   * Marketplace-focused subset: Auvik, Bitdefender, Webroot, KeepIT,
+--     Proofpoint, SentinelOne, Acronis, ESET, Exium
 --
 -- Output tables:
 --   THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
@@ -27,13 +26,56 @@ WITH fx_rates AS (
         SELECT MAX(YEAR(start_date))
         FROM analytics.dbo_seed_files.seed__fpa_budget_exchange_rates
     )
+),
+zuora_base AS (
+    SELECT
+        z.*,
+        CASE
+            WHEN TRIM(COALESCE(z.SUBSCRIPTION_SOLD_TO_SFDC_ID, '')) ILIKE 'ACT-%'
+                THEN TRIM(z.SUBSCRIPTION_SOLD_TO_SFDC_ID)
+            WHEN TRIM(COALESCE(z.SFDC_ACCOUNT_NUMBER, '')) ILIKE 'ACT-%'
+                THEN TRIM(z.SFDC_ACCOUNT_NUMBER)
+            WHEN TRIM(COALESCE(z.SUBSCRIPTION_SOLD_TO_SFDC_ID, '')) <> ''
+                THEN TRIM(z.SUBSCRIPTION_SOLD_TO_SFDC_ID)
+            ELSE TRIM(z.SFDC_ACCOUNT_NUMBER)
+        END AS raw_sf_id,
+        CASE
+            WHEN TRIM(COALESCE(z.SUBSCRIPTION_SOLD_TO_SFDC_ID, '')) ILIKE 'ACT-%'
+                THEN 'subscription_sold_to_sfdc_id'
+            WHEN TRIM(COALESCE(z.SFDC_ACCOUNT_NUMBER, '')) ILIKE 'ACT-%'
+                THEN 'sfdc_account_number'
+            WHEN TRIM(COALESCE(z.SUBSCRIPTION_SOLD_TO_SFDC_ID, '')) <> ''
+                THEN 'subscription_sold_to_non_act'
+            WHEN TRIM(COALESCE(z.SFDC_ACCOUNT_NUMBER, '')) <> ''
+                THEN 'sfdc_account_number_non_act'
+            ELSE 'unresolved'
+        END AS raw_sf_id_source
+    FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE z
 )
 SELECT
     z.VENDOR_NAME AS vendor,
-    z.SFDC_ACCOUNT_NUMBER AS sf_id,
+    CASE
+        WHEN am.old_sf_id IS NOT NULL
+         AND (am.merge_effective_month IS NULL OR z.BILLING_MONTH::DATE >= am.merge_effective_month)
+            THEN am.canonical_sf_id
+        ELSE z.raw_sf_id
+    END AS sf_id,
+    CASE
+        WHEN am.old_sf_id IS NOT NULL
+         AND am.canonical_source = 'MERGED_ACCOUNT_MAP'
+         AND (am.merge_effective_month IS NULL OR z.BILLING_MONTH::DATE >= am.merge_effective_month)
+            THEN z.raw_sf_id_source || '_merged_account_map'
+        WHEN am.old_sf_id IS NOT NULL
+         AND am.canonical_source = 'PARENT_ROLLUP'
+         AND am.canonical_sf_id <> z.raw_sf_id
+            THEN z.raw_sf_id_source || '_parent_rollup'
+        ELSE z.raw_sf_id_source
+    END AS sf_id_source,
     z.ACCOUNT_CONTINUUM_ID::VARCHAR AS cms_id,
     z.ACCOUNT_NUMBER AS zuora_account_number,
     z.ACCOUNT_NAME AS zuora_account_name,
+    z.SUBSCRIPTION_SOLD_TO_SFDC_ID AS subscription_sold_to_sf_id_raw,
+    z.SUBSCRIPTION_SOLD_TO_ACCOUNT_NAME AS subscription_sold_to_account_name,
     z.BILLING_MONTH::DATE AS billing_month,
     z.INVOICE_NUMBER,
     z.INVOICE_ID,
@@ -46,9 +88,11 @@ SELECT
     z.ACCOUNT_CURRENCY,
     z.INVOICE_SOURCE,
     z.INVOICE_STATUS
-FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE z
+FROM zuora_base z
 LEFT JOIN fx_rates fx
     ON fx.currency_id = UPPER(z.ACCOUNT_CURRENCY)
+LEFT JOIN RECON_ACCOUNT_MERGE_RESOLVER am
+    ON am.old_sf_id = z.raw_sf_id
 WHERE z.VENDOR_NAME IN (
     'Proofpoint', 'SentinelOne', 'Webroot', 'Acronis', 'KeepIT',
     'Auvik', 'Bitdefender', 'ESET', 'Exium'
@@ -56,7 +100,7 @@ WHERE z.VENDOR_NAME IN (
   AND z.INVOICE_STATUS = 'Posted'
   AND z.INVOICE_SOURCE = 'BillRun'
   AND z.BILLING_MONTH >= '2026-01-01'
-  AND COALESCE(z.CHARGE_AMOUNT, 0) <> 0;
+    AND COALESCE(z.CHARGE_AMOUNT, 0) <> 0;
 
 CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD AS
 WITH carr_base AS (
@@ -67,7 +111,8 @@ WITH carr_base AS (
         c.prod_sku AS product_sku,
         COALESCE(c.ns_usage_qty, 0) AS qty,
         COALESCE(c.arr_budget_rate, 0) / 12 AS amount,
-        c.transaction_source
+        c.transaction_source,
+        c.ns_transaction_id::VARCHAR AS marketplace_invoice_id
     FROM ANALYTICS.DBO.CARR__ALL_TRANSACTIONS c
     LEFT JOIN ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT a
         ON a.id = c.acc_id AND a.is_deleted = FALSE
@@ -89,7 +134,8 @@ WITH carr_base AS (
         c.prod_sku AS product_sku,
         COALESCE(c.ns_usage_qty, 0) AS qty,
         COALESCE(c.product_usage_arr_usd, 0) / 12 AS amount,
-        c.transaction_source
+        c.transaction_source,
+        c.ns_transaction_id::VARCHAR AS marketplace_invoice_id
     FROM ANALYTICS.DBO.CARR__ALL_TRANSACTIONS c
     LEFT JOIN ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT a
         ON a.id = c.acc_id AND a.is_deleted = FALSE
@@ -110,7 +156,8 @@ WITH carr_base AS (
         c.prod_sku AS product_sku,
         COALESCE(c.ns_usage_qty, 0) AS qty,
         COALESCE(c.arr_budget_rate, 0) / 12 AS amount,
-        c.transaction_source
+        c.transaction_source,
+        c.ns_transaction_id::VARCHAR AS marketplace_invoice_id
     FROM ANALYTICS.DBO.CARR__ALL_TRANSACTIONS c
     LEFT JOIN ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT a
         ON a.id = c.acc_id AND a.is_deleted = FALSE
@@ -132,7 +179,8 @@ WITH carr_base AS (
         c.prod_sku AS product_sku,
         COALESCE(c.ns_usage_qty, c.order_item_quantity, 0) AS qty,
         COALESCE(c.arr_budget_rate, 0) / 12 AS amount,
-        c.transaction_source
+        c.transaction_source,
+        c.ns_transaction_id::VARCHAR AS marketplace_invoice_id
     FROM ANALYTICS.DBO.CARR__ALL_TRANSACTIONS c
     LEFT JOIN ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT a
         ON a.id = c.acc_id AND a.is_deleted = FALSE
@@ -148,7 +196,8 @@ WITH carr_base AS (
         c.prod_sku AS product_sku,
         COALESCE(c.ns_usage_qty, 0) AS qty,
         COALESCE(c.arr_budget_rate, 0) / 12 AS amount,
-        c.transaction_source
+        c.transaction_source,
+        c.ns_transaction_id::VARCHAR AS marketplace_invoice_id
     FROM ANALYTICS.DBO.CARR__ALL_TRANSACTIONS c
     LEFT JOIN ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT a
         ON a.id = c.acc_id AND a.is_deleted = FALSE
@@ -173,7 +222,8 @@ WITH carr_base AS (
         c.prod_sku AS product_sku,
         COALESCE(c.ns_usage_qty, 0) AS qty,
         COALESCE(c.arr_budget_rate, 0) / 12 AS amount,
-        c.transaction_source
+        c.transaction_source,
+        c.ns_transaction_id::VARCHAR AS marketplace_invoice_id
     FROM ANALYTICS.DBO.CARR__ALL_TRANSACTIONS c
     LEFT JOIN ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT a
         ON a.id = c.acc_id AND a.is_deleted = FALSE
@@ -192,14 +242,19 @@ WITH carr_base AS (
         c.prod_sku AS product_sku,
         COALESCE(c.ns_usage_qty, 0) AS qty,
         COALESCE(c.arr_budget_rate, 0) / 12 AS amount,
-        c.transaction_source
+        c.transaction_source,
+        c.ns_transaction_id::VARCHAR AS marketplace_invoice_id
     FROM ANALYTICS.DBO.CARR__ALL_TRANSACTIONS c
     LEFT JOIN ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT a
         ON a.id = c.acc_id AND a.is_deleted = FALSE
     WHERE c.transaction_source IN (
             'Netsuite Evergreen Usage CW', 'Netsuite Evergreen Usage',
             'Netsuite Evergreen Credit Memos CW', 'Netsuite Evergreen Credit Memos')
-      AND (c.prod_sku ILIKE '%MSENS%' OR c.prod_sku ILIKE '%ACRONIS%')
+        AND (
+            c.prod_sku ILIKE '%MSENS%'
+           OR c.prod_sku ILIKE '%ACRONIS%'
+           OR c.prod_sku ILIKE 'LEGACYSKU%'
+        )
       AND DATE_TRUNC('month', c.month_year)::DATE >= '2026-01-01'
 
     UNION ALL
@@ -211,7 +266,8 @@ WITH carr_base AS (
         c.prod_sku AS product_sku,
         COALESCE(c.ns_usage_qty, 0) AS qty,
         COALESCE(c.arr_budget_rate, 0) / 12 AS amount,
-        c.transaction_source
+        c.transaction_source,
+        c.ns_transaction_id::VARCHAR AS marketplace_invoice_id
     FROM ANALYTICS.DBO.CARR__ALL_TRANSACTIONS c
     LEFT JOIN ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT a
         ON a.id = c.acc_id AND a.is_deleted = FALSE
@@ -230,7 +286,8 @@ WITH carr_base AS (
         c.prod_sku AS product_sku,
         COALESCE(c.ns_usage_qty, 0) AS qty,
         COALESCE(c.arr_budget_rate, 0) / 12 AS amount,
-        c.transaction_source
+        c.transaction_source,
+        c.ns_transaction_id::VARCHAR AS marketplace_invoice_id
     FROM ANALYTICS.DBO.CARR__ALL_TRANSACTIONS c
     LEFT JOIN ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT a
         ON a.id = c.acc_id AND a.is_deleted = FALSE
@@ -245,9 +302,28 @@ WITH carr_base AS (
             'Netsuite Evergreen Usage CW', 'Netsuite Evergreen Usage',
             'Netsuite Evergreen Credit Memos CW', 'Netsuite Evergreen Credit Memos')
       AND DATE_TRUNC('month', c.month_year)::DATE >= '2026-01-01'
+),
+carr_normalized AS (
+    SELECT
+        c.vendor,
+        CASE
+            WHEN am.old_sf_id IS NOT NULL
+             AND (am.merge_effective_month IS NULL OR c.billing_month >= am.merge_effective_month)
+                THEN am.canonical_sf_id
+            ELSE c.sf_id
+        END AS sf_id,
+        c.billing_month,
+        c.product_sku,
+        c.qty,
+        c.amount,
+        c.transaction_source,
+        c.marketplace_invoice_id
+    FROM carr_base c
+    LEFT JOIN RECON_ACCOUNT_MERGE_RESOLVER am
+      ON am.old_sf_id = c.sf_id
 )
 SELECT *
-FROM carr_base
+FROM carr_normalized
 WHERE COALESCE(qty, 0) <> 0;
 
 -- =============================================================================
@@ -454,7 +530,12 @@ zuora_bridge AS (
 )
 SELECT
     m.vendor                                                       AS VENDOR,
-    COALESCE(pm.SF_ID, zb.sf_id)                                   AS sf_id,
+    CASE
+        WHEN am.old_sf_id IS NOT NULL
+         AND (am.merge_effective_month IS NULL OR m.billing_month >= am.merge_effective_month)
+            THEN am.canonical_sf_id
+        ELSE COALESCE(pm.SF_ID, zb.sf_id)
+    END                                                            AS sf_id,
     m.partner_id                                                   AS cms_id,
     m.billing_month                                                AS billing_month,
     m.snapshot_date                                                AS snapshot_date,
@@ -465,41 +546,89 @@ SELECT
     m.days_reporting::INT                                          AS days_reporting,
     -- Bridge audit column: which lookup path resolved the SF_ID.
     CASE
-        WHEN pm.SF_ID IS NOT NULL THEN 'partner_map'
+        WHEN pm.SF_ID IS NOT NULL
+         AND am.old_sf_id IS NOT NULL
+         AND am.canonical_source = 'MERGED_ACCOUNT_MAP'
+         AND (am.merge_effective_month IS NULL OR m.billing_month >= am.merge_effective_month) THEN 'partner_map_monthly_merged'
+        WHEN pm.SF_ID IS NOT NULL
+         AND am.old_sf_id IS NOT NULL
+         AND am.canonical_source = 'PARENT_ROLLUP'
+         AND am.canonical_sf_id <> COALESCE(pm.SF_ID, zb.sf_id) THEN 'partner_map_monthly_parent_rollup'
+        WHEN pm.SF_ID IS NOT NULL THEN 'partner_map_monthly'
+        WHEN zb.sf_id IS NOT NULL
+         AND am.old_sf_id IS NOT NULL
+         AND am.canonical_source = 'MERGED_ACCOUNT_MAP'
+         AND (am.merge_effective_month IS NULL OR m.billing_month >= am.merge_effective_month) THEN 'zuora_bridge_merged'
+        WHEN zb.sf_id IS NOT NULL
+         AND am.old_sf_id IS NOT NULL
+         AND am.canonical_source = 'PARENT_ROLLUP'
+         AND am.canonical_sf_id <> COALESCE(pm.SF_ID, zb.sf_id) THEN 'zuora_bridge_parent_rollup'
         WHEN zb.sf_id IS NOT NULL THEN 'zuora_bridge'
         ELSE 'unresolved'
     END::VARCHAR                                                   AS sf_id_source
 FROM merged m
-LEFT JOIN THIRD_PARTY_RECON_PARTNER_MAP_PROD pm
+LEFT JOIN RECON_PARTNER_MAP_MONTHLY pm
        ON pm.CMS_ID              = m.partner_id
-      AND UPPER(TRIM(pm.VENDOR)) = UPPER(TRIM(m.vendor))
+      AND pm.BILLING_MONTH       = m.billing_month
+    -- Partner map is now vendor-agnostic (no VENDOR column).
+    -- Resolve by CMS_ID and let vendor context come from TRT stream.
 LEFT JOIN zuora_bridge zb
        ON zb.partner_id = m.partner_id
+LEFT JOIN RECON_ACCOUNT_MERGE_RESOLVER am
+       ON am.old_sf_id = COALESCE(pm.SF_ID, zb.sf_id)
 WHERE m.billing_month >= '2026-01-01';
 
 CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SOURCE_ROYALTIES_PROD AS
+WITH royalties_base AS (
+    SELECT
+        COALESCE(seed_vendor, vendor) AS vendor,
+        seed_vendor,
+        vendor AS royalties_vendor,
+        billing_month::DATE AS billing_month,
+        sf_account_nbr AS sf_id,
+        third_party_type,
+        invoice_number,
+        charge_or_credit,
+        company_name,
+        ship_to_company_name,
+        region,
+        sku,
+        product_sku,
+        product_description,
+        qty,
+        amount,
+        original_amount_document
+    FROM ANALYTICS.DBO.PRODUCT_MANAGEMENT__ROYALTIES
+    WHERE billing_month >= '2026-01-01'
+      AND (
+          seed_vendor IN ('Auvik', 'Bitdefender', 'Webroot', 'KeepIT', 'ConnectWise', 'Proofpoint')
+          OR vendor IN ('Auvik', 'Bitdefender', 'Webroot', 'KeepIT', 'ConnectWise', 'Proofpoint')
+      )
+)
 SELECT
-    COALESCE(seed_vendor, vendor) AS vendor,
-    seed_vendor,
-    vendor AS royalties_vendor,
-    billing_month::DATE AS billing_month,
-    sf_account_nbr AS sf_id,
-    third_party_type,
-    invoice_number,
-    charge_or_credit,
-    company_name,
-    ship_to_company_name,
-    region,
-    sku,
-    product_sku,
-    product_description,
-    qty,
-    amount,
-    original_amount_document
-FROM ANALYTICS.DBO.PRODUCT_MANAGEMENT__ROYALTIES
-WHERE billing_month >= '2026-01-01'
-  AND (
-      seed_vendor IN ('Auvik', 'Bitdefender', 'Webroot', 'KeepIT', 'ConnectWise', 'Proofpoint')
-      OR vendor IN ('Auvik', 'Bitdefender', 'Webroot', 'KeepIT', 'ConnectWise', 'Proofpoint')
-  );
+    rb.vendor,
+    rb.seed_vendor,
+    rb.royalties_vendor,
+    rb.billing_month,
+    CASE
+        WHEN am.old_sf_id IS NOT NULL
+         AND (am.merge_effective_month IS NULL OR rb.billing_month >= am.merge_effective_month)
+            THEN am.canonical_sf_id
+        ELSE rb.sf_id
+    END AS sf_id,
+    rb.third_party_type,
+    rb.invoice_number,
+    rb.charge_or_credit,
+    rb.company_name,
+    rb.ship_to_company_name,
+    rb.region,
+    rb.sku,
+    rb.product_sku,
+    rb.product_description,
+    rb.qty,
+    rb.amount,
+    rb.original_amount_document
+FROM royalties_base rb
+LEFT JOIN RECON_ACCOUNT_MERGE_RESOLVER am
+  ON am.old_sf_id = rb.sf_id;
 

@@ -70,6 +70,19 @@ def _month_from_path(file_path: str) -> str | None:
     return None
 
 
+def _month_from_service_period(text: str | None) -> str | None:
+    """Extract YYYY-MM-01 from service period text like 'Apr 1 2026 - Apr 30 2026'."""
+    if not text:
+        return None
+    m = re.search(r"([A-Za-z]{3,9}\s+\d{1,2}\s+\d{4})", str(text))
+    if not m:
+        return None
+    dtv = pd.to_datetime(m.group(1), errors="coerce")
+    if pd.isna(dtv):
+        return None
+    return f"{int(dtv.year):04d}-{int(dtv.month):02d}-01"
+
+
 def _num(s: object) -> float | None:
     """Parse a numeric string, handling both US (1,234.56) and European (1.234,56) formats."""
     if s is None:
@@ -86,6 +99,65 @@ def _num(s: object) -> float | None:
         return float(t)
     except ValueError:
         return None
+
+
+def _num_sentinelone_qty(s: object) -> float | None:
+    """Parse SentinelOne quantities with robust thousands-separator handling."""
+    if s is None:
+        return None
+    t = str(s).strip().lstrip("$").replace(" ", "")
+    if not t or t in ("-", "—"):
+        return None
+
+    # Explicit thousands separators written as 1,234 or 1.234 should be whole units.
+    if re.match(r"^\d{1,3}([,.]\d{3})+$", t):
+        t = re.sub(r"[,.]", "", t)
+        try:
+            return float(t)
+        except ValueError:
+            return None
+
+    return _num(t)
+
+
+def _month_from_keepit_description(desc: str | None, file_path: str) -> str | None:
+    """Infer KeepIT billing month from description/service-period text."""
+    if not desc:
+        return None
+    text = str(desc)
+
+    # Most precise form in newer KeepIT files.
+    # Example: "invoice billing period is from 01/01/2026 through 31/01/2026"
+    m = re.search(
+        r"billing\s+period\s+is\s+from\s+(\d{1,2}/\d{1,2}/\d{4})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        dtv = pd.to_datetime(m.group(1), format="%d/%m/%Y", errors="coerce")
+        if not pd.isna(dtv):
+            return f"{int(dtv.year):04d}-{int(dtv.month):02d}-01"
+
+    # Older files often carry: "For December 2025 - Takeout" or "For February- Main".
+    m = re.search(r"\bfor\s+([A-Za-z]{3,9})(?:\s+(\d{4}))?\s*-", text, flags=re.IGNORECASE)
+    if not m:
+        return None
+
+    month_token = m.group(1)
+    year_token = m.group(2)
+    mo = pd.to_datetime(month_token[:3], format="%b", errors="coerce")
+    if pd.isna(mo):
+        return None
+
+    if year_token:
+        year = int(year_token)
+    else:
+        fallback = _month_from_path(file_path)
+        if not fallback:
+            return None
+        year = int(fallback[:4])
+
+    return f"{year:04d}-{int(mo.month):02d}-01"
 
 
 def _extract_text(parsed_doc) -> str:
@@ -155,7 +227,10 @@ def _parse_acronis(text: str, file_path: str) -> list[dict]:
         else:
             sku  = item_cell
             desc = ""
-        qty   = _num(row[i_qty])
+        # Acronis quantities are US-formatted and often include comma thousands
+        # separators with no decimal portion (e.g., 12,101). Using the
+        # sentinel-style quantity parser avoids misreading these as 12.101.
+        qty   = _num_sentinelone_qty(row[i_qty])
         up    = _num(row[i_up])
         amt   = _num(row[i_amt])
         if not sku or (qty is None and amt is None):
@@ -174,9 +249,62 @@ def _parse_auvik(text: str, file_path: str) -> list[dict]:
       Row N+1 (total): | | | | | Amount Total: X | |  <- second-to-last cell has Amount Total
     """
     results: list[dict] = []
+    seen_keys: set[tuple[str | None, str, float | None, float | None, float | None, str | None]] = set()
     current_partner: str | None = None
 
-    rows = _parse_markdown_table(text)
+    def _add_row(
+        *,
+        partner: str | None,
+        sku: str,
+        qty: float | None,
+        up: float | None,
+        total: float | None,
+        service_period: str | None,
+    ) -> None:
+        sku_clean = (sku or "").strip()
+        if not sku_clean or total is None or qty is None or up is None:
+            return
+        # Canonical dedupe key guards against overlap between markdown-table
+        # extraction and freeform page-continuation extraction.
+        key = (
+            (partner or "").strip() or None,
+            sku_clean,
+            qty,
+            up,
+            total,
+            _month_from_service_period(service_period),
+        )
+        if key in seen_keys:
+            return
+        seen_keys.add(key)
+        results.append(
+            {
+                "partner": partner,
+                "sku": sku_clean,
+                "description": sku_clean,
+                "quantity": qty,
+                "unit_price": up,
+                "amount": total,
+                "billing_month": _month_from_service_period(service_period),
+            }
+        )
+
+    # Some Auvik OCR pages emit valid table rows without a leading pipe, e.g.
+    # "ANM Essentials - Evergreen | | Apr 1 2026 - Apr 30 2026 | ...".
+    # Recover those rows before markdown-table parsing.
+    normalized_lines: list[str] = []
+    for ln in text.splitlines():
+        s = ln.strip()
+        if (
+            s
+            and "|" in s
+            and not s.startswith("|")
+            and re.search(r"[A-Za-z]{3,9}\s+\d{1,2}\s+\d{4}\s*-\s*[A-Za-z]{3,9}\s+\d{1,2}\s+\d{4}", s)
+        ):
+            normalized_lines.append(f"| {s}")
+        else:
+            normalized_lines.append(ln)
+    rows = _parse_markdown_table("\n".join(normalized_lines))
     for row in rows:
         if not row:
             continue
@@ -185,7 +313,22 @@ def _parse_auvik(text: str, file_path: str) -> list[dict]:
         # Account header row: first cell = "Account: <partner name>"
         acc_match = re.match(r"Account:\s*(.+)", first, re.IGNORECASE)
         if acc_match:
-            current_partner = acc_match.group(1).strip()
+            acc_payload = acc_match.group(1).strip()
+            acc_lines = [ln.strip() for ln in acc_payload.splitlines() if ln.strip()]
+            current_partner = acc_lines[0] if acc_lines else acc_payload
+
+            # Some Auvik rows collapse "Account: <name>" and first SKU into
+            # one cell separated by a newline. Preserve that first SKU line.
+            if len(acc_lines) > 1 and len(row) >= 4:
+                inline_sku = " ".join(acc_lines[1:]).strip()
+                _add_row(
+                    partner=current_partner,
+                    sku=inline_sku,
+                    qty=_num_sentinelone_qty(row[-3]),
+                    up=_num(row[-2]),
+                    total=_num(row[-1]),
+                    service_period=row[-4],
+                )
             continue
 
         # Skip: header rows, dividers, and invoice metadata rows
@@ -195,7 +338,7 @@ def _parse_auvik(text: str, file_path: str) -> list[dict]:
         # Skip invoice/remittance metadata rows: these are non-billing tables at top/bottom of Auvik invoices
         if re.match(r"^(account name|account number|bank|routing|iban|swift|wire|remit|"
                     r"invoice number|invoice date|due date|payment terms|payment method|po number|"
-                    r"bill to|ship to|subtotal|tax total|total|please)",
+                r"bill to|ship to|subtotal|tax total|total|please|canada gst/hst|gst/hst)",
                     first_lc):
             continue
 
@@ -211,24 +354,52 @@ def _parse_auvik(text: str, file_path: str) -> list[dict]:
 
         total = _num(row[-1])
         up    = _num(row[-2])
-        qty   = _num(row[-3])
+        qty   = _num_sentinelone_qty(row[-3])
+        service_period = row[-4] if len(row) >= 4 else None
+        _add_row(
+            partner=current_partner,
+            sku=first,
+            qty=qty,
+            up=up,
+            total=total,
+            service_period=service_period,
+        )
 
-        # A valid data row must have at least a non-zero TOTAL
-        if total is None:
-            continue
+    # Fallback for page-break continuations where a line item may appear
+    # outside markdown table rows (no '|' delimiters), e.g. trailing overage
+    # line followed by Amount Total footer.
+    raw_lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    fallback_partner: str | None = None
+    i = 0
+    while i < len(raw_lines):
+        line = raw_lines[i]
+        account_match = re.search(r"Account:\s*([^|]+)", line, re.IGNORECASE)
+        if account_match:
+            fallback_partner = account_match.group(1).strip()
 
-        sku = first
-        if not sku:
-            continue
-
-        results.append({
-            "partner":     current_partner,
-            "sku":         sku,
-            "description": sku,
-            "quantity":    qty,
-            "unit_price":  up,
-            "amount":      total,
-        })
+        # Only treat non-table text as fallback candidates to avoid duplicates.
+        if "|" not in line and i + 4 < len(raw_lines):
+            period = raw_lines[i + 1]
+            qty_txt = raw_lines[i + 2]
+            up_txt = raw_lines[i + 3]
+            total_txt = raw_lines[i + 4]
+            if _month_from_service_period(period) and _num(qty_txt) is not None and _num(up_txt) is not None and _num(total_txt) is not None:
+                first_lc = line.lower()
+                if not re.match(
+                    r"^(amount total|subtotal|tax|total|currency|invoice|due date|payment|po number|use of auvik|account name|bank|routing|iban|swift)",
+                    first_lc,
+                ):
+                    _add_row(
+                        partner=fallback_partner,
+                        sku=line,
+                        qty=_num_sentinelone_qty(qty_txt),
+                        up=_num(up_txt),
+                        total=_num(total_txt),
+                        service_period=period,
+                    )
+                    i += 5
+                    continue
+        i += 1
     return results
 
 
@@ -288,42 +459,87 @@ def _parse_eset(text: str, file_path: str) -> list[dict]:
     """
     results: list[dict] = []
     rows = _parse_markdown_table(text)
-    header_idx = None
-    for i, row in enumerate(rows):
-        h = [c.lower() for c in row]
-        if any("item" in c for c in h) and any("seats" in c for c in h):
-            header_idx = i
-            break
-    if header_idx is None:
-        return results
 
-    hdr = [c.lower() for c in rows[header_idx]]
-    try:
-        i_item = next(i for i, h in enumerate(hdr) if h == "item")
-        i_desc = next(i for i, h in enumerate(hdr) if "description" in h)
-        i_qty  = next(i for i, h in enumerate(hdr) if "seats" in h)
-        i_rate = next(i for i, h in enumerate(hdr) if "rate" in h)
-        i_net  = next(i for i, h in enumerate(hdr) if "net price" in h or "net" in h)
-    except StopIteration:
-        return results
+    # ESET has multiple invoice table layouts (US/AU/UK) and may repeat headers
+    # across pages. We detect each header and parse rows until the next header.
+    active_layout: str | None = None
+    idx_item: int | None = None
+    idx_desc: int | None = None
 
-    for row in rows[header_idx + 1:]:
-        if len(row) <= max(i_item, i_desc, i_qty, i_rate, i_net):
+    for row in rows:
+        cells = [str(c if c is not None else "").strip() for c in row]
+        if not cells:
             continue
-        sku  = row[i_item].strip()
-        desc = row[i_desc].strip()
-        if not sku:
+        lowered = [c.lower() for c in cells]
+
+        # Layout A (US/AU): ITEM | DESCRIPTION | ... | RATE | NET PRICE
+        if any(c == "item" for c in lowered) and any("description" in c for c in lowered) and any("rate" in c for c in lowered):
+            active_layout = "item_desc"
+            idx_item = next((i for i, c in enumerate(lowered) if c == "item"), None)
+            idx_desc = next((i for i, c in enumerate(lowered) if "description" in c), None)
             continue
-        # ESET sometimes packs "ITEM | DESCRIPTION | billing_period | seats | rate | net"
-        # Try to find numeric qty by scanning from right
-        qty  = _num(row[i_qty])
-        rate = _num(row[i_rate])
-        net  = _num(row[i_net])
-        # Drop pure-header or divider rows
-        if qty is None and net is None:
+
+        # Layout B (UK): DESCRIPTION | Quantity (SEAT DAYS) | RATE | NET PRICE
+        if any("description" in c for c in lowered) and any("quantity" in c or "seat" in c for c in lowered) and any("net price" in c or c == "net" for c in lowered):
+            active_layout = "desc_only"
+            idx_item = None
+            idx_desc = next((i for i, c in enumerate(lowered) if "description" in c), None)
             continue
-        results.append({"partner": None, "sku": sku, "description": desc,
-                         "quantity": qty, "unit_price": rate, "amount": net})
+
+        if active_layout is None:
+            continue
+        if idx_desc is None or idx_desc >= len(cells):
+            continue
+
+        # Skip summary and schema rows.
+        first_cell = cells[idx_desc] if idx_desc is not None else cells[0]
+        if not first_cell:
+            continue
+        if re.match(r"^(subscription name|invoice summary|subtotal|tax amount|total)\b", first_cell, flags=re.IGNORECASE):
+            continue
+
+        # Robust numeric extraction: take right-most 3 numeric values as
+        # quantity, unit price, net amount respectively.
+        numeric_values: list[float] = []
+        for c in cells:
+            v = _num(c)
+            if v is not None:
+                numeric_values.append(v)
+        if len(numeric_values) < 3:
+            continue
+        qty, rate, net = numeric_values[-3], numeric_values[-2], numeric_values[-1]
+
+        if active_layout == "item_desc" and idx_item is not None and idx_item < len(cells):
+            sku = cells[idx_item].strip()
+            desc = cells[idx_desc].strip()
+            partner = None
+            if "," in desc:
+                partner = desc.split(",", 1)[0].strip() or None
+            if not sku:
+                continue
+        else:
+            # UK layout puts partner and product in DESCRIPTION as
+            # "<line_no> <partner>, <product>".
+            raw_desc = cells[idx_desc].strip()
+            raw_desc = re.sub(r"^\d+\s+", "", raw_desc)
+            partner = None
+            product = raw_desc
+            if "," in raw_desc:
+                left, right = raw_desc.split(",", 1)
+                partner = left.strip() or None
+                product = right.strip() or raw_desc
+            sku = f"MSP - {product}" if not product.upper().startswith("MSP -") else product
+            desc = raw_desc
+
+        results.append({
+            "partner": partner,
+            "sku": sku,
+            "description": desc,
+            "quantity": qty,
+            "unit_price": rate,
+            "amount": net,
+        })
+
     return results
 
 
@@ -388,25 +604,83 @@ def _parse_keepit(text: str, file_path: str) -> list[dict]:
         i_sku  = next(i for i, h in enumerate(hdr) if "sku" in h)
         i_desc = next(i for i, h in enumerate(hdr) if "description" in h)
         i_qty  = next(i for i, h in enumerate(hdr) if "qty" in h or "quantity" in h)
-        i_up   = next(i for i, h in enumerate(hdr) if "unit price" in h or "unit" in h)
+        i_up   = next(i for i, h in enumerate(hdr) if "unit price" in h)
         i_amt  = next(i for i, h in enumerate(hdr) if "total incl" in h or "total" in h)
     except StopIteration:
         return results
+
+    seen_keys: set[tuple] = set()
 
     for row in rows[header_idx + 1:]:
         if len(row) <= max(i_sku, i_desc, i_qty, i_up, i_amt):
             continue
         sku  = row[i_sku].strip()
         desc = row[i_desc].strip()
-        if not sku or sku.upper().startswith("VAT") or sku.upper() == "SKU":
+        sku_upper = sku.upper()
+        if (
+            not sku
+            or sku_upper.startswith("VAT")
+            or sku_upper == "SKU"
+            or re.match(r"^\d+(?:\.\d+)?%$", sku)
+            or not sku_upper.startswith("KI-")
+        ):
             continue
-        qty  = _num(row[i_qty])
+        qty  = _num_sentinelone_qty(row[i_qty])
         up   = _num(row[i_up])
         amt  = _num(row[i_amt])
+        if qty and up and amt and qty > 0:
+            # KeepIT tables sometimes parse thousand-separated quantities as decimals
+            # (e.g. 58.849 instead of 58849). Correct when arithmetic indicates a
+            # 10^3 quantity scale error.
+            if qty < 1000 and amt >= 1000:
+                if up >= 100 and abs((qty * up) - amt) <= max(0.01, abs(amt) * 0.01):
+                    qty *= 1000
+                    up /= 1000
+                elif abs((qty * 1000 * up) - amt) <= max(0.01, abs(amt) * 0.02):
+                    qty *= 1000
+        if qty and up and amt and qty > 0:
+            expected = qty * up
+            if expected > 0:
+                ratio = amt / expected
+                if ratio > 0:
+                    # KeepIT OCR occasionally shifts decimal place; correct by powers of 10.
+                    for power in (1, 2, 3):
+                        if abs(ratio - (10 ** power)) < 0.02:
+                            up *= 10 ** power
+                            break
+                        if abs(ratio - (10 ** (-power))) < 0.02:
+                            up *= 10 ** (-power)
+                            break
+        # KeepIT occasionally emits retrospective price-adjustment invoices as
+        # amount-only lines (no qty / no unit price). These do not reconcile to
+        # raw usage-seat feeds and should not be treated as usage line items.
+        if qty is None and up is None:
+            continue
         if qty is None and amt is None:
             continue
-        results.append({"partner": None, "sku": sku, "description": desc,
-                         "quantity": qty, "unit_price": up, "amount": amt})
+
+        inferred_month = _month_from_keepit_description(desc, file_path)
+        dedupe_key = (
+            inferred_month,
+            sku_upper,
+            desc.upper(),
+            None if qty is None else round(float(qty), 6),
+            None if up is None else round(float(up), 6),
+            None if amt is None else round(float(amt), 6),
+        )
+        if dedupe_key in seen_keys:
+            continue
+        seen_keys.add(dedupe_key)
+
+        results.append({
+            "partner": None,
+            "sku": sku,
+            "description": desc,
+            "quantity": qty,
+            "unit_price": up,
+            "amount": amt,
+            "billing_month": inferred_month,
+        })
     return results
 
 
@@ -465,39 +739,121 @@ def _parse_sentinelone(text: str, file_path: str) -> list[dict]:
     """
     results: list[dict] = []
 
-    # ---------------------------------------------------------------------------
-    # Page 1 format (multi-line description cell):
-    #   | SKU\n...desc | (empty) | start | end | qty | rate | $amount |
-    # Page 2 format (single-line row, description on continuation row):
-    #   | SKU | start | end | qty | rate | $amount |
-    #   | description-text |  |  |  |  |  |   <- skip row
-    # We handle both with a single DOTALL regex.
-    # ---------------------------------------------------------------------------
+    # Page-1 rows can wrap the Product Code cell over multiple lines before the
+    # trailing qty/rate/amount columns. Collapse each wrapped row into one line.
+    normalized_lines: list[str] = []
+    block_parts: list[str] = []
+    in_wrapped_row = False
+    row_start_re = re.compile(r"^\|\s*[A-Z0-9]+(?:-[A-Z0-9]+)+\s*$")
+    row_end_re = re.compile(r"\|\s*\$?[\d,]+(?:\.\d+)?\s*\|\s*$")
 
-    # Matches page-1 style multi-line blocks AND page-2 single-line rows.
-    # Anchored on uppercase SKU code, then captures everything up to
-    # a column with digits-only quantity, a rate, and a dollar amount.
-    pattern = re.compile(
-        r'\|\s+([A-Z][A-Z0-9\-]{3,})'      # | SKU
-        r'(.*?)'                            # description (multi-line, non-greedy)
-        r'\|\s*(\d[\d,]*)\s*'              # | qty (no $ prefix, pure number)
-        r'\|\s*([\d,]+\.\d+)\s*'           # | rate
-        r'\|\s*\$?([\d,]+\.\d+)\s*\|',     # | $amount |
-        re.DOTALL,
-    )
-    for m in pattern.finditer(text):
-        sku  = m.group(1).strip()
-        raw  = re.sub(r'\s+', ' ', m.group(2)).strip()
-        # Drop date columns and pipe chars that leaked into description
-        desc = re.split(r'\|\s*\d{1,2}/\d{1,2}/\d{4}', raw)[0]
-        desc = desc.strip('| \t').strip()
-        qty  = _num(m.group(3))
-        rate = _num(m.group(4))
-        amt  = _num(m.group(5))
-        if qty is None:
+    for ln in text.splitlines():
+        s = ln.rstrip()
+        if not in_wrapped_row:
+            if row_start_re.match(s):
+                in_wrapped_row = True
+                block_parts = [s]
+            else:
+                normalized_lines.append(ln)
             continue
-        results.append({"partner": None, "sku": sku, "description": desc,
-                         "quantity": qty, "unit_price": rate, "amount": amt})
+
+        block_parts.append(s)
+        if row_end_re.search(s):
+            collapsed = " ".join(part.strip() for part in block_parts if part.strip())
+            normalized_lines.append(collapsed)
+            in_wrapped_row = False
+            block_parts = []
+
+    if block_parts:
+        normalized_lines.append(" ".join(part.strip() for part in block_parts if part.strip()))
+
+    rows = _parse_markdown_table("\n".join(normalized_lines))
+
+    header_idx: tuple[int, int, int, int] | None = None
+    last_line_item_idx: int | None = None
+
+    for row in rows:
+        cells = [str(c if c is not None else "").strip() for c in row]
+        if not cells:
+            continue
+
+        lowered = [c.lower() for c in cells]
+
+        # Re-detect table headers per page; page 1 and page 2 use different widths.
+        if (
+            any("product code" in c for c in lowered)
+            and any("inv qty" in c or c == "qty" for c in lowered)
+            and any(c == "rate" for c in lowered)
+            and any("amount" in c for c in lowered)
+        ):
+            try:
+                i_code = next(i for i, c in enumerate(lowered) if "product code" in c)
+                i_qty = next(i for i, c in enumerate(lowered) if "inv qty" in c or c == "qty")
+                i_rate = next(i for i, c in enumerate(lowered) if c == "rate")
+                i_amt = next(i for i, c in enumerate(lowered) if "amount" in c)
+                header_idx = (i_code, i_qty, i_rate, i_amt)
+                last_line_item_idx = None
+            except StopIteration:
+                header_idx = None
+            continue
+
+        if header_idx is None:
+            continue
+
+        i_code, i_qty, i_rate, i_amt = header_idx
+        max_i = max(i_code, i_qty, i_rate, i_amt)
+        if len(cells) <= max_i:
+            continue
+
+        code_cell = cells[i_code]
+        qty = _num_sentinelone_qty(cells[i_qty])
+        rate = _num(cells[i_rate])
+        amt = _num(cells[i_amt])
+
+        # Continuation rows on page 2 carry description only in Product Code column.
+        if qty is None and rate is None and amt is None:
+            if last_line_item_idx is not None and code_cell:
+                desc_text = re.sub(r"\s+", " ", code_cell).strip()
+                if desc_text and not re.match(r"^(subtotal|tax total|total)\b", desc_text, flags=re.IGNORECASE):
+                    prior_desc = results[last_line_item_idx].get("description") or ""
+                    joined = f"{prior_desc} {desc_text}".strip() if prior_desc else desc_text
+                    results[last_line_item_idx]["description"] = joined
+            continue
+
+        if qty is None:
+            # Not a real invoice line item.
+            continue
+
+        # Product Code cell may include SKU + multiline description on page 1.
+        code_text = re.sub(r"\s+", " ", code_cell).strip()
+        m_sku = re.match(r"^([A-Z0-9]+(?:-[A-Z0-9]+)+)\b\s*(.*)$", code_text)
+        if not m_sku:
+            # Prevent false captures like 'MSSP Overage'.
+            continue
+        sku = m_sku.group(1).strip()
+        desc = m_sku.group(2).strip()
+
+        # OCR occasionally yields shifted separators (e.g., 737,484 -> 737.484).
+        # If qty*rate is wildly off amount, apply a power-of-10 correction.
+        if qty and rate and amt and amt > 0:
+            rel_err = abs((qty * rate) - amt) / amt
+            if rel_err > 0.95:
+                for factor in (10.0, 100.0, 1000.0):
+                    candidate = qty * factor
+                    cand_err = abs((candidate * rate) - amt) / amt
+                    if cand_err < 0.02:
+                        qty = candidate
+                        break
+
+        results.append({
+            "partner": None,
+            "sku": sku,
+            "description": desc,
+            "quantity": qty,
+            "unit_price": rate,
+            "amount": amt,
+        })
+        last_line_item_idx = len(results) - 1
 
     return results
 
@@ -634,7 +990,7 @@ def parse_all(rows: list[tuple]) -> pd.DataFrame:
         items  = parser(text, file_path)
         for item in items:
             records.append({
-                "BILLING_MONTH":      billing,
+                "BILLING_MONTH":      item.get("billing_month") or billing,
                 "VENDOR":             vendor,
                 "PARTNER":            item.get("partner"),
                 "VENDOR_PRODUCT_SKU": (item.get("sku") or "UNKNOWN").strip(),

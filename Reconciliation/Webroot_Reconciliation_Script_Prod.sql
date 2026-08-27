@@ -28,12 +28,22 @@ WITH usage_product_map AS (
 
 partner_map AS (
     SELECT
+        billing_month,
         UPPER(TRIM(partner_name)) AS partner_name_key,
         partner_name,
         sf_id,
         cms_id,
         zuora_name
-    FROM RECON_PARTNER_MAP
+    FROM RECON_PARTNER_MAP_MONTHLY
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY billing_month, UPPER(TRIM(partner_name))
+        ORDER BY
+            IFF(sf_id IS NOT NULL, 0, 1),
+            IFF(cms_id IS NOT NULL, 0, 1),
+            partner_name,
+            sf_id,
+            cms_id
+    ) = 1
 ),
 
 usage_base AS (
@@ -55,7 +65,8 @@ usage_base AS (
         NULL::VARCHAR AS source_file
     FROM WEBROOT_USAGE u
     LEFT JOIN partner_map pm
-        ON pm.partner_name_key = UPPER(TRIM(u.vendor_partner_name))
+        ON pm.billing_month = u.billing_month::DATE
+       AND pm.partner_name_key = UPPER(TRIM(u.vendor_partner_name))
     WHERE COALESCE(u.quantity, 0) <> 0
        OR COALESCE(u.amount, 0) <> 0
 ),
@@ -108,6 +119,43 @@ cw_sku_group_map AS (
     ) = 1
 ),
 
+webroot_zuora_rows AS (
+    SELECT
+        z.sf_id,
+        z.billing_month::DATE AS billing_month,
+        UPPER(TRIM(z.product_sku)) AS product_sku,
+        z.invoice_number AS zuora_invoice_numbers,
+        z.invoice_id AS zuora_invoice_ids,
+        z.charge_name AS zuora_charge_names,
+        NULL::VARCHAR AS zuora_subscription_names,
+        NULL::DATE AS first_invoice_date,
+        NULL::DATE AS last_invoice_date,
+        NULL::DATE AS first_service_start_date,
+        NULL::DATE AS last_service_end_date,
+        COALESCE(z.qty, 0) AS zuora_quantity,
+        COALESCE(z.charge_amount_usd, 0) AS zuora_charge_amount,
+        1::NUMBER AS billing_row_count
+    FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD z
+    WHERE z.vendor = 'Webroot'
+      AND z.sf_id ILIKE 'ACT-%'
+      AND COALESCE(z.qty, 0) <> 0
+),
+
+webroot_marketplace_rows AS (
+    SELECT
+        m.sf_id,
+        m.billing_month::DATE AS billing_month,
+        UPPER(TRIM(m.product_sku)) AS product_sku,
+        COALESCE(m.qty, 0) AS marketplace_quantity,
+        COALESCE(m.amount, 0) AS marketplace_amount,
+        1::NUMBER AS marketplace_row_count,
+        m.transaction_source AS marketplace_transaction_sources
+    FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD m
+    WHERE m.vendor = 'Webroot'
+      AND m.sf_id ILIKE 'ACT-%'
+      AND COALESCE(m.qty, 0) <> 0
+),
+
 zuora_billing AS (
     SELECT
         b.sf_id,
@@ -126,7 +174,7 @@ zuora_billing AS (
         SUM(b.zuora_quantity) AS zuora_quantity,
         SUM(b.zuora_charge_amount) AS zuora_amount,
         SUM(b.billing_row_count) AS zuora_row_count
-    FROM WEBROOT_BILLING_MATCHED b
+    FROM webroot_zuora_rows b
     LEFT JOIN cw_sku_group_map m
         ON m.cw_sku = b.product_sku
     GROUP BY 1,2,3,4
@@ -136,7 +184,7 @@ marketplace_billing AS (
     SELECT
         b.sf_id,
         b.billing_month,
-        'CW' AS recon_stream,
+        COALESCE(m.billing_stream, 'CW') AS recon_stream,
         COALESCE(m.sku_match_group, 'UNMAPPED_CW_SKU') AS sku_match_group,
         ARRAY_AGG(DISTINCT b.product_sku) WITHIN GROUP (ORDER BY b.product_sku) AS marketplace_skus,
         SUM(b.marketplace_quantity) AS marketplace_quantity,
@@ -144,7 +192,7 @@ marketplace_billing AS (
         SUM(b.marketplace_row_count) AS marketplace_row_count,
         LISTAGG(DISTINCT b.marketplace_transaction_sources, ' | ')
             WITHIN GROUP (ORDER BY b.marketplace_transaction_sources) AS marketplace_transaction_sources
-    FROM WEBROOT_MARKETPLACE_BILLING_MATCHED b
+    FROM webroot_marketplace_rows b
     LEFT JOIN cw_sku_group_map m
         ON m.cw_sku = b.product_sku
     GROUP BY 1,2,3,4
@@ -222,6 +270,30 @@ trt_agg AS (
        AND t.sku_match_group = 'GSM'
     GROUP BY 1,2,3,4
 ),
+sf_id_to_partner AS (
+    SELECT
+        sf_id,
+        partner_name
+    FROM RECON_PARTNER_MAP
+    WHERE sf_id ILIKE 'ACT-%'
+      AND partner_name IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY sf_id
+        ORDER BY
+            IFF(UPPER(partner_name) LIKE '%-INTERNAL', 1, 0),
+            IFF(UPPER(partner_name) LIKE '%-CORPORATE', 1, 0),
+            LENGTH(partner_name),
+            UPPER(partner_name)
+    ) = 1
+),
+sf_account_names AS (
+    SELECT
+        CWS_ACCOUNT_UNIQUE_IDENTIFIER_C AS sf_id,
+        NAME AS account_name
+    FROM ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT
+    WHERE CWS_ACCOUNT_UNIQUE_IDENTIFIER_C ILIKE 'ACT-%'
+      AND IS_DELETED = FALSE
+),
 
 joined AS (
     SELECT
@@ -231,7 +303,7 @@ joined AS (
         COALESCE(u.sf_id, b.sf_id, t.sf_id) AS sf_id,
         u.source_streams,
         u.source_channels,
-        u.vendor_partner_name,
+        COALESCE(u.vendor_partner_name, sp.partner_name, sa.account_name) AS vendor_partner_name,
         u.vendor_partner_code,
         COALESCE(u.sku_match_group, b.sku_match_group, t.sku_match_group) AS sku_match_group,
         u.vendor_product,
@@ -296,6 +368,10 @@ joined AS (
        AND t.billing_month = COALESCE(u.billing_month, b.billing_month)
        AND t.recon_stream = COALESCE(u.recon_stream, b.recon_stream)
        AND t.sku_match_group = COALESCE(u.sku_match_group, b.sku_match_group)
+    LEFT JOIN sf_id_to_partner sp
+        ON sp.sf_id = COALESCE(u.sf_id, b.sf_id, t.sf_id)
+    LEFT JOIN sf_account_names sa
+        ON sa.sf_id = COALESCE(u.sf_id, b.sf_id, t.sf_id)
 ),
 
 scored AS (

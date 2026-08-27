@@ -30,6 +30,7 @@ from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 from snowflake.connector.pandas_tools import write_pandas
+from invoice_rate_backfill import fill_missing_prices_dynamic
 
 ESET_ROOT = Path(__file__).resolve().parents[2]
 WORKSPACE_ROOT = ESET_ROOT.parents[2]
@@ -227,19 +228,31 @@ def invoice_partner_from_description(partner: object, invoice_sku: object) -> st
 def load_invoice_rates(conn) -> Tuple[Dict[Tuple[str, str, str], float], Dict[Tuple[str, str, str], float]]:
     """Load ESET unit prices from THIRD_PARTY_RECON_VENDOR_INVOICES.
 
-    ESET invoices have no per-partner pricing (PARTNER is NULL) - rates are SKU-level only.
-    Strategy: 1. Exact (billing_month, sku) match.  2. Carry-forward most recent prior month.
-    Wildcards partner key '*' so assign_invoice_rate finds it for any partner.
+    Build partner-aware month/SKU rates from parsed vendor invoices. This allows
+    mixed regional prices for the same SKU in the same month (US/UK/AU) while
+    preserving wildcard fallbacks for rows without a clear partner key.
     Returns empty dicts gracefully if the table does not exist yet.
     """
     query = """
-    SELECT BILLING_MONTH, VENDOR_PRODUCT_SKU, AVG(UNIT_PRICE) AS UNIT_PRICE
-    FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES
-    WHERE VENDOR ILIKE '%eset%'
-      AND UNIT_PRICE IS NOT NULL AND UNIT_PRICE > 0
-    GROUP BY 1, 2
-    ORDER BY 1, 2
-    """
+        SELECT
+            BILLING_MONTH,
+            COALESCE(PARTNER, '') AS PARTNER,
+            VENDOR_PRODUCT_SKU,
+            SUM(IFF(QUANTITY IS NOT NULL AND QUANTITY > 0 AND AMOUNT IS NOT NULL, QUANTITY, 0)) AS QTY_SUM,
+            SUM(IFF(QUANTITY IS NOT NULL AND QUANTITY > 0 AND AMOUNT IS NOT NULL, AMOUNT, 0)) AS AMT_SUM,
+            CASE
+                WHEN COUNT(DISTINCT UNIT_PRICE) = 1 THEN MAX(UNIT_PRICE)
+                WHEN SUM(IFF(QUANTITY IS NOT NULL AND QUANTITY > 0 AND AMOUNT IS NOT NULL, QUANTITY, 0)) > 0
+                    THEN SUM(IFF(QUANTITY IS NOT NULL AND QUANTITY > 0 AND AMOUNT IS NOT NULL, AMOUNT, 0))
+                             / SUM(IFF(QUANTITY IS NOT NULL AND QUANTITY > 0 AND AMOUNT IS NOT NULL, QUANTITY, 0))
+                ELSE NULL
+            END AS UNIT_PRICE
+        FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES
+        WHERE VENDOR ILIKE '%eset%'
+            AND UNIT_PRICE IS NOT NULL AND UNIT_PRICE > 0
+        GROUP BY 1, 2, 3
+        ORDER BY 1, 2, 3
+        """
     invoice_df = pd.DataFrame()
     try:
         invoice_df = pd.read_sql(query, conn)
@@ -253,17 +266,41 @@ def load_invoice_rates(conn) -> Tuple[Dict[Tuple[str, str, str], float], Dict[Tu
     invoice_df["BILLING_MONTH"] = pd.to_datetime(invoice_df["BILLING_MONTH"])
     invoice_df["VENDOR_PRODUCT_SKU"] = invoice_df["VENDOR_PRODUCT_SKU"].astype(str).str.strip()
     invoice_df["UNIT_PRICE"] = pd.to_numeric(invoice_df["UNIT_PRICE"], errors="coerce")
+    invoice_df = invoice_df[invoice_df["UNIT_PRICE"].notna() & (invoice_df["UNIT_PRICE"] > 0)]
     invoice_df = invoice_df.dropna(subset=["UNIT_PRICE"])
     sku_latest: dict = {}
+    wildcard_rollup: dict[tuple[str, str], dict[str, float]] = {}
     for _, row in invoice_df.iterrows():
         sku = repair_hyphen_corruption(str(row["VENDOR_PRODUCT_SKU"])).replace("\u00e2\u0080\u0093", "-").strip()
         price = float(row["UNIT_PRICE"])
         month_str = row["BILLING_MONTH"].strftime("%Y-%m-%d")
         sku_key = normalize_key(sku)
+        partner_txt = repair_hyphen_corruption(str(row.get("PARTNER", "") or "")).strip()
+        partner_txt = invoice_partner_from_description(partner_txt, sku)
+        partner_key = normalize_key(partner_txt)
+
+        qty_sum = to_numeric(row.get("QTY_SUM"))
+        amt_sum = to_numeric(row.get("AMT_SUM"))
+        if qty_sum > 0:
+            bucket = wildcard_rollup.setdefault((month_str, sku_key), {"qty": 0.0, "amt": 0.0})
+            bucket["qty"] += qty_sum
+            bucket["amt"] += amt_sum
+
         sku_latest[sku_key] = price
-        key = (month_str, "*", sku_key)
-        partner_rates[key] = price
-        parent_rates[key] = price
+        if partner_key:
+            key = (month_str, partner_key, sku_key)
+            partner_rates[key] = price
+            parent_rates[key] = price
+            partner_rates[("latest", partner_key, sku_key)] = price
+            parent_rates[("latest", partner_key, sku_key)] = price
+
+    # Month-level wildcard fallback per SKU (weighted average across partner variants).
+    for (month_str, sku_key), agg in wildcard_rollup.items():
+        if agg["qty"] > 0:
+            price = agg["amt"] / agg["qty"]
+            partner_rates[(month_str, "*", sku_key)] = price
+            parent_rates[(month_str, "*", sku_key)] = price
+
     for sku_key, price in sku_latest.items():
         partner_rates[("latest", "*", sku_key)] = price
         parent_rates[("latest", "*", sku_key)] = price
@@ -273,28 +310,54 @@ def load_invoice_rates(conn) -> Tuple[Dict[Tuple[str, str, str], float], Dict[Tu
 
 
 def assign_invoice_rate(row: pd.Series, partner_rates: Dict[Tuple[str, str, str], float], parent_rates: Dict[Tuple[str, str, str], float]) -> "float | None":
-    """Assign ESET unit price: exact month match, carry-forward, then latest fallback."""
+    """Assign ESET unit price with partner-aware exact and carry-forward fallbacks."""
     billing_month = pd.to_datetime(row["BILLING_MONTH"]).strftime("%Y-%m-%d")
     product_key = normalize_key(repair_hyphen_corruption(str(row["VENDOR_PRODUCT_SKU"])).replace("\u00e2\u0080\u0093", "-").strip())
-    exact_key = (billing_month, "*", product_key)
-    if exact_key in partner_rates:
-        return partner_rates[exact_key]
+    partner_key = normalize_key(row.get("VENDOR_PARTNER_NAME"))
+    parent_key = normalize_key(row.get("PARENT_COMPANY_NAME"))
+
+    for pkey in (partner_key, parent_key, "*"):
+        if not pkey:
+            continue
+        exact_key = (billing_month, pkey, product_key)
+        if exact_key in partner_rates:
+            return partner_rates[exact_key]
+
     target_dt = pd.to_datetime(billing_month)
     best_price = None
     best_dt = None
-    for (m, p, s), price in partner_rates.items():
-        if m == "latest" or p != "*" or s != product_key:
-            continue
-        try:
-            m_dt = pd.to_datetime(m)
-        except Exception:
-            continue
-        if m_dt <= target_dt and (best_dt is None or m_dt > best_dt):
-            best_price = price
-            best_dt = m_dt
-    if best_price is not None:
+
+    def _best_for_partner(pkey: str) -> float | None:
+        nonlocal best_price, best_dt
+        best_price = None
+        best_dt = None
+        for (m, p, s), price in partner_rates.items():
+            if m == "latest" or p != pkey or s != product_key:
+                continue
+            try:
+                m_dt = pd.to_datetime(m)
+            except Exception:
+                continue
+            if m_dt <= target_dt and (best_dt is None or m_dt > best_dt):
+                best_price = price
+                best_dt = m_dt
         return best_price
-    return partner_rates.get(("latest", "*", product_key))
+
+    for pkey in (partner_key, parent_key, "*"):
+        if not pkey:
+            continue
+        candidate = _best_for_partner(pkey)
+        if candidate is not None:
+            return candidate
+
+    for pkey in (partner_key, parent_key, "*"):
+        if not pkey:
+            continue
+        latest_key = ("latest", pkey, product_key)
+        if latest_key in partner_rates:
+            return partner_rates[latest_key]
+
+    return None
 
 def locate_regional_file(month_folder: Path, region: str) -> Path | None:
     """Find the regional CSV file in the month folder.
@@ -767,6 +830,7 @@ def main() -> None:
         if all_trial_frames
         else pd.DataFrame(columns=TEMPLATE_COLUMNS)
     )
+    combined_ingested = fill_missing_prices_dynamic(combined_ingested, VENDOR_NAME)
     
     # Write audit
     audit_path = write_audit_report(script_dir, all_stats)

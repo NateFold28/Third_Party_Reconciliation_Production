@@ -255,14 +255,25 @@ WHERE r.VENDOR_PRODUCT_SKU = u.VENDOR_PRODUCT_SKU
 -- internal cost accounting (no invoice rows).
 UPDATE THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
 SET
-    u.UNIT_PRICE = r.backfill_rate,
-    u.AMOUNT     = ROUND(COALESCE(u.QUANTITY, 0) * r.backfill_rate, 6)
+    u.UNIT_PRICE = CASE
+        WHEN u.UNIT_PRICE IS NULL OR u.UNIT_PRICE = 0 THEN r.backfill_rate
+        ELSE u.UNIT_PRICE
+    END,
+    u.AMOUNT     = CASE
+        WHEN u.AMOUNT IS NULL OR u.AMOUNT = 0
+            THEN ROUND(COALESCE(u.QUANTITY, 0) * r.backfill_rate, 6)
+        ELSE u.AMOUNT
+    END
 FROM _INVOICE_RATE_SPINE r
 WHERE r.vendor            = u.VENDOR
   AND r.vendor_product_sku = u.VENDOR_PRODUCT_SKU
   AND r.billing_month      = u.BILLING_MONTH::DATE
   AND r.backfill_rate IS NOT NULL
   AND u.VENDOR NOT IN ('SentinelOne', 'Acronis')
+    -- Preserve intentional zero-dollar Auvik overage lines from the vendor feed.
+    -- Those rows represent waived overage and should not be converted into
+    -- synthetic negative charges via QUANTITY * backfill_rate.
+    AND NOT (u.VENDOR = 'Auvik' AND COALESCE(u.AMOUNT, 0) = 0)
   -- Only fill genuine gaps — do not overwrite existing values
   AND (u.UNIT_PRICE IS NULL OR u.UNIT_PRICE = 0
        OR u.AMOUNT   IS NULL OR u.AMOUNT   = 0);
