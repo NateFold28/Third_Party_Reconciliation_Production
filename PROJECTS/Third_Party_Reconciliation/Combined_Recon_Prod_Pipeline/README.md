@@ -169,7 +169,7 @@ ORDER BY 1,2;
 ## Do-Nots
 
 - Do NOT bypass maps by hardcoding manual partner/SKU overrides in recon SQL.
-- Do NOT reintroduce `VENDOR_FALLBACK` entries to the exception taxonomy
+- Do NOT reintroduce any snapshot fallback path into the production orchestrators
 - Do NOT create per-vendor staging tables beyond `<VENDOR>_RECON_DETAIL`
 - `_LEGACY_20260823` tables are historical snapshots only; do not route active pipeline logic through them
 - Do NOT recreate legacy matched/resolved billing tables; vendor recon scripts are source-driven from unified billing sources

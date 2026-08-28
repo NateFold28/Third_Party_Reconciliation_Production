@@ -168,20 +168,18 @@ royalties_contract_cost AS (
 -- CW side, Zuora BillRun, FX-converted to USD.
 zuora_rows AS (
     SELECT
-        z.SFDC_ACCOUNT_NUMBER AS sf_id,
-        z.BILLING_MONTH::DATE AS billing_month,
-        z.PRODUCT_SKU,
-        z.CHARGE_NAME,
-        COALESCE(z.QUANTITY, 0) AS quantity,
-        z.UNIT_PRICE * COALESCE(fx.budget_ex_rate, 1) AS unit_price_usd,
-        COALESCE(z.CHARGE_AMOUNT, 0) * COALESCE(fx.budget_ex_rate, 1) AS charge_amount_usd
-    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2 z
-    LEFT JOIN fx_rates fx ON fx.currency_id = UPPER(z.ACCOUNT_CURRENCY)
-    WHERE z.VENDOR_NAME = 'Bitdefender'
-      AND z.INVOICE_STATUS = 'Posted'
-      AND z.INVOICE_SOURCE = 'BillRun'
-      AND z.BILLING_MONTH >= '2026-01-01'
-      AND z.CHARGE_AMOUNT <> 0
+                z.sf_id,
+                z.billing_month::DATE AS billing_month,
+                z.product_sku,
+                z.charge_name,
+                COALESCE(z.qty, 0) AS quantity,
+                z.unit_price_usd,
+                COALESCE(z.charge_amount_usd, 0) AS charge_amount_usd
+        FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD z
+        WHERE z.vendor = 'Bitdefender'
+            AND z.sf_id ILIKE 'ACT-%'
+            AND z.billing_month >= '2026-01-01'
+            AND COALESCE(z.charge_amount_usd, 0) <> 0
 ),
 zuora_agg AS (
     SELECT

@@ -281,57 +281,6 @@ zuora_rollup_raw_sf AS (
     GROUP BY 1, 2
 ),
 
-zuora_zero_amount_rows AS (
-    SELECT
-        CASE
-            WHEN TRIM(COALESCE(z.SUBSCRIPTION_SOLD_TO_SFDC_ID, '')) ILIKE 'ACT-%'
-                THEN TRIM(z.SUBSCRIPTION_SOLD_TO_SFDC_ID)
-            WHEN TRIM(COALESCE(z.SFDC_ACCOUNT_NUMBER, '')) ILIKE 'ACT-%'
-                THEN TRIM(z.SFDC_ACCOUNT_NUMBER)
-            WHEN TRIM(COALESCE(z.SUBSCRIPTION_SOLD_TO_SFDC_ID, '')) <> ''
-                THEN TRIM(z.SUBSCRIPTION_SOLD_TO_SFDC_ID)
-            ELSE TRIM(z.SFDC_ACCOUNT_NUMBER)
-        END AS sf_id,
-        CASE
-            WHEN TRIM(COALESCE(z.SUBSCRIPTION_SOLD_TO_SFDC_ID, '')) ILIKE 'ACT-%'
-                THEN 'subscription_sold_to_sfdc_id'
-            WHEN TRIM(COALESCE(z.SFDC_ACCOUNT_NUMBER, '')) ILIKE 'ACT-%'
-                THEN 'sfdc_account_number'
-            WHEN TRIM(COALESCE(z.SUBSCRIPTION_SOLD_TO_SFDC_ID, '')) <> ''
-                THEN 'subscription_sold_to_non_act'
-            WHEN TRIM(COALESCE(z.SFDC_ACCOUNT_NUMBER, '')) <> ''
-                THEN 'sfdc_account_number_non_act'
-            ELSE 'unresolved'
-        END AS sf_id_source,
-        z.ACCOUNT_CONTINUUM_ID::VARCHAR AS cms_id,
-        z.BILLING_MONTH::DATE AS billing_month,
-        z.INVOICE_NUMBER AS invoice_number,
-        z.INVOICE_ID AS invoice_id,
-        z.PRODUCT_SKU AS product_sku,
-        z.CHARGE_NAME AS charge_name,
-        COALESCE(z.QUANTITY, 0) AS qty,
-        z.UNIT_PRICE AS unit_price_usd,
-        0::FLOAT AS charge_amount_usd
-    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2 z
-    WHERE z.VENDOR_NAME = 'Acronis'
-      AND z.INVOICE_STATUS = 'Posted'
-      AND z.INVOICE_SOURCE = 'BillRun'
-      AND z.BILLING_MONTH >= '2026-01-01'
-      AND COALESCE(z.QUANTITY, 0) <> 0
-      AND COALESCE(z.CHARGE_AMOUNT, 0) = 0
-            AND UPPER(TRIM(COALESCE(z.PRODUCT_SKU, ''))) <> 'NOCSRVACRCYBPROTSERV'
-      AND NOT EXISTS (
-          SELECT 1
-          FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD s
-          WHERE s.vendor = 'Acronis'
-            AND s.billing_month = z.BILLING_MONTH::DATE
-            AND COALESCE(s.invoice_id, '') = COALESCE(z.INVOICE_ID, '')
-            AND COALESCE(s.product_sku, '') = COALESCE(z.PRODUCT_SKU, '')
-            AND COALESCE(s.charge_name, '') = COALESCE(z.CHARGE_NAME, '')
-            AND COALESCE(s.qty, 0) = COALESCE(z.QUANTITY, 0)
-      )
-),
-
 zuora_union_rows AS (
     SELECT
         sf_id,
@@ -350,23 +299,6 @@ zuora_union_rows AS (
     WHERE vendor = 'Acronis'
       AND sf_id ILIKE 'ACT-%'
       AND COALESCE(qty, 0) <> 0
-
-    UNION ALL
-
-    SELECT
-        sf_id,
-        sf_id_source,
-        cms_id,
-        sf_id AS sold_to_sf_id_raw,
-        billing_month,
-        product_sku,
-        qty,
-        unit_price_usd,
-        charge_amount_usd,
-        invoice_number,
-        invoice_id,
-        charge_name
-    FROM zuora_zero_amount_rows
 ),
 
 zuora_source_rows AS (
@@ -1029,12 +961,10 @@ WITH usage_qty AS (
     GROUP BY 1
 ),
 zuora_base AS (
-    SELECT BILLING_MONTH::DATE AS billing_month, SUM(QUANTITY) AS zuora_posted_billrun_quantity
-    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2
-    WHERE VENDOR_NAME = 'Acronis'
-      AND INVOICE_STATUS = 'Posted'
-      AND INVOICE_SOURCE = 'BillRun'
-      AND BILLING_MONTH >= '2026-01-01'
+        SELECT billing_month::DATE AS billing_month, SUM(qty) AS zuora_posted_billrun_quantity
+        FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
+        WHERE vendor = 'Acronis'
+            AND billing_month >= '2026-01-01'
     GROUP BY 1
 ),
 resolved AS (

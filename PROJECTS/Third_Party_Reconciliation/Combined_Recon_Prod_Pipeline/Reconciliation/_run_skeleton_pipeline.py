@@ -48,17 +48,8 @@ DETAIL_TABLE_STAGE = "THIRD_PARTY_RECON_DETAIL_PROD_STAGING"
 # ---------------------------------------------------------------------------
 # VENDOR ROUTING
 #
-# For each vendor we choose one of two paths into THIRD_PARTY_RECON_DETAIL_PROD:
-#
-#   "live"      -> execute Reconciliation/<VENDOR>_Reconciliation_Script_Prod.sql
-#                  (which rebuilds <VENDOR>_RECON_DETAIL) and emit from that
-#                  table. This is what production will use for every vendor.
-#
-#   "snapshot"  -> emit from THIRD_PARTY_STANDALONE_RECON_DETAIL__<V>_SNAPSHOT_20260823
-#                  (frozen 2026-08-23 Phase 0 backup). Used for vendors whose
-#                  live SQL still needs calibration.
-#
-# In production handoff, all vendors must remain on "live".
+# Every vendor executes its live reconciliation SQL and emits from its live
+# detail table into the shared production detail mart.
 # ---------------------------------------------------------------------------
 VENDOR_ROUTING: dict[str, tuple[str, str]] = {
     # vendor        : (mode, source)
@@ -72,12 +63,6 @@ VENDOR_ROUTING: dict[str, tuple[str, str]] = {
     "SentinelOne": ("live", "SENTINELONE_RECON_DETAIL"),
     "Webroot":     ("live", "WEBROOT_RECON_DETAIL"),
 }
-
-# If a vendor's live path fails, fall back to this snapshot so the app still
-# has data for that vendor. Set to None to disable fallback (fail hard).
-# 2026-08-23: All 9 vendors run live. Fallback disabled so any live-path
-# regression surfaces loudly instead of being silently masked by snapshot data.
-VENDOR_FALLBACK: dict[str, str] = {}
 
 # ---------------------------------------------------------------------------
 # CANONICAL EMIT: every vendor uses this exact shape. 34 columns, in the
@@ -178,88 +163,6 @@ CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
         ELSE 'Other Issue'
     END
 """.strip()
-
-
-def emit_vendor_block(vendor: str, source_table: str, target_table: str = DETAIL_TABLE_STAGE) -> str:
-    """Return the SQL that publishes one vendor's rows into DETAIL_PROD.
-
-    Contract: source_table must have the STANDALONE-shape columns:
-      BILLING_MONTH, SF_ID, ZUORA_INV/MP_INV, VENDOR_PARTNER_NAME, VENDOR_PRODUCT,
-      SKU_MATCH_GROUP, CW_SKUS, ZUORA_SKUS, MARKETPLACE_SKUS, BILLING_SOURCE_MIX,
-      VENDOR_QUANTITY, VENDOR_UNIT_PRICE, VENDOR_AMOUNT,
-      ZUORA_QUANTITY, ZUORA_UNIT_PRICE, ZUORA_AMOUNT,
-      MARKETPLACE_QUANTITY, MARKETPLACE_AMOUNT,
-      TOTAL_BILLING_QUANTITY, TOTAL_BILLING_AMOUNT,
-      QTY_DELTA, ABS_QTY_DELTA, AMOUNT_DELTA, ABS_AMOUNT_DELTA,
-      DUPLICATE_BILLING_FLAG (bool), OUTCOME_FLAG, INVESTIGATION_REASON.
-
-    Both the frozen SNAPSHOT tables and any future vendor's own <V>_RECON_DETAIL
-    that follows this contract can be plugged in with no other changes.
-    """
-    return f"""{USE}
-
--- Wipe any prior rows for this vendor so this run is idempotent.
-DELETE FROM {target_table} WHERE VENDOR = '{vendor}';
-
-INSERT INTO {target_table} (
-    VENDOR, BILLING_MONTH, SF_ID, INV_ID, BILLING_TYPE,
-    VENDOR_PARTNER_NAME, VENDOR_PRODUCT, SKU_MATCH_GROUP,
-    CW_SKUS, ZUORA_SKUS, MARKETPLACE_SKUS, BILLING_SOURCE_MIX,
-    API_QUANTITY, AVG_API_QUANTITY,
-    VENDOR_QUANTITY, VENDOR_UNIT_PRICE, VENDOR_AMOUNT,
-    ZUORA_QUANTITY, ZUORA_UNIT_PRICE, ZUORA_AMOUNT,
-    MARKETPLACE_QUANTITY, MARKETPLACE_UNIT_PRICE, MARKETPLACE_AMOUNT,
-    TOTAL_BILLING_QUANTITY, TOTAL_BILLING_AMOUNT,
-    QTY_DELTA, ABS_QTY_DELTA, AMOUNT_DELTA, ABS_AMOUNT_DELTA,
-    CW_MARGIN_PCT, HAS_DISCOUNT, DUPLICATE_BILLING_FLAG,
-    OUTCOME_FLAG, INVESTIGATION_REASON
-)
-SELECT
-    '{vendor}'::VARCHAR                                                       AS VENDOR,
-    BILLING_MONTH::DATE                                                       AS BILLING_MONTH,
-    SF_ID                                                                     AS SF_ID,
-    COALESCE(ZUORA_INV, MP_INV)                                               AS INV_ID,
-    NULL::VARCHAR                                                             AS BILLING_TYPE,
-    VENDOR_PARTNER_NAME                                                       AS VENDOR_PARTNER_NAME,
-    VENDOR_PRODUCT                                                            AS VENDOR_PRODUCT,
-    SKU_MATCH_GROUP                                                           AS SKU_MATCH_GROUP,
-    CW_SKUS                                                                   AS CW_SKUS,
-    ZUORA_SKUS                                                                AS ZUORA_SKUS,
-    MARKETPLACE_SKUS                                                          AS MARKETPLACE_SKUS,
-    BILLING_SOURCE_MIX                                                        AS BILLING_SOURCE_MIX,
-    NULL::FLOAT                                                               AS API_QUANTITY,        -- backfilled below
-    NULL::FLOAT                                                               AS AVG_API_QUANTITY,    -- backfilled below
-    COALESCE(VENDOR_QUANTITY, 0)::FLOAT                                       AS VENDOR_QUANTITY,
-    VENDOR_UNIT_PRICE::FLOAT                                                  AS VENDOR_UNIT_PRICE,
-    COALESCE(VENDOR_AMOUNT, 0)::FLOAT                                         AS VENDOR_AMOUNT,
-    COALESCE(ZUORA_QUANTITY, 0)::FLOAT                                        AS ZUORA_QUANTITY,
-    ZUORA_UNIT_PRICE::FLOAT                                                   AS ZUORA_UNIT_PRICE,
-    COALESCE(ZUORA_AMOUNT, 0)::FLOAT                                          AS ZUORA_AMOUNT,
-    COALESCE(MARKETPLACE_QUANTITY, 0)::FLOAT                                  AS MARKETPLACE_QUANTITY,
-    CASE WHEN COALESCE(MARKETPLACE_QUANTITY, 0) > 0
-         THEN MARKETPLACE_AMOUNT / MARKETPLACE_QUANTITY ELSE NULL END::FLOAT  AS MARKETPLACE_UNIT_PRICE,
-    COALESCE(MARKETPLACE_AMOUNT, 0)::FLOAT                                    AS MARKETPLACE_AMOUNT,
-    COALESCE(TOTAL_BILLING_QUANTITY, 0)::FLOAT                                AS TOTAL_BILLING_QUANTITY,
-    COALESCE(TOTAL_BILLING_AMOUNT, 0)::FLOAT                                  AS TOTAL_BILLING_AMOUNT,
-    QTY_DELTA::FLOAT                                                          AS QTY_DELTA,
-    ABS_QTY_DELTA::FLOAT                                                      AS ABS_QTY_DELTA,
-    AMOUNT_DELTA::FLOAT                                                       AS AMOUNT_DELTA,
-    ABS_AMOUNT_DELTA::FLOAT                                                   AS ABS_AMOUNT_DELTA,
-    CASE WHEN COALESCE(TOTAL_BILLING_AMOUNT, 0) > 0
-         THEN ROUND((COALESCE(TOTAL_BILLING_AMOUNT, 0) - COALESCE(VENDOR_AMOUNT, 0))
-                    / TOTAL_BILLING_AMOUNT * 100, 1)
-         ELSE NULL END::FLOAT                                                 AS CW_MARGIN_PCT,
-    'FALSE'::VARCHAR                                                          AS HAS_DISCOUNT,        -- flipped below for Webroot/BD
-    IFF(
-        DUPLICATE_BILLING_FLAG
-        OR (COALESCE(ZUORA_AMOUNT, 0) > 0 AND COALESCE(MARKETPLACE_AMOUNT, 0) > 0),
-        'TRUE',
-        'FALSE'
-    )::VARCHAR                                                                 AS DUPLICATE_BILLING_FLAG,
-    ({CANONICAL_OUTCOME_FLAG_NORMALIZATION})                                  AS OUTCOME_FLAG,
-    INVESTIGATION_REASON                                                      AS INVESTIGATION_REASON
-FROM {source_table};
-"""
 
 
 def live_emit_block(vendor: str, live_table: str, target_table: str = DETAIL_TABLE_STAGE) -> str:
@@ -470,18 +373,16 @@ UPDATE {DETAIL_TABLE_STAGE} d
 SET HAS_DISCOUNT = 'TRUE'
 FROM (
     SELECT DISTINCT
-        SFDC_ACCOUNT_NUMBER AS sf_id,
-        BILLING_MONTH::DATE AS billing_month
-    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2
-    WHERE VENDOR_NAME = 'Bitdefender'
-      AND INVOICE_STATUS = 'Posted'
-      AND INVOICE_SOURCE = 'BillRun'
+                sf_id,
+                billing_month::DATE AS billing_month
+        FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
+        WHERE vendor = 'Bitdefender'
       AND (
-        UPPER(PRODUCT_NAME) LIKE '%MDR%'
-        OR UPPER(CHARGE_NAME) LIKE '%MDR%'
-        OR UPPER(PRODUCT_SKU) LIKE '%MDR%'
+                UPPER(PRODUCT_NAME) LIKE '%MDR%'
+                OR UPPER(CHARGE_NAME) LIKE '%MDR%'
+                OR UPPER(PRODUCT_SKU) LIKE '%MDR%'
       )
-      AND BILLING_MONTH >= '2026-01-01'
+            AND billing_month >= '2026-01-01'
 ) e
 WHERE d.VENDOR = 'Bitdefender'
   AND d.SF_ID = e.sf_id
@@ -510,18 +411,19 @@ FROM (
         FROM rmm_daily
         WHERE (rmm_desktop + rmm_server) > 0
     )
-    SELECT z.SFDC_ACCOUNT_NUMBER AS sf_id, t.billing_month
+    SELECT z.sf_id AS sf_id, t.billing_month
     FROM rmm_entitlement t
     JOIN THIRD_PARTY_RECON_SOURCE_TRT_PROD wgsm
       ON wgsm.VENDOR = 'Webroot'
      AND wgsm.CMS_ID = t.partner_id
      AND wgsm.BILLING_MONTH = t.billing_month
     JOIN (
-        SELECT DISTINCT ACCOUNT_CONTINUUM_ID::VARCHAR AS partner_id, SFDC_ACCOUNT_NUMBER
-        FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2
-        WHERE INVOICE_STATUS = 'Posted' AND SFDC_ACCOUNT_NUMBER ILIKE 'ACT-%'
-        QUALIFY ROW_NUMBER() OVER (PARTITION BY ACCOUNT_CONTINUUM_ID
-                                    ORDER BY BILLING_MONTH DESC) = 1
+                SELECT DISTINCT cms_id AS partner_id, sf_id
+                FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
+                WHERE sf_id ILIKE 'ACT-%'
+                    AND cms_id IS NOT NULL
+                QUALIFY ROW_NUMBER() OVER (PARTITION BY cms_id
+                                                                        ORDER BY billing_month DESC) = 1
     ) z ON z.partner_id = t.partner_id
     WHERE wgsm.trt_quantity <= t.free_gsm_entitlement
     GROUP BY 1, 2
@@ -636,7 +538,6 @@ def main() -> int:
 
         print("\n=== STEP 1b: emit each vendor into DETAIL_PROD ===")
         emit_live: list[str] = []
-        emit_snap: list[str] = []
         emit_fail: list[str] = []
         for vendor, (mode, src) in VENDOR_ROUTING.items():
             emitted = False
@@ -647,20 +548,10 @@ def main() -> int:
                 )
                 if emitted:
                     emit_live.append(vendor)
-            fallback = VENDOR_FALLBACK.get(vendor)
-            if not emitted and fallback:
-                print(f"    ({vendor} live path failed -- falling back to snapshot)")
-                emitted = run_sql(
-                    conn, emit_vendor_block(vendor, fallback),
-                    f"emit {vendor:<12} snapshot <- {fallback}",
-                )
-                if emitted:
-                    emit_snap.append(vendor)
             if not emitted:
                 emit_fail.append(vendor)
 
         print("\n  live vendors:     " + (", ".join(emit_live) or "(none)"))
-        print("  snapshot vendors: " + (", ".join(emit_snap) or "(none)"))
         if emit_fail:
             print("  FAILED vendors:   " + ", ".join(emit_fail))
 

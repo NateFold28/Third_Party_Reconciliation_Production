@@ -111,7 +111,15 @@ WHERE UPPER(TRIM(z.VENDOR_NAME)) IN (
   AND z.INVOICE_STATUS = 'Posted'
   AND z.INVOICE_SOURCE = 'BillRun'
   AND z.BILLING_MONTH >= '2026-01-01'
-    AND COALESCE(z.CHARGE_AMOUNT, 0) <> 0;
+    AND (
+                COALESCE(z.CHARGE_AMOUNT, 0) <> 0
+                OR (
+                        UPPER(TRIM(z.VENDOR_NAME)) = 'ACRONIS'
+                        AND COALESCE(z.QUANTITY, 0) <> 0
+                        AND COALESCE(z.CHARGE_AMOUNT, 0) = 0
+                        AND UPPER(TRIM(COALESCE(z.PRODUCT_SKU, ''))) <> 'NOCSRVACRCYBPROTSERV'
+                )
+            );
 
 CREATE OR REPLACE VIEW THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD AS
 WITH carr_base AS (

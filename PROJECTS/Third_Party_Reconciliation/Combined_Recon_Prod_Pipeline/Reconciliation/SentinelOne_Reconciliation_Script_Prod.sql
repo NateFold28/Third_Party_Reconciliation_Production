@@ -349,38 +349,34 @@ zuora_billing AS (
     -- that was actually billed (that's historical truth).
     SELECT
         COALESCE(
-            CASE WHEN z.BILLING_MONTH::DATE >= mr.merge_effective_month
+            CASE WHEN z.billing_month::DATE >= mr.merge_effective_month
                  THEN mr.canonical_sf_id END,
-            z.SFDC_ACCOUNT_NUMBER
+            z.sf_id
         ) AS sf_id,
-        z.BILLING_MONTH::DATE AS billing_month,
+        z.billing_month::DATE AS billing_month,
         m.sku_match_group,
-        ARRAY_AGG(DISTINCT z.PRODUCT_SKU) WITHIN GROUP (ORDER BY z.PRODUCT_SKU) AS zuora_skus,
-        ARRAY_AGG(DISTINCT z.INVOICE_NUMBER) WITHIN GROUP (ORDER BY z.INVOICE_NUMBER) AS zuora_invoice_numbers,
-        SUM(COALESCE(z.QUANTITY, 0)) AS zuora_quantity,
-        AVG(NULLIF(z.UNIT_PRICE * COALESCE(fx.budget_ex_rate, 1), 0)) AS zuora_unit_price,
-        SUM(COALESCE(z.CHARGE_AMOUNT, 0) * COALESCE(fx.budget_ex_rate, 1)) AS zuora_amount,
+        ARRAY_AGG(DISTINCT z.product_sku) WITHIN GROUP (ORDER BY z.product_sku) AS zuora_skus,
+        ARRAY_AGG(DISTINCT z.invoice_number) WITHIN GROUP (ORDER BY z.invoice_number) AS zuora_invoice_numbers,
+        SUM(COALESCE(z.qty, 0)) AS zuora_quantity,
+        AVG(NULLIF(z.unit_price_usd, 0)) AS zuora_unit_price,
+        SUM(COALESCE(z.charge_amount_usd, 0)) AS zuora_amount,
         -- MDR decomposition: what portion of billing comes from MDR-bundled SKUs
         SUM(CASE WHEN bc.billing_category = 'MDR_BUNDLE'
-            THEN COALESCE(z.CHARGE_AMOUNT, 0) * COALESCE(fx.budget_ex_rate, 1) ELSE 0 END) AS mdr_bundle_amount,
+            THEN COALESCE(z.charge_amount_usd, 0) ELSE 0 END) AS mdr_bundle_amount,
         SUM(CASE WHEN bc.billing_category = 'MDR_BUNDLE'
-            THEN COALESCE(z.QUANTITY, 0) ELSE 0 END) AS mdr_bundle_quantity,
+            THEN COALESCE(z.qty, 0) ELSE 0 END) AS mdr_bundle_quantity,
         -- Dominant billing category for this (sf_id, month, sku_group) grain
         MODE(bc.billing_category) AS dominant_billing_category
-    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2 z
+    FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD z
     LEFT JOIN merged_account_resolver mr
-        ON mr.old_sf_id = z.SFDC_ACCOUNT_NUMBER
+        ON mr.old_sf_id = z.sf_id
     JOIN cw_sku_group_map m
-        ON m.cw_sku = UPPER(TRIM(z.PRODUCT_SKU))
-    LEFT JOIN fx_rates fx
-        ON fx.currency_id = UPPER(z.ACCOUNT_CURRENCY)
+        ON m.cw_sku = UPPER(TRIM(z.product_sku))
     LEFT JOIN billing_category_map bc
-        ON bc.product_sku = UPPER(TRIM(z.PRODUCT_SKU))
-    WHERE z.VENDOR_NAME = 'SentinelOne'
-      AND z.INVOICE_STATUS = 'Posted'
-      AND z.INVOICE_SOURCE = 'BillRun'
-      AND z.BILLING_MONTH >= '2026-01-01'
-      AND z.SFDC_ACCOUNT_NUMBER IS NOT NULL
+        ON bc.product_sku = UPPER(TRIM(z.product_sku))
+    WHERE z.vendor = 'SentinelOne'
+      AND z.billing_month >= '2026-01-01'
+      AND z.sf_id IS NOT NULL
     GROUP BY 1, 2, 3
 ),
 
