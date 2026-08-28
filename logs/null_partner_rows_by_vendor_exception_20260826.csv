@@ -1,0 +1,17 @@
+VENDOR,EXCEPTION_TYPE,ROW_COUNT,SF_ID_MISSING_ROWS,VENDOR_USAGE_ROWS,CW_BILLING_ROWS,ABS_AMT_DELTA
+Webroot,"API Usage, Insufficient CW Billing",1321,0,0,0,0.0
+Webroot,"CW Billing, No Vendor Billing",671,0,0,671,292416.38031406974
+Webroot,Clear,549,0,0,503,119232.9414570927
+Webroot,Known Discount / Bundle,393,0,0,31,2560.138375000008
+Exium,Clear,371,0,0,371,261293.4136
+Auvik,Clear,275,0,0,275,434012.26071999996
+Auvik,"CW Billing, No Vendor Billing",251,0,0,251,485481.99269
+Bitdefender,Duplicated CW Invoice,150,0,0,150,164234.11738924927
+Bitdefender,"CW Billing, No Vendor Billing",99,0,0,99,71456.91897
+Auvik,Duplicated CW Invoice,65,0,0,65,288017.23696
+Exium,"CW Billing, No Vendor Billing",64,0,0,64,16656.406199999998
+KeepIT,Known Discount / Bundle,18,0,0,18,0.0
+Bitdefender,Known Discount / Bundle,5,0,0,5,1511.28
+Auvik,Other Issue,4,0,0,0,2639.8076923076924
+Webroot,Unmapped Partner,3,3,0,3,727.1549999999789
+Bitdefender,Clear,2,0,0,2,4538.9

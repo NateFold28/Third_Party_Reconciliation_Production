@@ -1,0 +1,4 @@
+vendor,zuora_charge_type,line_pattern,qty_role,qty_source_field,rule,basis_month,seed_generated_on
+Auvik CMS,Recurring,...Package MSP N (Recurring)Fixed Price,COMMITTED,Invoice Item: Quantity,Zuora already stores committed device count N as the line Quantity on the recurring fixed-price package line. Use it AS-IS. Do NOT parse N from the package name and do NOT read Included Units.,2026-05,2026-07-15
+Auvik CMS,Usage,...Package MSP N (Usage)Overage / Additional,OVERAGE,Invoice Item: Quantity,Overage device count billed above the committed base.,2026-05,2026-07-15
+Auvik CMS,(derivation),CW device qty per family,TOTAL,SUM(Invoice Item: Quantity),"CW qty = SUM(Quantity) over BOTH Recurring(committed=N) + Usage(overage) lines, split into Billable/Performance/ASM via RECON_AUVIK_PATTERN_MAP. Validates: 32,637 Billable + 1,370 Performance = 34,007 total.",2026-05,2026-07-15

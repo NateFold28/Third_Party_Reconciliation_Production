@@ -1,0 +1,16 @@
+BILLING_MONTH,VENDOR_PRODUCT_SKU,row_count,quantity,distinct_partners
+2026-03-01,Cloud Funnel,5,11715.0,5
+2026-03-01,Complete,918,741058.0,918
+2026-03-01,Control,1610,897741.0,1610
+2026-03-01,Core,2,2933.0,2
+2026-03-01,Data Retention - 180 Days,19,5575.0,19
+2026-03-01,Data Retention - 30 Days,5,3784.0,5
+2026-03-01,Data Retention - 365 Days,2,267.0,2
+2026-03-01,Data Retention - 90 Days,31,53964.0,31
+2026-03-01,Forensics,14,16763.0,14
+2026-03-01,Purple AI,234,75421.0,234
+2026-03-01,RSO,36,26842.0,36
+2026-03-01,Ranger,63,13719.0,63
+2026-03-01,Ranger AD,1,5.0,1
+2026-03-01,Ranger Insights,10,15710.0,10
+2026-03-01,Threat Intelligence,5,1670.0,5

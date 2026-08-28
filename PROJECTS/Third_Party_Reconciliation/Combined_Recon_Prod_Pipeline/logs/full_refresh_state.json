@@ -1,0 +1,10 @@
+{
+  "ingestion_status": "ok",
+  "ingestion_signature": "5b57b253e04825c55276601828e449b52739f6785daecad1ea5e53d3ddd59282",
+  "ingestion_completed_at_utc": "2026-08-28T00:02:04.872570+00:00",
+  "invoice_status": "ok",
+  "invoice_signature": "b324a133146cc7242d09422d705f4932cf1e387c7895a6ff6c2fef6d10a56688",
+  "invoice_completed_at_utc": "2026-08-28T00:02:18.308747+00:00",
+  "recon_status": "ok",
+  "last_full_refresh_completed_at_utc": "2026-08-28T00:06:33.292955+00:00"
+}

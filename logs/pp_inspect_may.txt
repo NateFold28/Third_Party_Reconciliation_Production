@@ -1,0 +1,348 @@
+﻿Fetching invoice files ... 2 files.
+
+======================================================================
+VENDOR: Proofpoint, Inc - AU
+FILE:   2026_05/101317140_Proofpoint_Inc_-_AU_d5451bfdeb124f24_SalesOrder_INV-000262946.pdf
+======================================================================
+proofpoint.
+
+925 W Maude Ave
+Sunnyvale, CA 94085
+USA
+
+Invoice
+
+Number
+INV-000262946
+
+Invoice date
+5/20/2026
+
+Page
+1 of 2
+
+Sales order
+SO-000178573
+
+Purchase order
+
+Payment Terms
+Net 30
+
+Customer account
+C-000000289
+
+FOB
+FOB-Origin
+
+Shipping method
+BESTWAY
+
+Bill to:
+ConnectWise LLC
+400 N Tampa St Suite 130
+Tampa, FL 33602
+USA
+
+Ship to:
+ConnectWise LLC-MRR
+400 N Tampa St Suite 130
+Tampa, FL 33602
+USA
+
+|  Item number | Description | Quantity | Unit | Unit price | Amount  |
+| --- | --- | --- | --- | --- | --- |
+|  PP-ESS-ADV2 | PFPT Essentials Advanced Plus
+Spam Filtering, Reporting,
+Content Filtering, Outbound
+Filtering, Continuity, DLP,
+URL Defense, Attachment
+Defense, Encryption, Social
+Media Protection, One-Click
+Message Pull, Advanced BEC
+Defense & Email Warning
+Tags
+Contract start: 5/1/2026
+Contract end: 5/31/2026 | 24.00 | EA |  | $70.56  |
+|  PP-ESS-BUS | PFPT Essentials Business - SaaS
+Spam Filtering, Reporting,
+Content Filtering, Outbound
+Filtering, Continuity, DLP,
+URL Defense, Attachment
+Defense
+Contract start: 5/1/2026
+Contract end: 5/31/2026 | 3,187.00 | EA |  | $5,035.46  |
+|  PP-ESS-PRO | PFPT Essentials Professional - SaaS
+Spam Filtering, Reporting,
+Content Filtering, Outbound
+Filtering, Continuity, DLP,
+URL Defense, Attachment
+Defense, Encryption, Social
+Media Protection, Archive
+Contract start: 5/1/2026
+Contract end: 5/31/2026 | 35.00 | EA |  | $106.75  |
+|  PP-ESS-PSAT-A | PFPT PSAT Essentials - SaaS
+Contract start: 5/1/2026
+Contract end: 5/31/2026 | 63.00 | EA |  | $35.91  |
+
+proofpoint.
+
+925 W Maude Ave
+Sunnyvale, CA 94085
+USA
+
+Bill to:
+ConnectWise LLC
+400 N Tampa St Suite 130
+Tampa, FL 33602
+USA
+
+Bank Instruction
+Citibank N.A London Branch
+33 Canada Square, Canary Wharf
+London
+E14 5LB, United Kingdom
+SWIFT Code: CITIGB2L
+Beneficiary (for credit to): Proofpoint
+Inc.
+IBAN: GB22CITI18500814704630
+Account: 14704630
+Currency: Australian Dollar
+
+Invoice
+Number: INV-000262946
+Invoice date: 5/20/2026
+Page: 2 of 2
+Sales order: SO-000178573
+Purchase order:
+Payment Terms: Net 30
+Customer account: C-000000289
+FOB: FOB-Origin
+Shipping method: BESTWAY
+
+Ship to:
+ConnectWise LLC-MRR
+400 N Tampa St Suite 130
+Tampa, FL 33602
+USA
+
+|  Sales Subtotal | $5,248.68  |
+| --- | --- |
+|  Additional Charges | $0.00  |
+|  Tax | $0.00  |
+|  Total | $5,248.68  |
+|   | AUD  |
+
+End-user Name:
+
+Comments:
+Canada HST # 846904670
+Malaysia DST # 21000076
+
+Please note our new HQ address: 925 W. Maude Ave. Sunnyvale, CA 94085
+
+======================================================================
+VENDOR: Proofpoint, Inc.
+FILE:   2026_05/101372394_Proofpoint_Inc._a6b3b99a045f4a30_SalesOrder_INV-000263256.pdf
+======================================================================
+proofpoint.
+
+925 W Maude Ave
+Sunnyvale, CA 94085
+USA
+
+Invoice
+
+Number
+INV-000263256
+
+Invoice date
+5/27/2026
+
+Page
+1 of 3
+
+Sales order
+SO-000178574
+
+Purchase order
+
+Payment Terms
+Net 30
+
+Customer account
+C-000000289
+
+FOB
+FOB-Origin
+
+Shipping method
+BESTWAY
+
+Bill to:
+ConnectWise LLC
+400 N Tampa St Suite 130
+Tampa, FL 33602
+USA
+
+Ship to:
+ConnectWise LLC-MRR
+400 N Tampa St Suite 130
+Tampa, FL 33602
+USA
+
+|  Item number | Description | Quantity | Unit | Unit price | Amount  |
+| --- | --- | --- | --- | --- | --- |
+|  PP-ESS-ADV | PFPT Essentials Advanced - SaaS
+Spam Filtering, Reporting, Content Filtering, Outbound Filtering, Continuity, DLP, URL Defense, Attachment Defense, Encryption, Social Media Protection
+Contract start: 5/1/2026
+Contract end: 5/31/2026 | 91,477.00 | EA |  | $150,569.36  |
+|  PP-ESS-ADV2 | PFPT Essentials Advanced Plus
+Spam Filtering, Reporting, Content Filtering, Outbound Filtering, Continuity, DLP, URL Defense, Attachment Defense, Encryption, Social Media Protection, One-Click Message Pull, Advanced BEC Defense & Email Warning Tags
+Contract start: 5/1/2026
+Contract end: 5/31/2026 | 78,252.00 | EA |  | $155,408.64  |
+|  PP-ESS-BEG | PFPT Essentials Beginner - SaaS
+Spam Filtering, Reporting, Content Filtering, Outbound Filtering, Continuity
+Contract start: 5/1/2026
+Contract end: 5/31/2026 | 15,892.00 | EA |  | $10,018.95  |
+|  PP-ESS-BUS | PFPT Essentials Business - SaaS
+Spam Filtering, Reporting, Content Filtering, Outbound Filtering, Continuity, DLP, URL Defense, Attachment Defense
+Contract start: 5/1/2026
+Contract end: 5/31/2026 | 70,805.00 | EA |  | $84,606.77  |
+
+proofpoint.
+
+925 W Maude Ave
+Sunnyvale, CA 94085
+USA
+
+Invoice
+
+Number
+INV-000263256
+
+Invoice date
+5/27/2026
+
+Page
+2 of 3
+
+Sales order
+SO-000178574
+
+Purchase order
+
+Payment Terms
+Net 30
+
+Customer account
+C-000000289
+
+FOB
+FOB-Origin
+
+Shipping method
+BESTWAY
+
+Bill to:
+ConnectWise LLC
+400 N Tampa St Suite 130
+Tampa, FL 33602
+USA
+
+Ship to:
+ConnectWise LLC-MRR
+400 N Tampa St Suite 130
+Tampa, FL 33602
+USA
+
+|  Item number | Description | Quantity | Unit | Unit price | Amount  |
+| --- | --- | --- | --- | --- | --- |
+|  PP-ESS-BUS2 | PFPT Essentials Business Plus
+Spam Filtering, Reporting,
+Content Filtering, Outbound
+Filtering, Continuity, DLP,
+URL Defense, Attachment
+Defense, Encryption, Social
+Media Protection & One-
+Click Message Pull
+Contract start: 5/1/2026
+Contract end: 5/31/2026 | 20,399.00 | EA |  | $27,304.50  |
+|  PP-ESS-PRO | PFPT Essentials Professional
+- SaaS
+Spam Filtering, Reporting,
+Content Filtering, Outbound
+Filtering, Continuity, DLP,
+URL Defense, Attachment
+Defense, Encryption, Social
+Media Protection, Archive
+Contract start: 5/1/2026
+Contract end: 5/31/2026 | 26,232.00 | EA |  | $61,349.53  |
+|  PP-ESS-PRO2 | PFPT Essentials Professional
+Plus
+Spam Filtering, Reporting,
+Content Filtering, Outbound
+Filtering, Continuity, DLP,
+URL Defense, Attachment
+Defense, Encryption, Social
+Media Protection, One-Click
+Message Pull, Advanced BEC
+Defense, Email Warning
+Tags & Archive
+Contract start: 5/1/2026
+Contract end: 5/31/2026 | 28,915.00 | EA |  | $79,227.10  |
+|  PP-ESS-PSAT-A | PFPT PSAT Essentials - SaaS | 54,864.00 | EA |  | $30,149.70  |
+|   | Contract start: 5/1/2026
+Contract end: 5/31/2026 |  |  |  |   |
+
+proofpoint.
+
+925 W Maude Ave
+
+Sunnyvale, CA 94085
+
+USA
+
+Invoice
+
+Number INV-000263256
+
+Invoice date 5/27/2026
+
+Page 3 of 3
+
+Sales order SO-000178574
+
+Purchase order
+
+Payment Terms Net 30
+
+Customer account C-000000289
+
+FOB FOB-Origin
+
+Shipping method BESTWAY
+
+# Bill to:
+ConnectWise LLC
+400 N Tampa St Suite 130
+Tampa, FL 33602
+USA
+
+# Ship to:
+ConnectWise LLC-MRR
+400 N Tampa St Suite 130
+Tampa, FL 33602
+USA
+
+|  Item number | Description | Quantity | Unit | Unit price | Amount  |
+| --- | --- | --- | --- | --- | --- |
+|  PP-ESS-CWADV | Basic OEM
+Spam Filtering, Reporting,
+Content Filtering, Outbound
+Filtering, Continuity, DLP,
+URL Defense, Attachment
+Defense, Encryption, Social
+Media Protection
+Contract start: 5/1/2026
+Contract end: 5/31/2026 | 1

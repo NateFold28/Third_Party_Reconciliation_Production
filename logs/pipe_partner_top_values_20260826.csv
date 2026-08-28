@@ -1,0 +1,80 @@
+VENDOR,VENDOR_PARTNER_NAME,ROW_COUNT,SF_ID_MISSING_ROWS,DISTINCT_SF_IDS,ABS_AMT_DELTA
+Acronis,Turner Teleco - Alexandria LA | Turner Teleco Alexandria,21,0,1,21223.84
+Proofpoint,ROCK | IT Consultancy Services,18,0,1,5820.642899999999
+KeepIT,ITC Service | Solution ITED,14,0,1,97488.35
+KeepIT,EBC Group | Elevity IT,14,0,1,48505.959
+Proofpoint,Avaunt Technologies Inc. | cybercity - cybercityinc.com,14,0,1,16622.129999999997
+Proofpoint,OnPlatinum | onPlatinum,14,0,1,9808.349520000002
+Proofpoint,ServoPlex | Servoplex [23964],14,0,1,1687.75
+Acronis,"Dexcore LLC | Dexcore, LLC",14,0,1,287.77
+Proofpoint,EBC Group (UK) Ltd | iON | MSP,14,0,1,166.39
+SentinelOne,"US-23 || Jersey IT Solutions, LLC DBA Morris Technology Partners",12,0,1,807.57
+Proofpoint,NovaTech | Novatech,11,0,1,26690.34
+SentinelOne,RUSHAB | Team-40-ai-test,11,11,0,0.0
+Acronis,"Prosper IT | Prosper IT, LLC",10,0,1,2227.91
+KeepIT,Advanced Innovative IT Solutions (AIIS) | Recover EU,10,0,1,1106.3400000000001
+Acronis,N1Discovery LLC | Netsource One Inc,8,0,1,396.12
+Auvik,Oryx Align Limited | VIRTUS DATA CENTRES (Oryx Align Ltd),7,0,1,57214.27524
+Exium,Scantron Corporation | Scantron HQ Internal,7,0,1,34829.0
+Exium,Sharp Europe | Sharp Sweden,7,0,1,10345.5
+Proofpoint,Secur-Serv | Secur-Serv - Internal,7,0,1,9790.3
+Proofpoint,Velocity  Network | Velocity Network,7,0,1,7919.999999999999
+KeepIT,EU_ETERNALS_TEST_PARTNER | Griffin Technology Group,7,0,1,6547.5
+KeepIT,"SENSEI ENTERPRISES | Sensei Enterprises, Inc",7,0,1,6277.12
+KeepIT,Itek | Itek Systems Management,7,0,1,4926.6536
+KeepIT,Danmark Communications | SHIELD Networks Inc,7,0,1,4372.99798
+KeepIT,GP computers Limited | Rachis Technology,7,0,1,3141.6
+Proofpoint,"DCG Technical Solutions, LLC | DCG Technical Solutions, LLC.",7,0,1,3128.3999999999996
+Proofpoint,Barry Communications | Barry Communications Inc,7,0,1,1740.35
+Auvik,Apex Technology Corporation | The Apex Technology Group,7,0,1,1644.7500000000005
+KeepIT,Computer Troubleshooters UK Dudley | becktek,7,0,1,710.98152
+Proofpoint,"CMIT Solutions of Anaheim West | CMIT Solutions of Birmingham South | CMIT Solutions of Nashville, Southwest-Franklin",7,0,1,433.68000000000006
+KeepIT,Granero | Granero Data Systems,7,0,1,121.87199999999999
+Acronis,Your IT Department | Your Way IT Solutions,6,0,1,3075.247009999999
+Proofpoint,"IT Solutions (US3) | IT Solutions Consulting, Inc",6,0,1,2866.54
+Proofpoint,SYST99 -  Systems Engineering | SYST99 - Systems Engineering | Systems Engineering,5,0,1,4245.610000000001
+Proofpoint,SYST99 - Systems Engineering | Systems Engineering,5,0,1,3336.800000000001
+Proofpoint,"DCG Technical Solutions, Inc. | DCG Technical Solutions, LLC",5,0,1,11.7
+Acronis,Infinity Group | Infinity Group / France,5,0,1,0.0
+Proofpoint,CMIT Solutions of Birmingham South | CMIT Solutions of Cedar Rapids | CMIT Solutions of Columbus | CMIT Solutions of Pittsburgh North,4,0,1,558.3900000000001
+Acronis,Advanced Computer Electronics Inc | Advanced Office | Advanced Systems | Advanced Technology Solutions,3,0,1,5945.5365
+Acronis,Custom Solutions | Custom Wirth LLC,3,0,1,562.6800000000001
+Proofpoint,CMIT Solutions of Birmingham South | CMIT Solutions of Columbus | CMIT Solutions of Pittsburgh North,3,0,1,549.2199999999999
+Acronis,Tech Horse Electronics | Tech Solution,3,0,1,153.0
+Acronis,Alpha Wireless Communications | AlphaKOR Group Inc,3,0,1,86.94484
+Proofpoint,Avaunt Technologies Inc. | Netsurit NY,3,0,1,66.3
+Acronis,Advanced Computer Electronics Inc | Advanced Technology Solutions,3,0,1,66.0
+KeepIT,Action Point Technology Limited | Viatel Ireland Ltd,2,0,1,12109.0
+Proofpoint,SYST99 -  Systems Engineering | SYST99 - Systems Engineering,2,0,1,1759.6800000000003
+Proofpoint,Anatomy IT | Anatomy_IT (Former Compufit),2,0,1,967.6799999999998
+Proofpoint,"Synivate, Inc. (US3) | TTx Proofpoint Admin Portal",2,0,1,474.6400000000003
+Acronis,Cyber Total Solutions | CyberNET,2,0,1,46.940000000000005
+Proofpoint,"DCG Technical Solutions, Inc. | DCG Technical Solutions, LLC | DCG Technical Solutions, LLC.",2,0,1,39.129999999999995
+Proofpoint,"US-23 || Jersey IT Solutions, LLC DBA Morris Technology Partners",2,0,1,23.2
+SentinelOne,RD_EliteSupport | RUSHAB | Team-40-ai-test,2,2,0,0.0
+SentinelOne,BCDR NOC | Mahesh-Test | PARROINFODEVELOPPEMENT | RD_EliteSupport | RUSHAB | Team-40-ai-test,2,2,0,0.0
+SentinelOne,JD_EliteSupport | Team-40-ai-test,2,2,0,0.0
+SentinelOne,724NETWORKS | ANYTIMEITSOLUTIONS | AVIOMSP | BKC-CPA | CAISOFTWARE-COVID731ACCESS | CANYONPOINT | CHAMPIONSOFCHANGE | CONTINUUM-TEST | CW Automate | CW DEV Account 1 | CW DEV Account 3 | CW DEV CONTINUUM-SOC | CW DEV CW01Dnd1 | CW DEV CW01Dnd2 | CW DEV CW01Dnd3 | CW DEV CW03Dnd3 | CW DEV EMEA-FORTIFYDEV-1 | CW DEV EMEA_CW02-FORTIFYDEV-2 | CW DEV Fortify Dev Account 1 | CW DEV Fortify Dev Account 2 | CW DEV Fortify Dev Account 3 | CW DEV Fortify Dev Account 4 | CW DEV Fortify Dev Account 5 | CW DEV Fortify Dev Account 6 | CW DEV Fortify Dev Account 7 | CYPHERCONNECTMSP | HEROITSUPPORT | IMPLIEDNETWORKS | LANGISTIC | MANSFIELDCOMPUTINGSOLUTIONS | MP-AmarTest1 | MRGA | NETGATETECH | NJTECH | NOFERNO | ONENETLTD | PMT-Test | PROSEARCH | SECURENETWORKS (Palmetto Tech) | STRATANETWORKS | TTOWNTECH | VTGUS | ZLAN,1,1,0,10185.119999999999
+Proofpoint,"America One Technologies, Inc. | Baetech Inc | Brightside IT | Cobb Technologies | PC 911 LLC | eSOZO",1,1,0,5484.6
+Proofpoint,"America One Technologies, Inc. | Baetech Inc | Central Office Systems Corp | Hodge Systems & Consulting Service | Loyality Inc. | NJ Tech Solutions | Northwest Reliable, LLC | PC 911 LLC | PVK Technology Solutions LLC",1,1,0,4696.55
+SentinelOne,CAISOFTWARE-COVID731ACCESS | CANYONPOINT | CONTINUUM-TEST | CW Automate | CW DEV Account 1 | CW DEV Account 3 | CW DEV CONTINUUM-SOC | CW DEV CW01Dnd1 | CW DEV CW01Dnd2 | CW DEV CW01Dnd3 | CW DEV CW03Dnd3 | CW DEV EMEA-FORTIFYDEV-1 | CW DEV EMEA_CW02-FORTIFYDEV-2 | CW DEV Fortify Dev Account 1 | CW DEV Fortify Dev Account 2 | CW DEV Fortify Dev Account 3 | CW DEV Fortify Dev Account 4 | CW DEV Fortify Dev Account 5 | CW DEV Fortify Dev Account 6 | CW DEV Fortify Dev Account 7 | CYPHERCONNECTMSP | MP-AmarTest1 | NETGATETECH | PMT-Test | ZLAN,1,1,0,3641.7599999999998
+SentinelOne,CANYONPOINT | CONTINUUM-TEST | CW Automate | CW DEV Account 1 | CW DEV Account 3 | CW DEV CONTINUUM-SOC | CW DEV CW01Dnd1 | CW DEV CW01Dnd2 | CW DEV CW01Dnd3 | CW DEV CW03Dnd3 | CW DEV EMEA-FORTIFYDEV-1 | CW DEV EMEA_CW02-FORTIFYDEV-2 | CW DEV Fortify Dev Account 1 | CW DEV Fortify Dev Account 2 | CW DEV Fortify Dev Account 3 | CW DEV Fortify Dev Account 4 | CW DEV Fortify Dev Account 5 | CW DEV Fortify Dev Account 6 | CW DEV Fortify Dev Account 7 | PMT-Test | ZLAN,1,1,0,1774.08
+Proofpoint,Canaan Technology - Client Accounts | Elite Technical Services LLC | ONCi Networks Inc. dba ICMicro | PC 911 LLC | eSOZO,1,1,0,1271.71
+KeepIT,"Function 4 LLC | Function4, LLC",1,0,1,1264.4
+Proofpoint,BEAU TECH | Sissine's Office Systems Inc. | Torindrive,1,1,0,767.2
+Proofpoint,Cobb Technologies | Hodge Systems & Consulting Service | Maverick Gardner ITS Inc. | NJ Tech Solutions | ONCi Networks Inc. dba ICMicro | PVK Technology Solutions LLC | Sissine's Office Systems Inc. | Torindrive,1,1,0,676.5
+Acronis,Keystone | Keystone Pacific Property Management,1,0,1,526.2000000000003
+SentinelOne,CONTINUUM-TEST | CW Automate | CW DEV Account 1 | CW DEV Account 3 | CW DEV CONTINUUM-SOC | CW DEV CW01Dnd1 | CW DEV CW01Dnd2 | CW DEV CW01Dnd3 | CW DEV CW03Dnd3 | CW DEV EMEA-FORTIFYDEV-1 | CW DEV EMEA_CW02-FORTIFYDEV-2 | CW DEV Fortify Dev Account 1 | CW DEV Fortify Dev Account 2 | CW DEV Fortify Dev Account 3 | CW DEV Fortify Dev Account 4 | CW DEV Fortify Dev Account 5 | CW DEV Fortify Dev Account 6 | CW DEV Fortify Dev Account 7 | MP-AmarTest1 | PMT-Test | RUSHAB | ZLAN,1,1,0,396.0
+Proofpoint,Cobb Technologies | Tech Success,1,1,0,189.28
+Acronis,"VIcom Virginia Integrated Communications | iDiscovery Solutions, Inc",1,0,1,150.7
+Acronis,N1Discovery LLC | Netsource One Inc | Netsource One Inc /1,1,0,1,79.6
+Acronis,Itro (do not use) | itro,1,0,1,4.0
+Proofpoint,CMIT Solutions of Austin Central | CMIT Solutions of Cedar Rapids,1,0,1,0.09999999999999987
+SentinelOne,BCDR NOC | CANYONPOINT | CORPWEST | ELEVAIT | LUMANOCLLC | ONENET | PARROINFODEVELOPPEMENT | Team-40-ai-test,1,1,0,0.0
+SentinelOne,JD_EliteSupport | RUSHAB | Team-40-ai-test,1,1,0,0.0
+SentinelOne,GOXTECHNOLOGIESINC | JD_EliteSupport | Sahil | Team-40-ai-test,1,1,0,0.0
+SentinelOne,BCDR NOC | PARROINFODEVELOPPEMENT | RD_EliteSupport | Team-40-ai-test,1,1,0,0.0
+SentinelOne,BCDR NOC | JD_EliteSupport | Mahesh-Test | PARROINFODEVELOPPEMENT | RUSHAB | Sahil | Team-40-ai-test,1,1,0,0.0
+SentinelOne,JD_EliteSupport | Sahil | Team-40-ai-test | Tisdale_Demo,1,1,0,0.0
+SentinelOne,RD_EliteSupport | Team-40-ai-test,1,1,0,0.0
+SentinelOne,ICQ COMPUTERS | PARROINFODEVELOPPEMENT | RUSHAB,1,1,0,0.0

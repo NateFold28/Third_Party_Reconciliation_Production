@@ -1,0 +1,21 @@
+version: "3.9"
+
+# Local development only — mirrors the two-container SPCS topology
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env        # Copy .env.example → .env and fill in creds
+    volumes:
+      - ../../sql:/app/sql    # Hot-reload SQL without rebuilding
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend

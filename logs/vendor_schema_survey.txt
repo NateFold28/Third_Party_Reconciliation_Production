@@ -1,0 +1,469 @@
+
+=== Acronis ===
+  executed in 11.4s
+  rows=17658  months=7  range=2026-01-01..2026-07-01  vendor_amt=$3,201,979  bill_amt=$5,886,446.0
+  55 columns:
+    VENDOR                                   TEXT
+    BILLING_MONTH                            DATE
+    SF_ID                                    TEXT
+    VENDOR_PARTNER_NAME                      TEXT
+    VENDOR_PRODUCT                           TEXT
+    CW_SKUS                                  ARRAY
+    ZUORA_SKUS                               ARRAY
+    MARKETPLACE_SKUS                         ARRAY
+    BILLING_SOURCE_MIX                       TEXT
+    VENDOR_QUANTITY                          NUMBER
+    VENDOR_UNIT_PRICE                        NUMBER
+    VENDOR_AMOUNT                            NUMBER
+    ZUORA_QUANTITY                           FLOAT
+    ZUORA_UNIT_PRICE                         FLOAT
+    ZUORA_AMOUNT                             FLOAT
+    MARKETPLACE_QUANTITY                     FLOAT
+    MARKETPLACE_AMOUNT                       FLOAT
+    TOTAL_BILLING_QUANTITY                   FLOAT
+    TOTAL_BILLING_UNIT_PRICE                 FLOAT
+    TOTAL_BILLING_AMOUNT                     FLOAT
+    QTY_DELTA                                FLOAT
+    ABS_QTY_DELTA                            FLOAT
+    AMOUNT_DELTA                             FLOAT
+    ABS_AMOUNT_DELTA                         FLOAT
+    DUPLICATE_BILLING_FLAG                   BOOLEAN
+    MARKETPLACE_TIMING_FLAG                  BOOLEAN
+    MARKETPLACE_TIMING_QUANTITY              FLOAT
+    PRIOR_MONTH_MARKETPLACE_QUANTITY         FLOAT
+    PRIOR_MONTH_MARKETPLACE_AMOUNT           FLOAT
+    PRIOR_MONTH_MARKETPLACE_ROW_COUNT        NUMBER
+    PRIOR_MONTH_MARKETPLACE_SKU_GROUPS       ARRAY
+    ANY_MARKETPLACE_QUANTITY                 FLOAT
+    ANY_MARKETPLACE_AMOUNT                   FLOAT
+    ANY_MARKETPLACE_ROW_COUNT                NUMBER
+    ANY_MARKETPLACE_SKU_GROUPS               ARRAY
+    VENDOR_SOURCE_ROW_COUNT                  NUMBER
+    PARTNER_MATCH_METHODS                    TEXT
+    SKU_MAPPING_SOURCES                      TEXT
+    CONTRACT_COST_BASIS_QUANTITY             NUMBER
+    CONTRACT_COST_BASIS_AMOUNT               NUMBER
+    CONTRACT_COST_RATE                       NUMBER
+    BILLING_VS_COST_DELTA_PER_SEAT           FLOAT
+    BILLING_VS_COST_DOLLAR_IMPACT            FLOAT
+    BILLING_VS_COST_PCT                      FLOAT
+    CONTRACT_PRICE_FLAG                      TEXT
+    MATERIAL_BELOW_COST_FLAG                 BOOLEAN
+    CONTRACT_RATE_SOURCE_DOCS                TEXT
+    RECON_RUN_TS                             TIMESTAMP_LTZ
+    OUTCOME_FLAG                             TEXT
+    INVESTIGATION_REASON                     TEXT
+    BILLING_ACTION_REQUIRED                  BOOLEAN
+    VENDOR_VS_CONTRACT_DELTA_PER_SEAT        NUMBER
+    VENDOR_VS_CONTRACT_PCT                   NUMBER
+    VENDOR_VS_CONTRACT_FLAG                  TEXT
+    VENDOR_VS_CONTRACT_DOLLAR_IMPACT         NUMBER
+  Top OUTCOME_FLAGs:
+      8076 | CLEAR
+      3753 | NEGLIGIBLE_DOLLAR_EXPOSURE
+      1082 | MARKETPLACE_ONLY_CLEAR
+       813 | MINOR_DRIFT
+       810 | STRUCTURAL_BILLING_ONLY
+       604 | STRUCTURAL_VENDOR_ONLY_NO_CONTRACT
+       565 | MATERIAL_UNDER_VENDOR
+       499 | SKU_MISMATCH_BILLING_ON_OTHER_SKU
+       331 | MARKETPLACE_TIMING
+       298 | MATERIAL_OVER_VENDOR
+       244 | VENDOR_PRODUCT_NO_CW_SKU
+       203 | DUPLICATE_BILLING
+       163 | BILLING_DIFFERENTIAL_OVER
+       143 | OVERAGE_EXPECTED
+        74 | PARTNER_MAPPING_REQUIRED
+
+=== Auvik ===
+  AUVIK_RECON_DETAIL already exists
+  rows=3522  months=10  range=2026-01-01..2026-10-01  vendor_amt=$3,798,858  bill_amt=$4,267,067.0
+  68 columns:
+    BILLING_MONTH                            DATE
+    SF_ID                                    TEXT
+    VENDOR_PARTNER_NAME                      TEXT
+    AUVIK_PRODUCT                            TEXT
+    AUVIK_PRODUCT_GROUP                      TEXT
+    SKU_MATCH_GROUP                          TEXT
+    VENDOR_ENTITIES                          TEXT
+    CURRENCIES                               TEXT
+    CW_SKUS                                  ARRAY
+    ZUORA_SKUS                               ARRAY
+    ZUORA_CHARGE_NAMES                       TEXT
+    ZUORA_BILLING_UNIT_TYPES                 TEXT
+    MAX_ZUORA_BILLING_QTY_MULTIPLIER         NUMBER
+    MARKETPLACE_SKUS                         ARRAY
+    MARKETPLACE_TRANSACTION_SOURCES          TEXT
+    BILLING_SOURCE_MIX                       TEXT
+    VENDOR_RAW_QUANTITY                      NUMBER
+    VENDOR_OVERAGE_QUANTITY                  NUMBER
+    VENDOR_QUANTITY                          NUMBER
+    VENDOR_UNIT_PRICE                        NUMBER
+    VENDOR_AMOUNT                            NUMBER
+    ZUORA_NATIVE_QUANTITY                    FLOAT
+    ZUORA_QUANTITY                           FLOAT
+    ZUORA_UNIT_PRICE                         FLOAT
+    ZUORA_AMOUNT                             FLOAT
+    MARKETPLACE_QUANTITY                     FLOAT
+    MARKETPLACE_AMOUNT                       FLOAT
+    TOTAL_BILLING_QUANTITY                   FLOAT
+    TOTAL_BILLING_UNIT_PRICE                 FLOAT
+    TOTAL_BILLING_AMOUNT                     FLOAT
+    QTY_DELTA                                FLOAT
+    ABS_QTY_DELTA                            FLOAT
+    AMOUNT_DELTA                             FLOAT
+    ABS_AMOUNT_DELTA                         FLOAT
+    DUPLICATE_BILLING_FLAG                   BOOLEAN
+    MARKETPLACE_TIMING_FLAG                  BOOLEAN
+    MARKETPLACE_TIMING_QUANTITY              NUMBER
+    NEARBY_BILLING_MONTH                     DATE
+    NEARBY_BILLING_MONTH_OFFSET              NUMBER
+    NEARBY_BILLING_SOURCE                    TEXT
+    NEARBY_BILLING_QUANTITY                  FLOAT
+    NEARBY_BILLING_AMOUNT                    FLOAT
+    NEARBY_ABS_QTY_DELTA                     FLOAT
+    VENDOR_SOURCE_ROW_COUNT                  NUMBER
+    PARTNER_MATCH_METHODS                    TEXT
+    SKU_MAPPING_SOURCES                      TEXT
+    VENDOR_PRODUCT_BREAKDOWN                 TEXT
+    CONTRACT_COST_BASIS_QUANTITY             NUMBER
+    CONTRACT_COST_BASIS_AMOUNT               NUMBER
+    CONTRACT_COST_RATE                       NUMBER
+    BILLING_VS_COST_DELTA_PER_SEAT           FLOAT
+    BILLING_VS_COST_DOLLAR_IMPACT            FLOAT
+    BILLING_VS_COST_PCT                      FLOAT
+    CONTRACT_PRICE_FLAG                      TEXT
+    MATERIAL_BELOW_COST_FLAG                 BOOLEAN
+    CONTRACT_RATE_SOURCE_DOCS                TEXT
+    RECON_RUN_TS                             TIMESTAMP_LTZ
+    BASE_OUTCOME_FLAG                        TEXT
+    MATERIALITY_BAND                         TEXT
+    MARKETPLACE_CLASSIFICATION               TEXT
+    OVERAGE_CLASSIFICATION                   TEXT
+    OUTCOME_FLAG                             TEXT
+    INVESTIGATION_REASON                     TEXT
+    BILLING_ACTION_REQUIRED                  BOOLEAN
+    VENDOR_VS_CONTRACT_DELTA_PER_SEAT        NUMBER
+    VENDOR_VS_CONTRACT_PCT                   NUMBER
+    VENDOR_VS_CONTRACT_FLAG                  TEXT
+    VENDOR_VS_CONTRACT_DOLLAR_IMPACT         NUMBER
+  Top OUTCOME_FLAGs:
+      1163 | CLEAR|MAT_LOW|SRC_NON_MARKETPLACE|OVR_NO_OVERAGE
+       603 | CLEAR|MAT_LOW|SRC_MARKETPLACE_OVERLAP|OVR_NO_OVERAGE
+       246 | NO_BILLING_NO_HISTORY|MAT_HIGH|SRC_NO_BILLING_SOURCE|OVR_NO_OVERAGE
+       221 | SKU_MISMATCH_BILLING_ON_OTHER_SKU|MAT_HIGH|SRC_NO_BILLING_SOURCE|OVR_NO_OVERAGE
+       189 | VENDOR_OVER_BILLING|MAT_HIGH|SRC_NON_MARKETPLACE|OVR_NO_OVERAGE
+       155 | BILLING_OVER_VENDOR|MAT_HIGH|SRC_NON_MARKETPLACE|OVR_NO_OVERAGE
+        92 | BILLING_TIMING_ADJACENT_MONTH|MAT_HIGH|SRC_NO_BILLING_SOURCE|OVR_NO_OVERAGE
+        89 | PARTNER_MAPPING_REQUIRED|MAT_HIGH|SRC_NO_BILLING_SOURCE|OVR_NO_OVERAGE
+        80 | VENDOR_OVER_BILLING|MAT_MEDIUM|SRC_NON_MARKETPLACE|OVR_NO_OVERAGE
+        73 | BILLING_OVER_VENDOR|MAT_HIGH|SRC_MARKETPLACE_PRIMARY|OVR_NO_OVERAGE
+        60 | VENDOR_OVER_BILLING|MAT_LOW|SRC_NON_MARKETPLACE|OVR_NO_OVERAGE
+        55 | BILLING_OVER_VENDOR|MAT_HIGH|SRC_MARKETPLACE_OVERLAP|OVR_NO_OVERAGE
+        55 | SKU_MISMATCH_BILLING_ON_OTHER_SKU|MAT_LOW|SRC_NO_BILLING_SOURCE|OVR_NO_OVERAGE
+        46 | BILLING_OVER_VENDOR|MAT_MEDIUM|SRC_MARKETPLACE_OVERLAP|OVR_NO_OVERAGE
+        43 | PARTNER_MAPPING_REQUIRED|MAT_LOW|SRC_NO_BILLING_SOURCE|OVR_NO_OVERAGE
+        39 | BILLING_OVER_VENDOR|MAT_LOW|SRC_MARKETPLACE_OVERLAP|OVR_NO_OVERAGE
+        38 | NO_BILLING_NO_HISTORY|MAT_LOW|SRC_NO_BILLING_SOURCE|OVR_NO_OVERAGE
+        32 | BILLING_OVER_VENDOR|MAT_LOW|SRC_MARKETPLACE_PRIMARY|OVR_NO_OVERAGE
+        31 | VENDOR_OVER_BILLING|MAT_HIGH|SRC_MARKETPLACE_OVERLAP|OVR_NO_OVERAGE
+        31 | BILLING_TIMING_ADJACENT_MONTH|MAT_LOW|SRC_NO_BILLING_SOURCE|OVR_NO_OVERAGE
+        29 | VENDOR_OVER_BILLING|MAT_LOW|SRC_MARKETPLACE_OVERLAP|OVR_NO_OVERAGE
+        28 | NO_BILLING_NO_HISTORY|MAT_MEDIUM|SRC_NO_BILLING_SOURCE|OVR_NO_OVERAGE
+        24 | BILLING_OVER_VENDOR|MAT_LOW|SRC_NON_MARKETPLACE|OVR_NO_OVERAGE
+        19 | VENDOR_OVER_BILLING|MAT_MEDIUM|SRC_MARKETPLACE_OVERLAP|OVR_NO_OVERAGE
+        18 | PARTNER_MAPPING_REQUIRED|MAT_MEDIUM|SRC_NO_BILLING_SOURCE|OVR_NO_OVERAGE
+        18 | SKU_MISMATCH_BILLING_ON_OTHER_SKU|MAT_MEDIUM|SRC_NO_BILLING_SOURCE|OVR_NO_OVERAGE
+        18 | BILLING_OVER_VENDOR|MAT_MEDIUM|SRC_NON_MARKETPLACE|OVR_NO_OVERAGE
+        14 | BILLING_OVER_VENDOR|MAT_MEDIUM|SRC_MARKETPLACE_PRIMARY|OVR_NO_OVERAGE
+        11 | BILLING_TIMING_ADJACENT_MONTH|MAT_MEDIUM|SRC_NO_BILLING_SOURCE|OVR_NO_OVERAGE
+         1 | CLEAR|MAT_LOW|SRC_MARKETPLACE_PRIMARY|OVR_NO_OVERAGE
+
+=== Bitdefender ===
+  executed in 7.4s
+  rows=3385  months=10  range=2026-01-01..2026-10-01  vendor_amt=$1,390,898  bill_amt=$3,086,839.0
+  52 columns:
+    BILLING_MONTH                            DATE
+    SF_ID                                    TEXT
+    VENDOR_PARTNER_NAME                      TEXT
+    VENDOR_PRODUCT                           TEXT
+    CW_SKUS                                  ARRAY
+    ZUORA_SKUS                               ARRAY
+    MARKETPLACE_SKUS                         ARRAY
+    BILLING_SOURCE_MIX                       TEXT
+    VENDOR_QUANTITY                          NUMBER
+    VENDOR_UNIT_PRICE                        NUMBER
+    VENDOR_AMOUNT                            NUMBER
+    ZUORA_QUANTITY                           FLOAT
+    ZUORA_UNIT_PRICE                         FLOAT
+    ZUORA_AMOUNT                             FLOAT
+    MARKETPLACE_QUANTITY                     FLOAT
+    MARKETPLACE_AMOUNT                       FLOAT
+    TOTAL_BILLING_QUANTITY                   FLOAT
+    TOTAL_BILLING_UNIT_PRICE                 FLOAT
+    TOTAL_BILLING_AMOUNT                     FLOAT
+    QTY_DELTA                                FLOAT
+    ABS_QTY_DELTA                            FLOAT
+    AMOUNT_DELTA                             FLOAT
+    ABS_AMOUNT_DELTA                         FLOAT
+    DUPLICATE_BILLING_FLAG                   BOOLEAN
+    MARKETPLACE_TIMING_FLAG                  BOOLEAN
+    MARKETPLACE_TIMING_QUANTITY              FLOAT
+    VENDOR_SOURCE_ROW_COUNT                  NUMBER
+    PARTNER_MATCH_METHODS                    TEXT
+    SKU_MAPPING_SOURCES                      TEXT
+    MDR_BUNDLE_BILLED_FLAG                   BOOLEAN
+    MDR_COMPONENT_ROYALTY_FLAG               BOOLEAN
+    CONTRACT_COST_BASIS_QUANTITY             NUMBER
+    CONTRACT_COST_BASIS_AMOUNT               NUMBER
+    CONTRACT_COST_RATE                       NUMBER
+    BILLING_VS_COST_DELTA_PER_SEAT           FLOAT
+    BILLING_VS_COST_DOLLAR_IMPACT            FLOAT
+    BILLING_VS_COST_PCT                      FLOAT
+    CONTRACT_PRICE_FLAG                      TEXT
+    MATERIAL_BELOW_COST_FLAG                 BOOLEAN
+    CONTRACT_RATE_SOURCE_DOCS                TEXT
+    RECON_RUN_TS                             TIMESTAMP_LTZ
+    BASE_OUTCOME_FLAG                        TEXT
+    MATERIALITY_BAND                         TEXT
+    MARKETPLACE_CLASSIFICATION               TEXT
+    OVERAGE_CLASSIFICATION                   TEXT
+    OUTCOME_FLAG                             TEXT
+    INVESTIGATION_REASON                     TEXT
+    BILLING_ACTION_REQUIRED                  BOOLEAN
+    VENDOR_VS_CONTRACT_DELTA_PER_SEAT        NUMBER
+    VENDOR_VS_CONTRACT_PCT                   NUMBER
+    VENDOR_VS_CONTRACT_FLAG                  TEXT
+    VENDOR_VS_CONTRACT_DOLLAR_IMPACT         NUMBER
+  Top OUTCOME_FLAGs:
+      2361 | CLEAR|MAT_LOW|SRC_NON_MARKETPLACE|OVR_BASE_OR_BUNDLE
+       614 | CLEAR|MAT_LOW|SRC_MARKETPLACE_OVERLAP|OVR_BASE_OR_BUNDLE
+       149 | BILLING_OVER_VENDOR|MAT_HIGH|SRC_MARKETPLACE_OVERLAP|OVR_BASE_OR_BUNDLE
+       142 | CLEAR|MAT_LOW|SRC_NO_BILLING_SOURCE|OVR_BASE_OR_BUNDLE
+        96 | BILLING_OVER_VENDOR|MAT_HIGH|SRC_NON_MARKETPLACE|OVR_BASE_OR_BUNDLE
+         8 | BILLING_OVER_VENDOR|MAT_MEDIUM|SRC_MARKETPLACE_OVERLAP|OVR_BASE_OR_BUNDLE
+         7 | NO_BILLING_NO_HISTORY|MAT_LOW|SRC_NO_BILLING_SOURCE|OVR_BASE_OR_BUNDLE
+         3 | BILLING_OVER_VENDOR|MAT_LOW|SRC_NON_MARKETPLACE|OVR_BASE_OR_BUNDLE
+         2 | BILLING_OVER_VENDOR|MAT_MEDIUM|SRC_NON_MARKETPLACE|OVR_BASE_OR_BUNDLE
+         2 | NO_BILLING_NO_HISTORY|MAT_MEDIUM|SRC_NO_BILLING_SOURCE|OVR_BASE_OR_BUNDLE
+         1 | BILLING_OVER_VENDOR|MAT_LOW|SRC_MARKETPLACE_OVERLAP|OVR_BASE_OR_BUNDLE
+
+=== ESET ===
+  executed in 5.4s
+  rows=13472  months=6  range=2026-01-01..2026-06-01  vendor_amt=$0  bill_amt=$5,172,283.0
+  50 columns:
+    BILLING_MONTH                            DATE
+    SF_ID                                    TEXT
+    VENDOR_PARTNER_NAME                      TEXT
+    VENDOR_PRODUCT                           TEXT
+    CW_SKUS                                  ARRAY
+    ZUORA_SKUS                               ARRAY
+    MARKETPLACE_SKUS                         ARRAY
+    BILLING_SOURCE_MIX                       TEXT
+    VENDOR_QUANTITY                          NUMBER
+    VENDOR_UNIT_PRICE                        NUMBER
+    VENDOR_AMOUNT                            NUMBER
+    ZUORA_QUANTITY                           FLOAT
+    ZUORA_UNIT_PRICE                         FLOAT
+    ZUORA_AMOUNT                             FLOAT
+    MARKETPLACE_QUANTITY                     FLOAT
+    MARKETPLACE_AMOUNT                       FLOAT
+    TOTAL_BILLING_QUANTITY                   FLOAT
+    TOTAL_BILLING_UNIT_PRICE                 FLOAT
+    TOTAL_BILLING_AMOUNT                     FLOAT
+    QTY_DELTA                                FLOAT
+    ABS_QTY_DELTA                            FLOAT
+    AMOUNT_DELTA                             FLOAT
+    ABS_AMOUNT_DELTA                         FLOAT
+    DUPLICATE_BILLING_FLAG                   BOOLEAN
+    MARKETPLACE_TIMING_FLAG                  BOOLEAN
+    MARKETPLACE_TIMING_QUANTITY              FLOAT
+    VENDOR_SOURCE_ROW_COUNT                  NUMBER
+    PARTNER_MATCH_METHODS                    TEXT
+    SKU_MAPPING_SOURCES                      TEXT
+    CONTRACT_COST_BASIS_QUANTITY             NUMBER
+    CONTRACT_COST_BASIS_AMOUNT               NUMBER
+    CONTRACT_COST_RATE                       NUMBER
+    BILLING_VS_COST_DELTA_PER_SEAT           FLOAT
+    BILLING_VS_COST_DOLLAR_IMPACT            FLOAT
+    BILLING_VS_COST_PCT                      FLOAT
+    CONTRACT_PRICE_FLAG                      TEXT
+    MATERIAL_BELOW_COST_FLAG                 BOOLEAN
+    CONTRACT_RATE_SOURCE_DOCS                TEXT
+    RECON_RUN_TS                             TIMESTAMP_LTZ
+    BASE_OUTCOME_FLAG                        TEXT
+    MATERIALITY_BAND                         TEXT
+    MARKETPLACE_CLASSIFICATION               TEXT
+    OVERAGE_CLASSIFICATION                   TEXT
+    OUTCOME_FLAG                             TEXT
+    INVESTIGATION_REASON                     TEXT
+    BILLING_ACTION_REQUIRED                  BOOLEAN
+    VENDOR_VS_CONTRACT_DELTA_PER_SEAT        NUMBER
+    VENDOR_VS_CONTRACT_PCT                   NUMBER
+    VENDOR_VS_CONTRACT_FLAG                  TEXT
+    VENDOR_VS_CONTRACT_DOLLAR_IMPACT         NUMBER
+  Top OUTCOME_FLAGs:
+      6992 | VENDOR_OVER_BILLING|MAT_HIGH|SRC_MARKETPLACE_PRIMARY|OVR_BASE_OR_BUNDLE
+      3099 | VENDOR_OVER_BILLING|MAT_HIGH|SRC_MARKETPLACE_OVERLAP|OVR_BASE_OR_BUNDLE
+      1187 | NO_BILLING_NO_HISTORY|MAT_HIGH|SRC_NON_MARKETPLACE|OVR_BASE_OR_BUNDLE
+      1146 | BILLING_OVER_VENDOR|MAT_HIGH|SRC_MARKETPLACE_OVERLAP|OVR_BASE_OR_BUNDLE
+       339 | VENDOR_OVER_BILLING|MAT_HIGH|SRC_NON_MARKETPLACE|OVR_BASE_OR_BUNDLE
+       269 | BILLING_OVER_VENDOR|MAT_LOW|SRC_MARKETPLACE_OVERLAP|OVR_BASE_OR_BUNDLE
+       112 | BILLING_OVER_VENDOR|MAT_MEDIUM|SRC_MARKETPLACE_OVERLAP|OVR_BASE_OR_BUNDLE
+        85 | NO_BILLING_NO_HISTORY|MAT_HIGH|SRC_MARKETPLACE_PRIMARY|OVR_BASE_OR_BUNDLE
+        82 | BILLING_OVER_VENDOR|MAT_HIGH|SRC_MARKETPLACE_PRIMARY|OVR_BASE_OR_BUNDLE
+        80 | BILLING_OVER_VENDOR|MAT_HIGH|SRC_NON_MARKETPLACE|OVR_BASE_OR_BUNDLE
+        48 | VENDOR_OVER_BILLING|MAT_MEDIUM|SRC_MARKETPLACE_PRIMARY|OVR_BASE_OR_BUNDLE
+        15 | VENDOR_OVER_BILLING|MAT_LOW|SRC_MARKETPLACE_PRIMARY|OVR_BASE_OR_BUNDLE
+         5 | NO_BILLING_NO_HISTORY|MAT_MEDIUM|SRC_NON_MARKETPLACE|OVR_BASE_OR_BUNDLE
+         3 | CLEAR|MAT_LOW|SRC_MARKETPLACE_PRIMARY|OVR_BASE_OR_BUNDLE
+         3 | VENDOR_OVER_BILLING|MAT_MEDIUM|SRC_NON_MARKETPLACE|OVR_BASE_OR_BUNDLE
+         3 | BILLING_OVER_VENDOR|MAT_LOW|SRC_NON_MARKETPLACE|OVR_BASE_OR_BUNDLE
+         3 | BILLING_OVER_VENDOR|MAT_MEDIUM|SRC_NON_MARKETPLACE|OVR_BASE_OR_BUNDLE
+         1 | BILLING_OVER_VENDOR|MAT_LOW|SRC_MARKETPLACE_PRIMARY|OVR_BASE_OR_BUNDLE
+
+=== Exium ===
+  ERROR: 002003 (42S02): SQL compilation error:
+Object 'EXIUM_PARTNER_MAPPING_V5' does not exist or not authorized.
+
+=== KeepIT ===
+  executed in 7.7s
+  rows=23164  months=7  range=2026-01-01..2026-07-01  vendor_amt=$182,718,203  bill_amt=$5,061,973.0
+  54 columns:
+    VENDOR                                   TEXT
+    BILLING_MONTH                            DATE
+    SOURCE_FAMILY                            TEXT
+    SF_ID                                    TEXT
+    CMS_ID                                   TEXT
+    CMS_IDS                                  ARRAY
+    VENDOR_PARTNER_NAME                      TEXT
+    VENDOR_SOURCE_FAMILIES                   ARRAY
+    VENDOR_PRODUCT                           TEXT
+    CW_SKUS                                  ARRAY
+    ZUORA_SKUS                               ARRAY
+    ZUORA_CHARGE_NAMES                       ARRAY
+    CARR_SKUS                                ARRAY
+    BILLING_SOURCE_MIX                       TEXT
+    VENDOR_QUANTITY                          NUMBER
+    VENDOR_UNIT_PRICE                        NUMBER
+    VENDOR_AMOUNT                            NUMBER
+    ZUORA_QUANTITY                           FLOAT
+    ZUORA_UNIT_PRICE                         FLOAT
+    ZUORA_AMOUNT                             FLOAT
+    MARKETPLACE_QUANTITY                     FLOAT
+    MARKETPLACE_AMOUNT                       FLOAT
+    TOTAL_BILLING_QUANTITY                   FLOAT
+    TOTAL_BILLING_UNIT_PRICE                 FLOAT
+    TOTAL_BILLING_AMOUNT                     FLOAT
+    QTY_DELTA                                FLOAT
+    ABS_QTY_DELTA                            FLOAT
+    AMOUNT_DELTA                             FLOAT
+    ABS_AMOUNT_DELTA                         FLOAT
+    DUPLICATE_BILLING_FLAG                   BOOLEAN
+    MARKETPLACE_TIMING_FLAG                  BOOLEAN
+    MARKETPLACE_TIMING_QUANTITY              FLOAT
+    VENDOR_SOURCE_ROW_COUNT                  NUMBER
+    VENDOR_PARTNER_GUID_COUNT                NUMBER
+    VENDOR_UNMAPPED_PARTNER_ROWS             NUMBER
+    PARTNER_MATCH_METHODS                    TEXT
+    SKU_MAPPING_SOURCES                      TEXT
+    CONTRACT_COST_BASIS_QUANTITY             NUMBER
+    CONTRACT_COST_BASIS_AMOUNT               NUMBER
+    CONTRACT_COST_RATE                       NUMBER
+    BILLING_VS_COST_DELTA_PER_SEAT           NUMBER
+    BILLING_VS_COST_DOLLAR_IMPACT            NUMBER
+    BILLING_VS_COST_PCT                      NUMBER
+    CONTRACT_PRICE_FLAG                      TEXT
+    MATERIAL_BELOW_COST_FLAG                 BOOLEAN
+    CONTRACT_RATE_SOURCE_DOCS                TEXT
+    RECON_RUN_TS                             TIMESTAMP_LTZ
+    OUTCOME_FLAG                             TEXT
+    INVESTIGATION_REASON                     TEXT
+    BILLING_ACTION_REQUIRED                  BOOLEAN
+    VENDOR_VS_CONTRACT_DELTA_PER_SEAT        NUMBER
+    VENDOR_VS_CONTRACT_PCT                   NUMBER
+    VENDOR_VS_CONTRACT_FLAG                  TEXT
+    VENDOR_VS_CONTRACT_DOLLAR_IMPACT         NUMBER
+  Top OUTCOME_FLAGs:
+     15076 | CW_INCLUDED_ZERO_DOLLAR
+      2745 | STRUCTURAL_VENDOR_ONLY
+      2015 | DUPLICATE_BILLING
+      2006 | CW_ONLY_ADDON_NO_VENDOR
+       501 | CLEAR
+       373 | NEGLIGIBLE_DOLLAR_EXPOSURE
+       244 | MATERIAL_UNDER_VENDOR
+       144 | STRUCTURAL_BILLING_ONLY
+        54 | PARTNER_MAPPING_REQUIRED
+         6 | MATERIAL_OVER_VENDOR
+
+=== Proofpoint ===
+  executed in 10.8s
+  rows=5471  months=7  range=2026-01-01..2026-07-01  vendor_amt=$3,648,204  bill_amt=$4,975,835.0
+  47 columns:
+    VENDOR                                   TEXT
+    BILLING_MONTH                            DATE
+    SF_ID                                    TEXT
+    VENDOR_PARTNER_NAME                      TEXT
+    VENDOR_PRODUCT                           TEXT
+    CW_SKUS                                  ARRAY
+    ZUORA_SKUS                               ARRAY
+    MARKETPLACE_SKUS                         ARRAY
+    BILLING_SOURCE_MIX                       TEXT
+    VENDOR_QUANTITY                          NUMBER
+    VENDOR_UNIT_PRICE                        NUMBER
+    VENDOR_AMOUNT                            NUMBER
+    ZUORA_QUANTITY                           FLOAT
+    ZUORA_UNIT_PRICE                         FLOAT
+    ZUORA_AMOUNT                             FLOAT
+    MARKETPLACE_QUANTITY                     FLOAT
+    MARKETPLACE_AMOUNT                       FLOAT
+    TOTAL_BILLING_QUANTITY                   FLOAT
+    TOTAL_BILLING_UNIT_PRICE                 FLOAT
+    TOTAL_BILLING_AMOUNT                     FLOAT
+    QTY_DELTA                                FLOAT
+    ABS_QTY_DELTA                            FLOAT
+    AMOUNT_DELTA                             FLOAT
+    ABS_AMOUNT_DELTA                         FLOAT
+    DUPLICATE_BILLING_FLAG                   BOOLEAN
+    MARKETPLACE_TIMING_FLAG                  BOOLEAN
+    MARKETPLACE_TIMING_QUANTITY              FLOAT
+    VENDOR_SOURCE_ROW_COUNT                  NUMBER
+    PARTNER_MATCH_METHODS                    TEXT
+    SKU_MAPPING_SOURCES                      TEXT
+    CONTRACT_COST_BASIS_QUANTITY             NUMBER
+    CONTRACT_COST_BASIS_AMOUNT               NUMBER
+    CONTRACT_COST_RATE                       NUMBER
+    BILLING_VS_COST_DELTA_PER_SEAT           FLOAT
+    BILLING_VS_COST_DOLLAR_IMPACT            FLOAT
+    BILLING_VS_COST_PCT                      FLOAT
+    CONTRACT_PRICE_FLAG                      TEXT
+    MATERIAL_BELOW_COST_FLAG                 BOOLEAN
+    CONTRACT_RATE_SOURCE_DOCS                TEXT
+    RECON_RUN_TS                             TIMESTAMP_LTZ
+    OUTCOME_FLAG                             TEXT
+    INVESTIGATION_REASON                     TEXT
+    BILLING_ACTION_REQUIRED                  BOOLEAN
+    VENDOR_VS_CONTRACT_DELTA_PER_SEAT        NUMBER
+    VENDOR_VS_CONTRACT_PCT                   NUMBER
+    VENDOR_VS_CONTRACT_FLAG                  TEXT
+    VENDOR_VS_CONTRACT_DOLLAR_IMPACT         NUMBER
+  Top OUTCOME_FLAGs:
+      5317 | CLEAR
+        54 | DUPLICATE_BILLING
+        47 | SKU_MISMATCH_BILLING_ON_OTHER_SKU
+        15 | KNOWN_GOOD_MAPPING_MISSING_CURRENT_BILLING
+        11 | MATERIAL_UNDER_VENDOR
+        10 | MINOR_DRIFT
+         6 | STRUCTURAL_VENDOR_ONLY_NO_CONTRACT
+         6 | PARTNER_MAPPING_REQUIRED
+         3 | CONTRACT_TIMING_OR_INACTIVE
+         2 | MARKETPLACE_TIMING
+
+=== SentinelOne ===
+  ERROR: 002037 (42601): SQL compilation error:
+Failure during expansion of view 'SENTINELONE_SKU_MAP_NORMALIZED': SQL compilation error:
+Object 'ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.SENTINELONE_SKU_MAP_V5' does not exist or not authorized.
+
+=== Webroot ===
+  ERROR: 002003 (42S02): SQL compilation error:
+Object 'WEBROOT_TRT_USAGE_MONTHLY' does not exist or not authorized.

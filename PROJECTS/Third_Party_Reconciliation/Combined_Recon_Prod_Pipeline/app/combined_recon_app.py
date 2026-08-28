@@ -64,6 +64,8 @@ FRESHNESS_TTL_SECONDS = int(os.getenv("THIRD_PARTY_RECON_DASHBOARD_FRESHNESS_TTL
 #      so the app skips per-row Python classification. Single UNION query
 #      loads every vendor in one round-trip. Cache TTLs bumped so freshness
 #      key alone drives invalidation.
+# v24: TRT API backfill expanded to Proofpoint (21st cycle snapshot). 
+#      API_QUANTITY and AVG_API_QUANTITY now populate for Proofpoint rows.
 # v26: ESET is quantity-first and now carries contract-cost overlay dollars.
 # v27: adds vendor invoice vs raw vendor usage SKU-level intra-vendor control.
 SLICE_SCHEMA_VERSION = "v27"
@@ -1287,7 +1289,7 @@ def outcome_qty(detail: pd.DataFrame, flag: str) -> float:
 
 BUCKET_CLEAR                 = "Clear"
 BUCKET_UNMAPPED              = "Unmapped Partner"
-BUCKET_DUPLICATE             = "Duplicated CW Invoice"
+BUCKET_DUPLICATE             = "Duplicated CW Invoice"  # legacy-only fallback label
 BUCKET_MARKETPLACE_TIMING    = "Marketplace Billing Delay"
 BUCKET_KNOWN_DISCOUNT        = "Known Discount / Bundle"
 BUCKET_VENDOR_SKU_NO_CW      = "Vendor SKU, No CW SKU"
@@ -1302,7 +1304,6 @@ BUCKET_VENDOR_NO_CW          = "Vendor Billing, Insufficient CW Billing"
 # does not flag legitimate catch-all rows as unclassified.
 EXCEPTION_BUCKETS = [
     BUCKET_UNMAPPED,
-    BUCKET_DUPLICATE,
     BUCKET_MARKETPLACE_TIMING,
     BUCKET_KNOWN_DISCOUNT,
     BUCKET_VENDOR_SKU_NO_CW,
@@ -1335,7 +1336,8 @@ FLAG_PLAIN: dict[str, str] = {
     "MARKETPLACE_OVERAGE": BUCKET_CLEAR,
     # Structural data integrity
     "PARTNER_MAPPING_REQUIRED": BUCKET_UNMAPPED,
-    "DUPLICATE_BILLING": BUCKET_DUPLICATE,
+    # Duplicate is informational now (Y/N column), not a primary exception bucket.
+    "DUPLICATE_BILLING": "Other Issue",
     "MARKETPLACE_TIMING": BUCKET_MARKETPLACE_TIMING,
     "MARKETPLACE_BILLING_NO_VENDOR": BUCKET_MARKETPLACE_TIMING,
     "BILLING_TIMING_ADJACENT_MONTH": BUCKET_MARKETPLACE_TIMING,
@@ -1381,7 +1383,7 @@ FLAG_PLAIN: dict[str, str] = {
 FLAG_DISPLAY_ACTION: dict[str, str] = {
     BUCKET_CLEAR: "None",
     BUCKET_UNMAPPED: "Data team: update partner mapping",
-    BUCKET_DUPLICATE: "Billing Ops: cancel duplicate invoice line",
+    BUCKET_DUPLICATE: "Billing Ops: review duplicate overlap signal",
     BUCKET_MARKETPLACE_TIMING: "No action \u2014 prior-month invoice expected next cycle",
     BUCKET_KNOWN_DISCOUNT: "No action \u2014 intentional discount or bundle pricing",
     BUCKET_VENDOR_SKU_NO_CW: "Product / Catalog: add a CW rebill SKU for this vendor product",
@@ -1405,7 +1407,6 @@ FINANCE_QUEUE_CATEGORIES = [
 OPS_QUEUE_CATEGORIES = [
     BUCKET_CW_NO_VENDOR_BILLING,
     BUCKET_CW_SKU_NO_VENDOR,
-    BUCKET_DUPLICATE,
     BUCKET_VENDOR_SKU_NO_CW,  # Catalog gap -- needs Ops/Product action
     BUCKET_UNMAPPED,
 ]
@@ -1562,7 +1563,7 @@ def _classify_bucket_series(detail: pd.DataFrame) -> pd.Series:
             "Missing CW Billing - API Confirmed": BUCKET_TRT_NO_BILLING,
             "API Usage Recorded, No CW Billing": BUCKET_TRT_NO_BILLING,
             "Unmapped SKU": BUCKET_UNMAPPED,
-            "Duplicate Billing": BUCKET_DUPLICATE,
+            "Duplicate Billing": "Other Issue",
             "Clear - Discounted / Bundled": BUCKET_KNOWN_DISCOUNT,
         })
     # Fallback: EXCEPTION_TYPE not in table — derive from OUTCOME_FLAG.
@@ -1830,13 +1831,15 @@ def exception_rollup(detail: pd.DataFrame) -> pd.DataFrame:
 
     d["_acct"] = d.get("SF_ID", pd.Series(index=d.index)).astype(str)
     d.loc[d["_acct"].isin(["None", "nan", "NaT", ""]), "_acct"] = pd.NA
+    amt_delta = pd.to_numeric(d.get("AMOUNT_DELTA", 0.0), errors="coerce").fillna(0).abs()
+    vendor_amt = pd.to_numeric(d.get("VENDOR_AMOUNT", 0.0), errors="coerce").fillna(0).abs()
     if "EST_DOLLAR_IMPACT" in d.columns:
-        # Precomputed by SQL as ABS(amount_delta). Skip the fillna+abs pass.
-        pass
-    elif "AMOUNT_DELTA" in d.columns:
-        d["EST_DOLLAR_IMPACT"] = d["AMOUNT_DELTA"].fillna(0).abs()
+        est_impact = pd.to_numeric(d["EST_DOLLAR_IMPACT"], errors="coerce").fillna(0)
     else:
-        d["EST_DOLLAR_IMPACT"] = 0.0
+        est_impact = pd.Series(0.0, index=d.index)
+    # For catalog-gap rows (for example Vendor SKU, No CW SKU), AMOUNT_DELTA can
+    # be zero even when vendor-side cost exists. Use the max of available signals.
+    d["EST_DOLLAR_IMPACT"] = pd.concat([est_impact, amt_delta, vendor_amt], axis=1).max(axis=1)
 
     roll = (
         d.groupby("Exception Type", dropna=False)
@@ -2103,7 +2106,7 @@ with _refresh_col1:
 # tab/filter change for the 99% path.
 # ---------------------------------------------------------------------------
 _audit_toggle_key = "data_source_audit_enabled"
-with st.expander(f"\U0001f50d Data source audit  (schema {SLICE_SCHEMA_VERSION})", expanded=False):
+with st.expander("\U0001f50d Data source audit", expanded=False):
     _audit_enabled = st.checkbox(
         "Load live audit metrics",
         value=st.session_state.get(_audit_toggle_key, False),
@@ -2243,7 +2246,7 @@ st.markdown(
 
 c_vendor, c_year, c_month = st.columns([1.5, 1.1, 1.5])
 vendor_lookup = {v["name"]: v for v in active_vendors}
-_all_vendor_names = list(vendor_lookup.keys())
+_all_vendor_names = sorted(vendor_lookup.keys())
 
 # Surface the registered vendor set so an analyst can immediately tell
 # whether a new vendor has actually been wired into the app (versus
@@ -2542,7 +2545,11 @@ def _portfolio_exception_rollup_cached(sig: str, vendor_keys: tuple[str, ...], m
                 EXCEPTION_TYPE                              AS "Exception Type",
                 COUNT(DISTINCT SF_ID)                       AS "Affected Accounts",
                 SUM(COALESCE(ABS_QTY_DELTA, 0))             AS "Seat Variance",
-                SUM(COALESCE(EST_DOLLAR_IMPACT, ABS(COALESCE(AMOUNT_DELTA, 0)))) AS "EST_DOLLAR_IMPACT"
+                SUM(GREATEST(
+                    COALESCE(EST_DOLLAR_IMPACT, 0),
+                    ABS(COALESCE(AMOUNT_DELTA, 0)),
+                    ABS(COALESCE(VENDOR_AMOUNT, 0))
+                )) AS "EST_DOLLAR_IMPACT"
             FROM {SCHEMA}.THIRD_PARTY_RECON_OUTPUT_PROD
             WHERE VENDOR IN ({v_in})
               AND EXCEPTION_TYPE != 'Clear'
@@ -2550,7 +2557,11 @@ def _portfolio_exception_rollup_cached(sig: str, vendor_keys: tuple[str, ...], m
               AND EXCEPTION_TYPE != ''{month_sql}
             GROUP BY EXCEPTION_TYPE
             HAVING SUM(COALESCE(ABS_QTY_DELTA, 0)) > 0
-                OR SUM(COALESCE(EST_DOLLAR_IMPACT, ABS(COALESCE(AMOUNT_DELTA, 0)))) > 0
+                OR SUM(GREATEST(
+                    COALESCE(EST_DOLLAR_IMPACT, 0),
+                    ABS(COALESCE(AMOUNT_DELTA, 0)),
+                    ABS(COALESCE(VENDOR_AMOUNT, 0))
+                )) > 0
                 OR COUNT(DISTINCT SF_ID) > 0
             ORDER BY 4 DESC
             """,
@@ -2765,6 +2776,13 @@ def render_exception_detail(
     drill["BILLING_MONTH"] = pd.to_datetime(
         drill["BILLING_MONTH"], errors="coerce"
     ).dt.strftime("%Y-%m")
+    drill["DUPLICATE_BILLING"] = (
+        drill.get("DUPLICATE_BILLING", drill.get("DUPLICATE_BILLING_FLAG", "N"))
+        .astype(str)
+        .str.upper()
+        .map({"TRUE": "Y", "FALSE": "N", "Y": "Y", "N": "N"})
+        .fillna("N")
+    )
     # OUTCOME_FLAG intentionally last so the primary business dimensions
     # (month, account, product, seats, amounts) render leftmost.
     # If the input carries a _VENDOR column (portfolio view), surface it early.
@@ -2778,13 +2796,15 @@ def render_exception_detail(
         "ACTION_NEEDED", "VENDOR_QUANTITY",
         "TOTAL_BILLING_QUANTITY",
         # API_QUANTITY / AVG_API_QUANTITY surface TRT / vendor-API telemetry
-        # for pipelines that publish it (Webroot, SentinelOne). Null for
+        # for pipelines that publish it (SentinelOne, Bitdefender, Webroot,
+        # Auvik, Proofpoint). Null for
         # vendors without an API feed — the column renders empty in that case.
         "API_QUANTITY", "AVG_API_QUANTITY",
         "QTY_DELTA", "ABS_QTY_DELTA",
         "VENDOR_UNIT_PRICE", "TOTAL_BILLING_UNIT_PRICE",
         "VENDOR_AMOUNT", "TOTAL_BILLING_AMOUNT", "AMOUNT_DELTA",
         "VENDOR_INVOICE_SKU", "VENDOR_INVOICE_RATE_SOURCE",
+        "DUPLICATE_BILLING",
         "INVESTIGATION_REASON", "OUTCOME_FLAG",
     ]
     detail_cols = [c for c in _col_source if c in drill.columns]
@@ -2825,6 +2845,10 @@ def render_exception_detail(
             "AMOUNT_DELTA": st.column_config.NumberColumn("Amount Delta", format="$%.2f"),
             "VENDOR_INVOICE_SKU": st.column_config.TextColumn("Vendor Invoice SKU"),
             "VENDOR_INVOICE_RATE_SOURCE": st.column_config.TextColumn("Rate Source"),
+            "DUPLICATE_BILLING": st.column_config.TextColumn(
+                "Duplicate Billing",
+                help="Informational signal: Y means both CW billing views overlapped on this row.",
+            ),
             "INVESTIGATION_REASON": st.column_config.TextColumn("Investigation Reason"),
             "OUTCOME_FLAG": st.column_config.TextColumn("Outcome Flag"),
         },
@@ -3983,7 +4007,7 @@ with tab_vendor:
     # the portfolio-wide filters. Defaults to the first globally selected
     # vendor for continuity across tabs.
     # ------------------------------------------------------------------
-    _dd_vendor_names = [v["name"] for v in active_vendors]
+    _dd_vendor_names = sorted(v["name"] for v in active_vendors)
     _dd_default_idx = 0
     if selected_vendor_conf["name"] in _dd_vendor_names:
         _dd_default_idx = _dd_vendor_names.index(selected_vendor_conf["name"])

@@ -33,7 +33,7 @@ from snowflake.connector.pandas_tools import write_pandas
 from invoice_rate_backfill import fill_missing_prices_dynamic
 
 ESET_ROOT = Path(__file__).resolve().parents[2]
-WORKSPACE_ROOT = ESET_ROOT.parents[2]
+WORKSPACE_ROOT = next((p for p in (ESET_ROOT, *ESET_ROOT.parents) if (p / "TEMPLATES").exists()), ESET_ROOT)
 OUTPUT_DIR = ESET_ROOT / "output"
 
 DEFAULT_SOURCE_ROOT = Path(
@@ -580,7 +580,11 @@ def ensure_table_schema(conn, reset: bool) -> None:
     
     with conn.cursor() as cursor:
         if reset:
-            cursor.execute(f"DROP TABLE IF EXISTS {TABLE_NAME}")
+            cursor.execute(
+                f"DELETE FROM {TABLE_NAME} "
+                "WHERE UPPER(COALESCE(VENDOR, '')) = UPPER(%s)",
+                (VENDOR_NAME,),
+            )
         cursor.execute(create_sql)
 
 

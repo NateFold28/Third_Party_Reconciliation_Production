@@ -32,7 +32,7 @@ from invoice_rate_backfill import fill_missing_prices_dynamic
 
 ACRONIS_ROOT = Path(__file__).resolve().parents[2]
 PROJECT_ROOT = ACRONIS_ROOT.parent
-WORKSPACE_ROOT = PROJECT_ROOT.parents[1]
+WORKSPACE_ROOT = next((p for p in (PROJECT_ROOT, *PROJECT_ROOT.parents) if (p / "TEMPLATES").exists()), PROJECT_ROOT)
 OUTPUT_DIR = ACRONIS_ROOT / "outputs"
 # CSV seed files are no longer used. Unit prices are loaded dynamically from
 # THIRD_PARTY_RECON_VENDOR_INVOICES via load_price_seed() below.

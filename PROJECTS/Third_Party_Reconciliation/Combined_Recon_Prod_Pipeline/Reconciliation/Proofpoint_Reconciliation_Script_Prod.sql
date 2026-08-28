@@ -60,16 +60,17 @@ partner_name_map_deduped AS (
     ) = 1
 ),
 
-cms_acc_map AS (
-    SELECT cms_id, sf_id
-    FROM RECON_PARTNER_MAP
-    WHERE cms_id IS NOT NULL
-      AND cms_id != ''
-      AND sf_id IS NOT NULL
-      AND REGEXP_LIKE(sf_id, '^ACT-[0-9A-Z-]+$')
+manual_partner_map AS (
+    SELECT
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_normalized,
+        sf_id
+    FROM RECON_VENDOR_PARTNER_MANUAL_MAP
+    WHERE UPPER(TRIM(vendor)) = 'PROOFPOINT'
+      AND partner_name IS NOT NULL
+      AND sf_id ILIKE 'ACT-%'
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY cms_id
-        ORDER BY zuora_name DESC NULLS LAST
+        PARTITION BY TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
+        ORDER BY COALESCE(updated_at, CURRENT_TIMESTAMP()) DESC, sf_id
     ) = 1
 ),
 
@@ -146,41 +147,47 @@ proofpoint_base AS (
         u.quantity,
         u.unit_price,
         u.amount,
-        pc.sf_id AS cms_sf_id,
-        pn.sf_id AS partner_sf_id,
-        -- Resolve to canonical sf_id via unified PROOFPOINT_SF_ID_RESOLVER
-        -- (SF merge map + curated aliases) BEFORE applying the CMIT parent
-        -- rollup, so merges/aliases are already flattened before parent lookup.
+        COALESCE(mpm.sf_id, pn.sf_id) AS partner_sf_id,
+        -- Resolve to canonical sf_id via unified RECON_ACCOUNT_MERGE_RESOLVER
+        -- BEFORE applying the CMIT parent rollup, so merges/aliases are
+        -- already flattened before parent lookup.
         COALESCE(
             cr.parent_sf_id,
             sfr.canonical_sf_id,
-            pc.sf_id,
+            mpm.sf_id,
             pn.sf_id
         ) AS sf_id,
-        COALESCE(pc.sf_id, pn.sf_id) AS raw_sf_id,
-        sfr.resolver_source AS sf_id_resolver_source,
+        COALESCE(mpm.sf_id, pn.sf_id) AS raw_sf_id,
+        sfr.canonical_source AS sf_id_resolver_source,
         CASE
-            WHEN cr.parent_sf_id IS NOT NULL AND pc.sf_id IS NOT NULL THEN 'CMS_ID|CMIT_PARENT_ROLLUP'
+            WHEN cr.parent_sf_id IS NOT NULL AND mpm.sf_id IS NOT NULL THEN 'MANUAL_VENDOR_PARTNER_MAP|CMIT_PARENT_ROLLUP'
             WHEN cr.parent_sf_id IS NOT NULL AND pn.sf_id IS NOT NULL THEN 'PARTNER_NAME|CMIT_PARENT_ROLLUP'
-            WHEN pc.sf_id IS NOT NULL THEN 'CMS_ID'
+            WHEN mpm.sf_id IS NOT NULL THEN 'MANUAL_VENDOR_PARTNER_MAP'
             WHEN pn.sf_id IS NOT NULL THEN 'PARTNER_NAME'
             ELSE 'UNMAPPED'
         END AS partner_match_method
     FROM PROOFPOINT_USAGE u
-    LEFT JOIN cms_acc_map pc
-        ON 1 = 0
-    LEFT JOIN partner_name_map_deduped pn
-        ON pn.partner_name_normalized = TRIM(
+    LEFT JOIN manual_partner_map mpm
+        ON mpm.partner_name_normalized = TRIM(
             REGEXP_REPLACE(
                 REGEXP_REPLACE(LOWER(u.vendor_partner_name), '[^a-z0-9]+', ' '),
                 '\\s+',
                 ' '
             )
         )
-    LEFT JOIN PROOFPOINT_SF_ID_RESOLVER sfr
-        ON sfr.old_sf_id = COALESCE(pc.sf_id, pn.sf_id)
+    LEFT JOIN partner_name_map_deduped pn
+        ON mpm.sf_id IS NULL
+       AND pn.partner_name_normalized = TRIM(
+            REGEXP_REPLACE(
+                REGEXP_REPLACE(LOWER(u.vendor_partner_name), '[^a-z0-9]+', ' '),
+                '\\s+',
+                ' '
+            )
+        )
+    LEFT JOIN RECON_ACCOUNT_MERGE_RESOLVER sfr
+        ON sfr.old_sf_id = COALESCE(mpm.sf_id, pn.sf_id)
     LEFT JOIN cmit_parent_rollup cr
-        ON cr.child_sf_id = COALESCE(sfr.canonical_sf_id, pc.sf_id, pn.sf_id)
+        ON cr.child_sf_id = COALESCE(sfr.canonical_sf_id, mpm.sf_id, pn.sf_id)
     WHERE COALESCE(u.quantity, 0) <> 0
       AND COALESCE(u.amount, 0) <> 0
             AND u.billing_month::DATE IN (SELECT billing_month FROM proofpoint_loaded_billing_months)
@@ -374,12 +381,16 @@ marketplace_source AS (
         sf_id,
         UPPER(TRIM(product_sku)) AS product_sku,
         billing_month::DATE AS billing_month,
+                transaction_source,
         COALESCE(qty, 0) AS marketplace_quantity,
         COALESCE(amount, 0) AS marketplace_amount
     FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
     WHERE vendor = 'Proofpoint'
       AND sf_id ILIKE 'ACT-%'
-      AND COALESCE(qty, 0) <> 0
+            AND (
+                        COALESCE(qty, 0) <> 0
+                 OR (transaction_source = 'Salesforce Contract' AND COALESCE(amount, 0) <> 0)
+            )
             AND UPPER(TRIM(product_sku)) IN (SELECT cw_sku_token FROM proofpoint_cw_sku_tokens)
 ),
 
@@ -552,9 +563,21 @@ scored AS (
         zuora_amount,
         marketplace_quantity,
         marketplace_amount,
-        COALESCE(zuora_quantity, 0) + COALESCE(marketplace_quantity, 0) AS total_billing_quantity,
+        CASE
+            WHEN COALESCE(zuora_quantity, 0) + COALESCE(marketplace_quantity, 0) = 0
+             AND COALESCE(zuora_amount, 0) + COALESCE(marketplace_amount, 0) > 0
+             AND UPPER(COALESCE(vendor_product, '')) IN ('BASIC OEM', 'ADVANCED OEM')
+                THEN COALESCE(vendor_quantity, 0)
+            ELSE COALESCE(zuora_quantity, 0) + COALESCE(marketplace_quantity, 0)
+        END AS total_billing_quantity,
         COALESCE(zuora_amount, 0) + COALESCE(marketplace_amount, 0) AS total_billing_amount,
-        COALESCE(zuora_quantity, 0) + COALESCE(marketplace_quantity, 0) - COALESCE(vendor_quantity, 0) AS qty_delta,
+        CASE
+            WHEN COALESCE(zuora_quantity, 0) + COALESCE(marketplace_quantity, 0) = 0
+             AND COALESCE(zuora_amount, 0) + COALESCE(marketplace_amount, 0) > 0
+             AND UPPER(COALESCE(vendor_product, '')) IN ('BASIC OEM', 'ADVANCED OEM')
+                THEN 0
+            ELSE COALESCE(zuora_quantity, 0) + COALESCE(marketplace_quantity, 0) - COALESCE(vendor_quantity, 0)
+        END AS qty_delta,
         COALESCE(zuora_amount, 0) + COALESCE(marketplace_amount, 0) - COALESCE(vendor_amount, 0) AS amount_delta,
         vendor_row_count,
         partner_match_methods,

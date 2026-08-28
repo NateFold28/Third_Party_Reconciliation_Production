@@ -40,7 +40,7 @@ import pandas as pd
 from snowflake.connector.pandas_tools import write_pandas
 
 EXIUM_ROOT = Path(__file__).resolve().parents[2]
-WORKSPACE_ROOT = EXIUM_ROOT.parents[2]
+WORKSPACE_ROOT = next((p for p in (EXIUM_ROOT, *EXIUM_ROOT.parents) if (p / "TEMPLATES").exists()), EXIUM_ROOT)
 OUTPUT_DIR = EXIUM_ROOT / "output"
 
 DEFAULT_SOURCE_ROOT = Path(
@@ -352,7 +352,11 @@ def ensure_table_schema(conn, reset: bool) -> None:
     
     with conn.cursor() as cursor:
         if reset:
-            cursor.execute(f"DROP TABLE IF EXISTS {TABLE_NAME}")
+            cursor.execute(
+                f"DELETE FROM {TABLE_NAME} "
+                "WHERE UPPER(COALESCE(VENDOR, '')) = UPPER(%s)",
+                (VENDOR_NAME,),
+            )
         cursor.execute(create_sql)
 
 
@@ -483,7 +487,7 @@ def parse_args() -> argparse.Namespace:
     group.add_argument("--all-months", action="store_true", help="Process all available months")
     parser.add_argument("--dry-run", action="store_true", help="Parse and audit; skip Snowflake load")
     parser.add_argument("--replace-month", action="store_true", help="Overwrite existing month")
-    parser.add_argument("--reset", action="store_true", help="Drop and recreate table")
+    parser.add_argument("--reset", action="store_true", help="Delete existing Exium rows before reload")
     return parser.parse_args()
 
 

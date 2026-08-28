@@ -1,0 +1,142 @@
+"""Audit: risk ranking, SHAP magnitudes, segment grain, naming."""
+import sys
+sys.path.insert(0, r"c:\Users\Nate.Fold\projects\TEMPLATES\Python")
+from connection import get_snowflake_connection, fetch_dataframe
+import pandas as pd
+import numpy as np
+
+conn = get_snowflake_connection()
+def q(sql): return fetch_dataframe(sql, conn=conn)
+
+# 1. SHAP magnitudes
+print("="*70)
+print("1. SHAP TABLE — magnitude, base value, coverage")
+print("="*70)
+print(q("""
+SELECT
+    COUNT(DISTINCT CONTRACT_ID||'|'||PRODUCT_GROUP) AS N_CONTRACT_PG,
+    COUNT(*)                          AS N_ROWS,
+    ROUND(AVG(ABS(SHAP_VALUE)),6)     AS AVG_ABS_SHAP,
+    ROUND(MAX(ABS(SHAP_VALUE)),6)     AS MAX_ABS_SHAP,
+    ROUND(MIN(ABS(SHAP_VALUE)),6)     AS MIN_ABS_SHAP,
+    ROUND(AVG(BASE_VALUE),4)          AS AVG_BASE_VALUE,
+    COUNT_IF(BASE_VALUE IS NOT NULL)  AS N_BASE_VALUE,
+    COUNT(DISTINCT FEATURE_NAME)      AS N_FEATURES
+FROM STREAMLIT_APPS.DBO.V5_SANDBOX_APP_SHAP_DRIVERS
+""").to_string(index=False))
+
+# 2. Top 10 features by mean abs SHAP
+print("\n"+"="*70)
+print("2. TOP 10 FEATURES (what portfolio risk drivers chart shows)")
+print("="*70)
+print(q("""
+SELECT FEATURE_NAME, DIRECTION,
+    ROUND(AVG(ABS(SHAP_VALUE)),6)   AS MEAN_ABS_SHAP,
+    ROUND(AVG(SHAP_VALUE),6)        AS MEAN_SIGNED,
+    COUNT(DISTINCT CONTRACT_ID||'|'||PRODUCT_GROUP) AS N_CONTRACTS
+FROM STREAMLIT_APPS.DBO.V5_SANDBOX_APP_SHAP_DRIVERS
+GROUP BY FEATURE_NAME, DIRECTION
+ORDER BY MEAN_ABS_SHAP DESC
+LIMIT 10
+""").to_string(index=False))
+
+# 3. Churn % distribution forward contracts
+print("\n"+"="*70)
+print("3. CHURN_PCT distribution — forward contracts")
+print("="*70)
+print(q("""
+SELECT
+    ROUND(PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY CHURN_PCT),2) AS P25,
+    ROUND(PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY CHURN_PCT),2) AS P50,
+    ROUND(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY CHURN_PCT),2) AS P75,
+    ROUND(PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY CHURN_PCT),2) AS P90,
+    ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY CHURN_PCT),2) AS P95,
+    ROUND(AVG(CHURN_PCT),2)        AS AVG_CHURN,
+    ROUND(MAX(CHURN_PCT),2)        AS MAX_CHURN,
+    COUNT(DISTINCT CONTRACT_ID)    AS N_CONTRACTS,
+    COUNT_IF(CONTRACT_RISK_PCTL_IN_SEG IS NOT NULL) AS N_WITH_PCTL,
+    ROUND(SUM(CASE WHEN CHURN_PCT>=50 THEN ATR ELSE 0 END)/NULLIF(SUM(ATR),0)*100,1) AS PCT_ATR_HIGH_RISK
+FROM STREAMLIT_APPS.DBO.V5_SANDBOX_APP_CONTRACT_DETAIL
+WHERE COALESCE(ATR,0)>0 AND IS_MATURED_MONTH=FALSE
+""").to_string(index=False))
+
+# 4. Top 15 contracts by at-risk dollars
+print("\n"+"="*70)
+print("4. TOP 15 CONTRACTS BY AT_RISK (forward)")
+print("="*70)
+print(q("""
+SELECT
+    CONTRACT_ID, MAX(PARTNER) AS PARTNER, MAX(SEGMENT) AS SEGMENT,
+    MIN(RENEWAL_MONTH) AS EARLIEST_RENEWAL,
+    ROUND(SUM(ATR),0) AS TOTAL_ATR,
+    ROUND(AVG(CHURN_PCT),1) AS AVG_CHURN_PCT,
+    ROUND(SUM(CHURN_PCT/100.0*ATR),0) AS AT_RISK_DOLLARS,
+    MAX(CONTRACT_RISK_PCTL_IN_SEG) AS RISK_PCTL
+FROM STREAMLIT_APPS.DBO.V5_SANDBOX_APP_CONTRACT_DETAIL
+WHERE COALESCE(ATR,0)>0 AND IS_MATURED_MONTH=FALSE
+GROUP BY CONTRACT_ID
+ORDER BY AT_RISK_DOLLARS DESC
+LIMIT 15
+""").to_string(index=False))
+
+# 5. Pareto
+print("\n"+"="*70)
+print("5. PARETO — % of AT_RISK from top N contracts")
+print("="*70)
+print(q("""
+WITH base AS (
+    SELECT CONTRACT_ID, SUM(CHURN_PCT/100.0*ATR) AS AT_RISK_DOLLARS
+    FROM STREAMLIT_APPS.DBO.V5_SANDBOX_APP_CONTRACT_DETAIL
+    WHERE COALESCE(ATR,0)>0 AND IS_MATURED_MONTH=FALSE
+    GROUP BY CONTRACT_ID
+),
+ranked AS (
+    SELECT CONTRACT_ID, AT_RISK_DOLLARS,
+        ROW_NUMBER() OVER (ORDER BY AT_RISK_DOLLARS DESC) AS RN,
+        SUM(AT_RISK_DOLLARS) OVER () AS TOTAL_AT_RISK
+    FROM base
+)
+SELECT RN,
+    ROUND(AT_RISK_DOLLARS,0)     AS AT_RISK_THIS,
+    ROUND(SUM(AT_RISK_DOLLARS) OVER (ORDER BY RN)/TOTAL_AT_RISK*100,1) AS CUMULATIVE_PCT
+FROM ranked
+WHERE RN IN (5,10,15,20,25,50,100)
+QUALIFY ROW_NUMBER() OVER (PARTITION BY RN ORDER BY RN)=1
+ORDER BY RN
+""").to_string(index=False))
+
+# 6. SHAP pp conversion for a sample high-risk contract
+print("\n"+"="*70)
+print("6. SHAP SAMPLE — raw values vs pp-equivalent for one high-risk contract")
+print("="*70)
+print(q("""
+WITH top_c AS (
+    SELECT CONTRACT_ID, PRODUCT_GROUP
+    FROM STREAMLIT_APPS.DBO.V5_SANDBOX_APP_SHAP_DRIVERS
+    WHERE CHURN_PCT>=50
+    ORDER BY CHURN_PCT DESC, ABS_SHAP DESC
+    LIMIT 1
+)
+SELECT s.FEATURE_NAME, ROUND(s.SHAP_VALUE,6) AS SHAP_VALUE,
+    ROUND(s.CHURN_PCT,1) AS CHURN_PCT,
+    ROUND(s.BASE_VALUE,4) AS BASE_VALUE,
+    s.DIRECTION, s.MAGNITUDE,
+    ROUND(s.SHAP_VALUE*(s.CHURN_PCT/100)*(1-s.CHURN_PCT/100)*100,2) AS APPROX_PP_IMPACT
+FROM STREAMLIT_APPS.DBO.V5_SANDBOX_APP_SHAP_DRIVERS s
+JOIN top_c t ON s.CONTRACT_ID=t.CONTRACT_ID AND s.PRODUCT_GROUP=t.PRODUCT_GROUP
+ORDER BY s.ABS_SHAP DESC
+LIMIT 10
+""").to_string(index=False))
+
+# 7. Contract-level monthly segment coverage — check available columns first
+print("\n"+"="*70)
+print("7. CONTRACT_LVL_MONTHLY — available columns")
+print("="*70)
+print(q("""
+SELECT COLUMN_NAME FROM STREAMLIT_APPS.INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA='DBO' AND TABLE_NAME='V5_SANDBOX_APP_CONTRACT_LVL_MONTHLY'
+ORDER BY ORDINAL_POSITION
+""").to_string(index=False))
+
+print("\n\nAUDIT COMPLETE")
+conn.close()

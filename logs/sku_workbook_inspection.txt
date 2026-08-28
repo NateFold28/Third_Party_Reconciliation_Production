@@ -1,0 +1,734 @@
+﻿================================================================================
+FAMILY counts (which product families are in this workbook)
+================================================================================
+  Cybersecurity                                                465
+  Unified Monitoring & Management                              375
+  BDR                                                          31
+  None                                                         2
+
+================================================================================
+LEGACY_CATEGORY counts
+================================================================================
+  Third Party: Cyber                                           465
+  Third Party: UMM                                             233
+  Third Party: DP                                              85
+  UMM: RMM                                                     80
+  DP: Cloud Backup                                             8
+  None                                                         2
+
+================================================================================
+Distinct PRODUCT_LINE values
+================================================================================
+  BDR : Recover
+  BDR : Solution Partners
+  Cybersecurity : Fortify
+  Cybersecurity : Solution Partners
+  None
+  UMM : Command
+  UMM : RMM
+  UMM : Solution Partners
+
+================================================================================
+Rows matching known vendor names
+================================================================================
+  3RDPARTYSAASAUVIKTRF                UMM : Solution Partners   T1   lo=1      hi=40     cost=144        Active     Auvik Transfer - Essentials Annual
+  3RDPARTYSAASAUVIKTRF                UMM : Solution Partners   T2   lo=40     hi=75     cost=144        Active     Auvik Transfer - Essentials Annual
+  3RDPARTYSAASAUVIKTRF                UMM : Solution Partners   T3   lo=75     hi=100    cost=144        Active     Auvik Transfer - Essentials Annual
+  3RDPARTYSAASAUVIKTRF                UMM : Solution Partners   T4   lo=100    hi=175    cost=144        Active     Auvik Transfer - Essentials Annual
+  3RDPARTYSAASAUVIKTRF                UMM : Solution Partners   T5   lo=175    hi=250    cost=144        Active     Auvik Transfer - Essentials Annual
+  3RDPARTYSAASAUVIKTRF                UMM : Solution Partners   T6   lo=250    hi=500    cost=144        Active     Auvik Transfer - Essentials Annual
+  3RDPARTYSAASAUVIKTRF                UMM : Solution Partners   T7   lo=500    hi=750    cost=144        Active     Auvik Transfer - Essentials Annual
+  3RDPARTYSAASAUVIKTRF                UMM : Solution Partners   T8   lo=750    hi=1000   cost=144        Active     Auvik Transfer - Essentials Annual
+  3RDPARTYSAASAUVIKTRF                UMM : Solution Partners   T9   lo=1000   hi=None   cost=144        Active     Auvik Transfer - Essentials Annual
+  AL1775A00A-EN-D                     Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=3.69       ACTIVE MARKETPLACE Bitdefender Security for Virtualized Environments VS
+  AL1775A00A-EN-D                     Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=3.69       ACTIVE MARKETPLACE Bitdefender Security for Virtualized Environments VS
+  AL1778A00A-EN                       Cybersecurity : Solution Partners T0   lo=1      hi=99     cost=0.42       ACTIVE MARKETPLACE Bitdefender Cloud Security Exchange (1-99 ep)
+  AL1778A00A-EN                       Cybersecurity : Solution Partners T0   lo=1      hi=99     cost=0.42       ACTIVE MARKETPLACE Bitdefender Cloud Security Exchange (1-99 ep)
+  AL1778A00B-EN                       Cybersecurity : Solution Partners T0   lo=100    hi=249    cost=0.42       ACTIVE MARKETPLACE Bitdefender Cloud Security Exchange 100-249
+  AL1778A00B-EN                       Cybersecurity : Solution Partners T0   lo=100    hi=249    cost=0.42       ACTIVE MARKETPLACE Bitdefender Cloud Security Exchange 100-249
+  AL1778A00C-EN                       Cybersecurity : Solution Partners T0   lo=750    hi=999    cost=0.42       ACTIVE MARKETPLACE Bitdefender Cloud Security Exchange (750-999 ep)
+  AL1778A00C-EN                       Cybersecurity : Solution Partners T0   lo=750    hi=999    cost=0.42       ACTIVE MARKETPLACE Bitdefender Cloud Security Exchange (750-999 ep)
+  AL1778A00D-EN                       Cybersecurity : Solution Partners T0   lo=1000   hi=None   cost=0.42       ACTIVE MARKETPLACE Bitdefender Cloud Security Exchange 1000+
+  AL1778A00D-EN                       Cybersecurity : Solution Partners T0   lo=1000   hi=None   cost=0.42       ACTIVE MARKETPLACE Bitdefender Cloud Security Exchange 1000+
+  AL1795A00A-EN                       Cybersecurity : Solution Partners T0   lo=1      hi=99     cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Encryption (1-99 ep)
+  AL1795A00A-EN                       Cybersecurity : Solution Partners T0   lo=1      hi=99     cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Encryption (1-99 ep)
+  AL1795A00B-EN                       Cybersecurity : Solution Partners T0   lo=100    hi=249    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Encryption 100-249
+  AL1795A00B-EN                       Cybersecurity : Solution Partners T0   lo=100    hi=249    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Encryption 100-249
+  AL1795A00C-EN                       Cybersecurity : Solution Partners T0   lo=50     hi=100    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Encryption 750-999
+  AL1795A00C-EN                       Cybersecurity : Solution Partners T0   lo=50     hi=100    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Encryption 750-999
+  AL1795A00D-EN                       Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Encryption 1000+
+  AL1795A00D-EN                       Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Encryption 1000+
+  MSP2-PC                             Cybersecurity : Solution Partners T1   lo=1      hi=6      cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T10  lo=2000   hi=5000   cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T11  lo=5000   hi=10000  cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T12  lo=10000  hi=25000  cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T13  lo=25000  hi=50000  cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T14  lo=50000  hi=None   cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T2   lo=6      hi=11     cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T3   lo=11     hi=26     cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T4   lo=26     hi=50     cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T5   lo=50     hi=100    cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T6   lo=100    hi=250    cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T7   lo=250    hi=500    cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T8   lo=500    hi=1000   cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T9   lo=1000   hi=2000   cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T1   lo=1      hi=6      cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T10  lo=2000   hi=5000   cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T11  lo=5000   hi=10000  cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T12  lo=10000  hi=25000  cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T13  lo=25000  hi=50000  cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T14  lo=50000  hi=None   cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T2   lo=6      hi=11     cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T3   lo=11     hi=26     cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T4   lo=26     hi=50     cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T5   lo=50     hi=100    cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T6   lo=100    hi=250    cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T7   lo=250    hi=500    cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T8   lo=500    hi=1000   cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PC                             Cybersecurity : Solution Partners T9   lo=1000   hi=2000   cost=1.26       ACTIVE MARKETPLACE ESET Protect Complete
+  MSP2-PE                             Cybersecurity : Solution Partners T1   lo=1      hi=6      cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T10  lo=2000   hi=5000   cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T11  lo=5000   hi=10000  cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T12  lo=10000  hi=25000  cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T13  lo=25000  hi=50000  cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T14  lo=50000  hi=None   cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T2   lo=6      hi=11     cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T3   lo=11     hi=26     cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T4   lo=26     hi=50     cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T5   lo=50     hi=100    cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T6   lo=100    hi=250    cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T7   lo=250    hi=500    cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T8   lo=500    hi=1000   cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T9   lo=1000   hi=2000   cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T1   lo=1      hi=6      cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T10  lo=2000   hi=5000   cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T11  lo=5000   hi=10000  cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T12  lo=10000  hi=25000  cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T13  lo=25000  hi=50000  cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T14  lo=50000  hi=None   cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T2   lo=6      hi=11     cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T3   lo=11     hi=26     cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T4   lo=26     hi=50     cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T5   lo=50     hi=100    cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T6   lo=100    hi=250    cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T7   lo=250    hi=500    cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T8   lo=500    hi=1000   cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PE                             Cybersecurity : Solution Partners T9   lo=1000   hi=2000   cost=0.79       ACTIVE MARKETPLACE ESET Protect Entry
+  MSP2-PMP                            Cybersecurity : Solution Partners T1   lo=1      hi=11     cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T10  lo=5000   hi=10000  cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T11  lo=10000  hi=25000  cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T12  lo=25000  hi=50000  cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T13  lo=50000  hi=None   cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T2   lo=11     hi=26     cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T3   lo=26     hi=50     cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T4   lo=50     hi=100    cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T5   lo=100    hi=250    cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T6   lo=250    hi=500    cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T7   lo=500    hi=1000   cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T8   lo=1000   hi=2000   cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T9   lo=2000   hi=5000   cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T1   lo=1      hi=11     cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T10  lo=5000   hi=10000  cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T11  lo=10000  hi=25000  cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T12  lo=25000  hi=50000  cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T13  lo=50000  hi=None   cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T2   lo=11     hi=26     cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T3   lo=26     hi=50     cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T4   lo=50     hi=100    cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T5   lo=100    hi=250    cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T6   lo=250    hi=500    cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T7   lo=500    hi=1000   cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T8   lo=1000   hi=2000   cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PMP                            Cybersecurity : Solution Partners T9   lo=2000   hi=5000   cost=0.5        ACTIVE MARKETPLACE ESET Protect Mail Plus
+  MSP2-PA                             Cybersecurity : Solution Partners T1   lo=1      hi=6      cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T10  lo=2000   hi=5000   cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T11  lo=5000   hi=10000  cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T12  lo=10000  hi=25000  cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T13  lo=25000  hi=50000  cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T14  lo=50000  hi=None   cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T2   lo=6      hi=11     cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T3   lo=11     hi=26     cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T4   lo=26     hi=50     cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T5   lo=50     hi=100    cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T6   lo=100    hi=250    cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T7   lo=250    hi=500    cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T8   lo=500    hi=1000   cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T9   lo=1000   hi=2000   cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T1   lo=1      hi=6      cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T10  lo=2000   hi=5000   cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T11  lo=5000   hi=10000  cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T12  lo=10000  hi=25000  cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T13  lo=25000  hi=50000  cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T14  lo=50000  hi=None   cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T2   lo=6      hi=11     cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T3   lo=11     hi=26     cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T4   lo=26     hi=50     cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T5   lo=50     hi=100    cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T6   lo=100    hi=250    cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T7   lo=250    hi=500    cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T8   lo=500    hi=1000   cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  MSP2-PA                             Cybersecurity : Solution Partners T9   lo=1000   hi=2000   cost=1.02       ACTIVE MARKETPLACE ESET Protect Advanced
+  AUVIKPROMOBILLDEVICE                UMM : Solution Partners   T0   lo=1      hi=1      cost=0          Active\Billing Only Auvik Promotional License
+  AUVIKPROMOBILLDEVICE                UMM : Solution Partners   T0   lo=1      hi=1      cost=0          Active\Billing Only Auvik Promotional License
+  AUVIKPROMOBILLDEVICE                UMM : Solution Partners   T0   lo=1      hi=1      cost=0          Active\Billing Only Auvik Promotional License
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T1   lo=5      hi=11     cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T10  lo=5000   hi=10000  cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T11  lo=10000  hi=25000  cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T12  lo=25000  hi=50000  cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T13  lo=50000  hi=999999 cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T2   lo=11     hi=26     cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T3   lo=26     hi=50     cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T4   lo=50     hi=100    cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T5   lo=100    hi=250    cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T6   lo=250    hi=500    cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T7   lo=500    hi=1000   cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T8   lo=1000   hi=2000   cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  MSP-ECAT-Y1                         Cybersecurity : Solution Partners T9   lo=2000   hi=5000   cost=17.5       Active     ESET MSP 1YR Cybersecurity Awareness Training, Hosted, New, 
+  DL17106A00A-EN-D                    Cybersecurity : Solution Partners T0   lo=1      hi=99     cost=0.55       ACTIVE MARKETPLACE Bitdefender Advanced Threat Security 1-99 ep
+  DL17106A00A-EN-D                    Cybersecurity : Solution Partners T0   lo=1      hi=99     cost=0.55       ACTIVE MARKETPLACE Bitdefender Advanced Threat Security 1-99 ep
+  DL17106A00B-EN-D                    Cybersecurity : Solution Partners T0   lo=100    hi=499    cost=0.55       ACTIVE MARKETPLACE Bitdefender Advanced Threat Security 100-499 ep
+  DL17106A00B-EN-D                    Cybersecurity : Solution Partners T0   lo=100    hi=499    cost=0.55       ACTIVE MARKETPLACE Bitdefender Advanced Threat Security 100-499 ep
+  DL17106A00C-EN-D                    Cybersecurity : Solution Partners T0   lo=500    hi=999    cost=0.55       ACTIVE MARKETPLACE Bitdefender Advanced Threat Security 500-999 ep
+  DL17106A00C-EN-D                    Cybersecurity : Solution Partners T0   lo=500    hi=999    cost=0.55       ACTIVE MARKETPLACE Bitdefender Advanced Threat Security 500-999 ep
+  DL17106A00D-EN-D                    Cybersecurity : Solution Partners T0   lo=1000   hi=5000   cost=0.55       ACTIVE MARKETPLACE Bitdefender Advanced Threat Security 1000-4999 ep
+  DL17106A00D-EN-D                    Cybersecurity : Solution Partners T0   lo=1000   hi=5000   cost=0.55       ACTIVE MARKETPLACE Bitdefender Advanced Threat Security 1000-4999 ep
+  DL17106A00E-EN-D                    Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.55       ACTIVE MARKETPLACE Bitdefender Advanced Threat Security 5000+ ep
+  DL17106A00E-EN-D                    Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.55       ACTIVE MARKETPLACE Bitdefender Advanced Threat Security 5000+ ep
+  DL17107A00A-EN-D                    Cybersecurity : Solution Partners T0   lo=1      hi=99     cost=12.6       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 1-99 ep
+  DL17107A00A-EN-D                    Cybersecurity : Solution Partners T0   lo=1      hi=99     cost=1.05       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 1-99 ep
+  DL17107A00A-EN-D                    Cybersecurity : Solution Partners T0   lo=1      hi=99     cost=1.05       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 1-99 ep
+  DL17107A00B-EN-D                    Cybersecurity : Solution Partners T0   lo=100    hi=499    cost=12.6       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 100-499 ep
+  DL17107A00B-EN-D                    Cybersecurity : Solution Partners T0   lo=100    hi=499    cost=1.05       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 100-499 ep
+  DL17107A00B-EN-D                    Cybersecurity : Solution Partners T0   lo=100    hi=499    cost=1.05       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 100-499 ep
+  DL17107A00C-EN-D                    Cybersecurity : Solution Partners T0   lo=500    hi=999    cost=12.6       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 500-999 ep
+  DL17107A00C-EN-D                    Cybersecurity : Solution Partners T0   lo=500    hi=999    cost=1.05       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 500-999 ep
+  DL17107A00C-EN-D                    Cybersecurity : Solution Partners T0   lo=500    hi=999    cost=1.05       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 500-999 ep
+  DL17107A00D-EN-D                    Cybersecurity : Solution Partners T0   lo=1000   hi=5000   cost=12.6       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 1000-4999 ep
+  DL17107A00D-EN-D                    Cybersecurity : Solution Partners T0   lo=1000   hi=5000   cost=1.05       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 1000-4999 ep
+  DL17107A00D-EN-D                    Cybersecurity : Solution Partners T0   lo=1000   hi=5000   cost=1.05       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 1000-4999 ep
+  DL17107A00E-EN-D                    Cybersecurity : Solution Partners T0   lo=5000   hi=None   cost=12.6       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 5000+ ep
+  DL17107A00E-EN-D                    Cybersecurity : Solution Partners T0   lo=5000   hi=None   cost=1.05       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 5000+ ep
+  DL17107A00E-EN-D                    Cybersecurity : Solution Partners T0   lo=5000   hi=None   cost=1.05       ACTIVE MARKETPLACE Bitdefender ATS & EDR, 5000+ ep
+  DL17108A00A-EN-D                    Cybersecurity : Solution Partners T0   lo=1      hi=100    cost=0.95       ACTIVE MARKETPLACE Bitdefender Patch Management, 1 - 99 ep
+  DL17108A00A-EN-D                    Cybersecurity : Solution Partners T0   lo=1      hi=100    cost=0.95       ACTIVE MARKETPLACE Bitdefender Patch Management, 1 - 99 ep
+  DL17108A00B-EN-D                    Cybersecurity : Solution Partners T0   lo=100    hi=500    cost=0.85       ACTIVE MARKETPLACE Bitdefender Patch Management, 100 - 499 ep
+  DL17108A00B-EN-D                    Cybersecurity : Solution Partners T0   lo=100    hi=500    cost=0.85       ACTIVE MARKETPLACE Bitdefender Patch Management, 100 - 499 ep
+  DL17108A00C-EN-D                    Cybersecurity : Solution Partners T0   lo=500    hi=1000   cost=0.77       ACTIVE MARKETPLACE Bitdefender Patch Management, 500 - 999 ep
+  DL17108A00C-EN-D                    Cybersecurity : Solution Partners T0   lo=500    hi=1000   cost=0.77       ACTIVE MARKETPLACE Bitdefender Patch Management, 500 - 999 ep
+  DL17108A00D-EN-D                    Cybersecurity : Solution Partners T0   lo=1000   hi=5000   cost=0.69       ACTIVE MARKETPLACE Bitdefender Patch Management, 1000 - 4999 ep
+  DL17108A00D-EN-D                    Cybersecurity : Solution Partners T0   lo=1000   hi=5000   cost=0.69       ACTIVE MARKETPLACE Bitdefender Patch Management, 1000 - 4999 ep
+  DL17108A00E-EN-D                    Cybersecurity : Solution Partners T0   lo=5000   hi=None   cost=0.62       ACTIVE MARKETPLACE Bitdefender Patch Management, 5000+ ep
+  DL17108A00E-EN-D                    Cybersecurity : Solution Partners T0   lo=5000   hi=None   cost=0.62       ACTIVE MARKETPLACE Bitdefender Patch Management, 5000+ ep
+  WSADNSPSTANDAL-00750                Cybersecurity : Solution Partners T0   lo=750    hi=1000   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 750-999 EPs
+  WSADNSPSTANDAL-00750                Cybersecurity : Solution Partners T0   lo=750    hi=1000   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 750-999 EPs
+  WSADNSPSTANDAL-02500                Cybersecurity : Solution Partners T0   lo=2500   hi=5000   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 2500-4999 EPs
+  WSADNSPSTANDAL-02500                Cybersecurity : Solution Partners T0   lo=2500   hi=5000   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 2500-4999 EPs
+  WSADNSPSTANDAL-05000                Cybersecurity : Solution Partners T0   lo=5000   hi=10000  cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 5000-9999 EPs
+  WSADNSPSTANDAL-05000                Cybersecurity : Solution Partners T0   lo=5000   hi=10000  cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 5000-9999 EPs
+  WSADNSPSTANDAL-01000                Cybersecurity : Solution Partners T0   lo=1000   hi=2500   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 1000-2499 EPs
+  WSADNSPSTANDAL-01000                Cybersecurity : Solution Partners T0   lo=1000   hi=2500   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 1000-2499 EPs
+  WSADNSPSTANDAL-00001                Cybersecurity : Solution Partners T0   lo=1      hi=100    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 1-99 EPs
+  WSADNSPSTANDAL-00001                Cybersecurity : Solution Partners T0   lo=1      hi=100    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 1-99 EPs
+  WSADNSPSTANDAL-00100                Cybersecurity : Solution Partners T0   lo=100    hi=250    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 100-249 EPs
+  WSADNSPSTANDAL-00100                Cybersecurity : Solution Partners T0   lo=100    hi=250    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 100-249 EPs
+  WSADNSPSTANDAL-10000                Cybersecurity : Solution Partners T0   lo=10000  hi=20000  cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 10000-19999 EPs
+  WSADNSPSTANDAL-10000                Cybersecurity : Solution Partners T0   lo=10000  hi=20000  cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 10000-19999 EPs
+  WSADNSPSTANDAL-20000                Cybersecurity : Solution Partners T0   lo=20000  hi=None   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 20000+ EPs
+  WSADNSPSTANDAL-20000                Cybersecurity : Solution Partners T0   lo=20000  hi=None   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 20000+ EPs
+  WSADNSPSTANDAL-00250                Cybersecurity : Solution Partners T0   lo=250    hi=500    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 250-499 EPs
+  WSADNSPSTANDAL-00250                Cybersecurity : Solution Partners T0   lo=250    hi=500    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 250-499 EPs
+  WSADNSPSTANDAL-00500                Cybersecurity : Solution Partners T0   lo=500    hi=750    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 500-749 EPs
+  WSADNSPSTANDAL-00500                Cybersecurity : Solution Partners T0   lo=500    hi=750    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS - 500-749 EPs
+  SENTINELONE-CONTROL                 Cybersecurity : Fortify   T0   lo=1      hi=1      cost=0.72       Active     SentinelOne Control
+  SENTINELONE-COMPLETE                Cybersecurity : Fortify   T0   lo=1      hi=1      cost=1.01       Active     SentinelOne Complete
+  MSP2-EI                             Cybersecurity : Solution Partners T1   lo=1      hi=11     cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T10  lo=5000   hi=10000  cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T11  lo=10000  hi=25000  cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T12  lo=25000  hi=50000  cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T13  lo=50000  hi=None   cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T2   lo=11     hi=26     cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T3   lo=26     hi=50     cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T4   lo=50     hi=100    cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T5   lo=100    hi=250    cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T6   lo=250    hi=500    cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T7   lo=500    hi=1000   cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T8   lo=1000   hi=2000   cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T9   lo=2000   hi=5000   cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T1   lo=1      hi=11     cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T10  lo=5000   hi=10000  cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T11  lo=10000  hi=25000  cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T12  lo=25000  hi=50000  cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T13  lo=50000  hi=None   cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T2   lo=11     hi=26     cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T3   lo=26     hi=50     cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T4   lo=50     hi=100    cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T5   lo=100    hi=250    cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T6   lo=250    hi=500    cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T7   lo=500    hi=1000   cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T8   lo=1000   hi=2000   cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  MSP2-EI                             Cybersecurity : Solution Partners T9   lo=2000   hi=5000   cost=0.94       ACTIVE MARKETPLACE ESET Enterprise Inspector (EDR)
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T1   lo=1      hi=40     cost=12         Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T2   lo=40     hi=75     cost=10.48      Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T3   lo=75     hi=100    cost=9.88       Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T4   lo=100    hi=175    cost=8.4        Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T5   lo=175    hi=250    cost=7.56       Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T6   lo=250    hi=500    cost=6.72       Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T7   lo=500    hi=750    cost=5.88       Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T8   lo=750    hi=1000   cost=5.44       Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T9   lo=1000   hi=None   cost=5.04       Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T1   lo=1      hi=40     cost=12         Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T2   lo=40     hi=75     cost=10.48      Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T3   lo=75     hi=100    cost=9.88       Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T4   lo=100    hi=175    cost=8.4        Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T5   lo=175    hi=250    cost=7.56       Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T6   lo=250    hi=500    cost=6.72       Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T7   lo=500    hi=750    cost=5.88       Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T8   lo=750    hi=1000   cost=5.44       Active     Auvik Transfer - Essentials
+  3PARTYSAASAUVIKTRFMO                UMM : Solution Partners   T9   lo=1000   hi=None   cost=5.04       Active     Auvik Transfer - Essentials
+  DSLP                                Cybersecurity : Solution Partners T1   lo=1      hi=100    cost=1.33       ACTIVE MARKETPLACE ESET Endpoint Encryption Pro
+  DSLP                                Cybersecurity : Solution Partners T2   lo=100    hi=250    cost=1.33       ACTIVE MARKETPLACE ESET Endpoint Encryption Pro
+  DSLP                                Cybersecurity : Solution Partners T3   lo=250    hi=500    cost=1.33       ACTIVE MARKETPLACE ESET Endpoint Encryption Pro
+  DSLP                                Cybersecurity : Solution Partners T4   lo=500    hi=750    cost=1.33       ACTIVE MARKETPLACE ESET Endpoint Encryption Pro
+  DSLP                                Cybersecurity : Solution Partners T5   lo=750    hi=1000   cost=1.33       ACTIVE MARKETPLACE ESET Endpoint Encryption Pro
+  DSLP                                Cybersecurity : Solution Partners T6   lo=1000   hi=None   cost=1.33       ACTIVE MARKETPLACE ESET Endpoint Encryption Pro
+  DSLP                                Cybersecurity : Solution Partners T1   lo=1      hi=100    cost=1.33       ACTIVE MARKETPLACE ESET Endpoint Encryption Pro
+  DSLP                                Cybersecurity : Solution Partners T2   lo=100    hi=250    cost=1.33       ACTIVE MARKETPLACE ESET Endpoint Encryption Pro
+  DSLP                                Cybersecurity : Solution Partners T3   lo=250    hi=500    cost=1.33       ACTIVE MARKETPLACE ESET Endpoint Encryption Pro
+  DSLP                                Cybersecurity : Solution Partners T4   lo=500    hi=750    cost=1.33       ACTIVE MARKETPLACE ESET Endpoint Encryption Pro
+  DSLP                                Cybersecurity : Solution Partners T5   lo=750    hi=1000   cost=1.33       ACTIVE MARKETPLACE ESET Endpoint Encryption Pro
+  DSLP                                Cybersecurity : Solution Partners T6   lo=1000   hi=None   cost=1.33       ACTIVE MARKETPLACE ESET Endpoint Encryption Pro
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T1   lo=1      hi=40     cost=84         Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T2   lo=40     hi=75     cost=71.4       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T3   lo=75     hi=100    cost=67.2       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T4   lo=100    hi=175    cost=54.6       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T5   lo=175    hi=250    cost=46.2       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T6   lo=250    hi=500    cost=39.9       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T7   lo=500    hi=750    cost=33.6       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T8   lo=750    hi=1000   cost=31.5       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T9   lo=1000   hi=None   cost=27.3       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T1   lo=1      hi=40     cost=7          Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T2   lo=40     hi=75     cost=5.95       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T3   lo=75     hi=100    cost=5.6        Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T4   lo=100    hi=175    cost=4.55       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T5   lo=175    hi=250    cost=3.85       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T6   lo=250    hi=500    cost=3.32       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T7   lo=500    hi=750    cost=2.8        Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T8   lo=750    hi=1000   cost=2.62       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T9   lo=1000   hi=None   cost=2.28       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T1   lo=1      hi=40     cost=7          Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T2   lo=40     hi=75     cost=5.95       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T3   lo=75     hi=100    cost=5.6        Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T4   lo=100    hi=175    cost=4.55       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T5   lo=175    hi=250    cost=3.85       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T6   lo=250    hi=500    cost=3.32       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T7   lo=500    hi=750    cost=2.8        Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T8   lo=750    hi=1000   cost=2.62       Active     Auvik AMN - Performance AddOn - Committed
+  AUVIKPERFORMANCADDON                UMM : Solution Partners   T9   lo=1000   hi=None   cost=2.28       Active     Auvik AMN - Performance AddOn - Committed
+  CW-RMM-WR-EEP-OVERAG                Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.52       Active     Webroot Endpoint Protection-(MDR)- Overage for CW RMM
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T1   lo=1      hi=40     cost=126        Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T2   lo=40     hi=75     cost=105        Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T3   lo=75     hi=100    cost=98.7       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T4   lo=100    hi=175    cost=84         Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T5   lo=175    hi=250    cost=75.6       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T6   lo=250    hi=500    cost=67.2       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T7   lo=500    hi=750    cost=58.8       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T8   lo=750    hi=1000   cost=54.6       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T9   lo=1000   hi=None   cost=50.4       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T1   lo=1      hi=40     cost=10.5       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T2   lo=40     hi=75     cost=8.75       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T3   lo=75     hi=100    cost=8.22       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T4   lo=100    hi=175    cost=7          Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T5   lo=175    hi=250    cost=6.3        Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T6   lo=250    hi=500    cost=5.6        Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T7   lo=500    hi=750    cost=4.9        Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T8   lo=750    hi=1000   cost=4.55       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T9   lo=1000   hi=None   cost=4.2        Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T1   lo=1      hi=40     cost=10.5       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T2   lo=40     hi=75     cost=8.75       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T3   lo=75     hi=100    cost=8.22       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T4   lo=100    hi=175    cost=7          Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T5   lo=175    hi=250    cost=6.3        Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T6   lo=250    hi=500    cost=5.6        Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T7   lo=500    hi=750    cost=4.9        Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T8   lo=750    hi=1000   cost=4.55       Active     Auvik Essentials
+  AUVIK-ESSENTIALS                    UMM : Solution Partners   T9   lo=1000   hi=None   cost=4.2        Active     Auvik Essentials
+  3PTYPROVISIONPACKSML                Cybersecurity : Solution Partners T0   lo=1      hi=100    cost=280        Active     Bitdefender Provisioning Pack for MSP Service - Small
+  3PTYPROVISIONPACKLRG                Cybersecurity : Solution Partners T0   lo=1      hi=250    cost=1120       Active     Bitdefender Provisioning Pack for MSP Service - Large
+  3PTYPROVISIONPACKMED                Cybersecurity : Solution Partners T0   lo=1      hi=175    cost=560        Active     Bitdefender Provisioning Pack for MSP Service - Medium
+  CU-BITDF-VITENVIR-VS                Cybersecurity : Fortify   T0   lo=1      hi=1      cost=3.69       Active     Bitdefender Security for Virtualized Environments VS
+  CU-BITDF-CLD-ENCRYP                 Cybersecurity : Fortify   T0   lo=1      hi=1      cost=0.4        Active     Bitdefender Cloud Encryption
+  CU-BITDF-GRAVITYZONE                Cybersecurity : Fortify   T1   lo=1      hi=100    cost=0.42       Active     Bitdefender Cloud Security Gravity Zone (Usage)
+  CU-BITDF-GRAVITYZONE                Cybersecurity : Fortify   T10  lo=20000  hi=None   cost=0.42       Active     Bitdefender Cloud Security Gravity Zone (Usage)
+  CU-BITDF-GRAVITYZONE                Cybersecurity : Fortify   T2   lo=100    hi=250    cost=0.42       Active     Bitdefender Cloud Security Gravity Zone (Usage)
+  CU-BITDF-GRAVITYZONE                Cybersecurity : Fortify   T3   lo=250    hi=500    cost=0.42       Active     Bitdefender Cloud Security Gravity Zone (Usage)
+  CU-BITDF-GRAVITYZONE                Cybersecurity : Fortify   T4   lo=500    hi=750    cost=0.42       Active     Bitdefender Cloud Security Gravity Zone (Usage)
+  CU-BITDF-GRAVITYZONE                Cybersecurity : Fortify   T5   lo=750    hi=1000   cost=0.42       Active     Bitdefender Cloud Security Gravity Zone (Usage)
+  CU-BITDF-GRAVITYZONE                Cybersecurity : Fortify   T6   lo=1000   hi=2500   cost=0.42       Active     Bitdefender Cloud Security Gravity Zone (Usage)
+  CU-BITDF-GRAVITYZONE                Cybersecurity : Fortify   T7   lo=2500   hi=5000   cost=0.42       Active     Bitdefender Cloud Security Gravity Zone (Usage)
+  CU-BITDF-GRAVITYZONE                Cybersecurity : Fortify   T8   lo=5000   hi=10000  cost=0.42       Active     Bitdefender Cloud Security Gravity Zone (Usage)
+  CU-BITDF-GRAVITYZONE                Cybersecurity : Fortify   T9   lo=10000  hi=20000  cost=0.42       Active     Bitdefender Cloud Security Gravity Zone (Usage)
+  CU-BITDF-PATCH-MNGT                 Cybersecurity : Fortify   T0   lo=1      hi=1      cost=0.95       Active     Bitdefender Patch Management
+  CU-BITDF-CLDSECEXCH                 Cybersecurity : Fortify   T0   lo=1      hi=1      cost=0.42       Active     Bitdefender Cloud Security Exchange
+  EEPA                                Cybersecurity : Solution Partners T1   lo=1      hi=100    cost=0.75       ACTIVE MARKETPLACE ESET PROTECT Entry On-Prem (NA)
+  EEPA                                Cybersecurity : Solution Partners T2   lo=100    hi=250    cost=0.75       ACTIVE MARKETPLACE ESET PROTECT Entry On-Prem (NA)
+  EEPA                                Cybersecurity : Solution Partners T3   lo=250    hi=500    cost=0.75       ACTIVE MARKETPLACE ESET PROTECT Entry On-Prem (NA)
+  EEPA                                Cybersecurity : Solution Partners T4   lo=500    hi=750    cost=0.75       ACTIVE MARKETPLACE ESET PROTECT Entry On-Prem (NA)
+  EEPA                                Cybersecurity : Solution Partners T5   lo=750    hi=1000   cost=0.75       ACTIVE MARKETPLACE ESET PROTECT Entry On-Prem (NA)
+  EEPA                                Cybersecurity : Solution Partners T6   lo=1000   hi=None   cost=0.75       ACTIVE MARKETPLACE ESET PROTECT Entry On-Prem (NA)
+  EEPA                                Cybersecurity : Solution Partners T1   lo=1      hi=100    cost=0.75       ACTIVE MARKETPLACE ESET PROTECT Entry On-Prem (NA)
+  EEPA                                Cybersecurity : Solution Partners T2   lo=100    hi=250    cost=0.75       ACTIVE MARKETPLACE ESET PROTECT Entry On-Prem (NA)
+  EEPA                                Cybersecurity : Solution Partners T3   lo=250    hi=500    cost=0.75       ACTIVE MARKETPLACE ESET PROTECT Entry On-Prem (NA)
+  EEPA                                Cybersecurity : Solution Partners T4   lo=500    hi=750    cost=0.75       ACTIVE MARKETPLACE ESET PROTECT Entry On-Prem (NA)
+  EEPA                                Cybersecurity : Solution Partners T5   lo=750    hi=1000   cost=0.75       ACTIVE MARKETPLACE ESET PROTECT Entry On-Prem (NA)
+  EEPA                                Cybersecurity : Solution Partners T6   lo=1000   hi=None   cost=0.75       ACTIVE MARKETPLACE ESET PROTECT Entry On-Prem (NA)
+  AL1778A00C-EN250-499                Cybersecurity : Solution Partners T0   lo=250    hi=499    cost=0.42       ACTIVE MARKETPLACE Bitdefender Cloud Security Exchange (250-499 ep)
+  AL1778A00C-EN250-499                Cybersecurity : Solution Partners T0   lo=250    hi=499    cost=0.42       ACTIVE MARKETPLACE Bitdefender Cloud Security Exchange (250-499 ep)
+  AL1778A00C-EN500-749                Cybersecurity : Solution Partners T0   lo=500    hi=749    cost=0.42       ACTIVE MARKETPLACE Bitdefender Cloud Security Exchange (500-749 ep)
+  AL1778A00C-EN500-749                Cybersecurity : Solution Partners T0   lo=500    hi=749    cost=0.42       ACTIVE MARKETPLACE Bitdefender Cloud Security Exchange (500-749 ep)
+  EEPS                                Cybersecurity : Solution Partners T1   lo=1      hi=100    cost=0.51       ACTIVE MARKETPLACE ESET PROTECT Essential On-Prem
+  EEPS                                Cybersecurity : Solution Partners T2   lo=100    hi=250    cost=0.51       ACTIVE MARKETPLACE ESET PROTECT Essential On-Prem
+  EEPS                                Cybersecurity : Solution Partners T3   lo=250    hi=500    cost=0.51       ACTIVE MARKETPLACE ESET PROTECT Essential On-Prem
+  EEPS                                Cybersecurity : Solution Partners T4   lo=500    hi=750    cost=0.51       ACTIVE MARKETPLACE ESET PROTECT Essential On-Prem
+  EEPS                                Cybersecurity : Solution Partners T5   lo=750    hi=1000   cost=0.51       ACTIVE MARKETPLACE ESET PROTECT Essential On-Prem
+  EEPS                                Cybersecurity : Solution Partners T6   lo=1000   hi=None   cost=0.51       ACTIVE MARKETPLACE ESET PROTECT Essential On-Prem
+  EEPS                                Cybersecurity : Solution Partners T1   lo=1      hi=100    cost=0.51       ACTIVE MARKETPLACE ESET PROTECT Essential On-Prem
+  EEPS                                Cybersecurity : Solution Partners T2   lo=100    hi=250    cost=0.51       ACTIVE MARKETPLACE ESET PROTECT Essential On-Prem
+  EEPS                                Cybersecurity : Solution Partners T3   lo=250    hi=500    cost=0.51       ACTIVE MARKETPLACE ESET PROTECT Essential On-Prem
+  EEPS                                Cybersecurity : Solution Partners T4   lo=500    hi=750    cost=0.51       ACTIVE MARKETPLACE ESET PROTECT Essential On-Prem
+  EEPS                                Cybersecurity : Solution Partners T5   lo=750    hi=1000   cost=0.51       ACTIVE MARKETPLACE ESET PROTECT Essential On-Prem
+  EEPS                                Cybersecurity : Solution Partners T6   lo=1000   hi=None   cost=0.51       ACTIVE MARKETPLACE ESET PROTECT Essential On-Prem
+  MSP2-PEN                            Cybersecurity : Solution Partners T1   lo=1      hi=6      cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T10  lo=2000   hi=None   cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T2   lo=6      hi=11     cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T3   lo=11     hi=26     cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T4   lo=26     hi=50     cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T5   lo=50     hi=100    cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T6   lo=100    hi=250    cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T7   lo=250    hi=500    cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T8   lo=500    hi=1000   cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T9   lo=1000   hi=2000   cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T1   lo=1      hi=6      cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T10  lo=2000   hi=None   cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T2   lo=6      hi=11     cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T3   lo=11     hi=26     cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T4   lo=26     hi=50     cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T5   lo=50     hi=100    cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T6   lo=100    hi=250    cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T7   lo=250    hi=500    cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T8   lo=500    hi=1000   cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  MSP2-PEN                            Cybersecurity : Solution Partners T9   lo=1000   hi=2000   cost=2.2        ACTIVE MARKETPLACE ESET Protect Enterprise
+  APP-BC-SPGAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=1.6458     Active     APP-Acronis Cyber Protect Cloud - Workstation
+  APP-BC-SREAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=2.25       Active     APP-Acronis Advanced Backup - VM
+  APP-BC-SP3AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.0371     Active     APP-Acronis Cyber Protect Cloud - Google Hosted Storage (per
+  APP-BC-SQYAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.03       Active     APP-Advanced Disaster Recovery - Acronis Hosted - 1 compute 
+  APP-BC-SPIAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.4873     Active     APP-Acronis Cyber Files Cloud - User (per user)
+  APP-BC-SP2AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.036      Active     APP-Acronis Cyber Files Cloud - Hybrid Storage (per GB)
+  APP-BC-SRFAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.45       Active     APP-Acronis Advanced Backup - Workstation
+  APP-BC-SPXAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.0154     Active     APP-Acronis Cyber Protect Cloud - Google Hosted Storage for 
+  APP-BC-SP1AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.0351     Active     APP-Acronis Cyber Files Cloud - Acronis Hosted Storage (per 
+  APP-BC-SRIAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.55       Active     APP-Acronis Advanced Security
+  APP-BC-SQ1AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.0154     Active     APP-Acronis Cyber Protect Cloud - Azure Hosted Storage for p
+  APP-BC-SQ2AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.0371     Active     APP-Acronis Cyber Protect Cloud - Azure Hosted Storage (per 
+  APP-BC-SRHAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.36       Active     APP-Acronis Advanced Management
+  APP-BC-SO4AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=1.45       Active     APP-Acronis Advanced Email Security (Perception Point)
+  APP-BC-SPBBMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.0338     Active     APP-Acronis Cyber Protect Cloud - Hybrid Storage (per GB)
+  APP-BC-SQ4AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.015      Active     APP-Acronis Cyber Notary Cloud - Notarization (per notarizat
+  APP-BC-SO1AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=9.75       Active     APP-Acronis Omnivoice (virtual phone system) Seat
+  APP-BC-SQ5AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.18       Active     APP-Acronis Cyber Notary Cloud - eSignature (per file)
+  APP-BC-SEDAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=1.75       Active     APP-Acronis Advanced Disaster Recovery - Hosted Public IP ad
+  APP-BC-SEAAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.5        Active     APP-Acronis Cyber Protect Cloud - Website
+  APP-BC-SO2AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=5.2        Active     APP-Acronis Omnivoice (virtual phone system) 300 minutes
+  APP-BC-SO3AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=2.6        Active     APP-Acronis Omnivoice (virtual phone system) 100 SMS
+  APP-BC-SVVAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=4.2131     Active     APP-Acronis Cyber Protect Cloud - vCloud Director VM
+  APP-BC-SVEAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.032      Active     APP-Acronis Advanced Disaster Recovery - Hosted Storage (per
+  APP-BC-SQ6AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.018      Active     APP-Acronis Cyber Notary Cloud - Acronis Hosted Storage (per
+  APP-BC-SPBAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.0351     Active     APP-Acronis Cyber Protect Cloud - Acronis Hosted Storage (pe
+  APP-BC-SPEAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=8.7467     Active     APP-Acronis Cyber Protect Cloud - Server
+  APP-BC-SQ7AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=1.782      Active     APP-Acronis Cyber Protect Cloud - Hosting Server
+  APP-BC-SPFAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=3.4125     Active     APP-Acronis Cyber Protect Cloud - VM
+  APP-BC-SP4BMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.015      Active     APP-Acronis Cyber Protect Cloud - Local Storage (per GB)
+  APP-BC-SRDAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=5.25       Active     APP-Acronis Advanced Backup - Server
+  APP-BC-SQ8AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.63       Active     APP-Acronis Cyber Protect Cloud - Google Workspace - G1
+  APP-BC-SR3AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=1.57       Active     APP-Acronis Cyber Notary Cloud - eSignature templates (per t
+  APP-BC-SRAAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.56       Active     APP-Acronis Cyber Protect Cloud - Microsoft 365 seat (for SP
+  APP-BC-SRBAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.4        Active     APP-Acronis Cyber Protect Cloud - Mobile
+  APP-BC-SRJAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=1.24       Active     APP-Acronis Cyber Protect Cloud-Microsoft 365 seat (with unl
+  APP-BC-ST6AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.45       Active     APP-Acronis Cyber Protect Cloud - Microsoft Hosted Exchange
+  APP-BC-SUVAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.018      Active     APP-Acronis Cyber Files Cloud - Acronis Hosted Storage (per 
+  APP-BC-SPDAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.011      Active     APP-Acronis Cyber Protect Cloud - Acronis Hosted Storage for
+  APP-SA-SCVAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.008      Active     APP-Acronis Cyber Infrastructure - SPLA (per GB)
+  SP-RGR-ND                           Cybersecurity : Fortify   T0   lo=1      hi=1      cost=0.38       Active     SentinelOne Singularity Network Discovery
+  CU-PM-RT180-ND                      Cybersecurity : Fortify   T0   lo=1      hi=1      cost=0.27       Active     SentinelOne 180 Day Data Retention
+  CU-PM-RT90-ND                       Cybersecurity : Fortify   T0   lo=1      hi=1      cost=0.18       Active     SentinelOne 90 Day Data Retention
+  SP-RSO-ND-T1-C                      Cybersecurity : Fortify   T0   lo=1      hi=1      cost=0.3        Active     SentinelOne Singularity RemoteOps
+  CU-PM-RT30-ND                       Cybersecurity : Fortify   T0   lo=1      hi=1      cost=0.09       Active     SentinelOne 30 Day Data Retention
+  CU-PM-RT1Y-ND                       Cybersecurity : Fortify   T0   lo=1      hi=1      cost=0.36       Active     SentinelOne 365 Day Data Retention
+  CU-PP-ESS-ADV                       Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.65       Active     CU-Proofpoint Advanced
+  CU-PP-ESS-ADV-PLUS                  Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=2.05       Active     CU-Proofpoint Advanced Plus
+  CU-PP-ESS-PSAT-A                    Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.55       Active     CU-Proofpoint PESA
+  CU-PP-ESS-PRO-PLUS                  Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=2.74       Active     CU-Proofpoint Professional Plus
+  CU-PP-ESS-BUS                       Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.21       Active     CU-Proofpoint Business
+  CU-PP-ESS-BUS-PLUS                  Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.34       Active     CU-Proofpoint Business Plus
+  CU-PP-ESS-PRO                       Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=2.34       Active     CU-Proofpoint Professional
+  APP-SA-SRI5MSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=1.45       Active     APP-Acronis Advanced Data Loss Prevention
+  APP-SA-SQBBMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.26       Active     APP-Acronis Advanced Backup - Google Workspace seat
+  APP-SA-SQKBMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.26       Active     APP-Acronis Advanced Backup - Microsoft 365 seat
+  APP-SA-SPD5MSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=8          Active     APP-Acronis Cyber Protect Cloud - NAS
+  APP-SA-SRI1MSENS                    BDR : Solution Partners   T0   lo=1      hi=1      cost=1.7        Active     CU-Acronis Advanced Security + EDR
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T1   lo=1      hi=100    cost=2.1        Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T2   lo=100    hi=250    cost=1.58       Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T3   lo=250    hi=500    cost=1.26       Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T4   lo=500    hi=1000   cost=0.91       Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T5   lo=1000   hi=2000   cost=0.7        Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T6   lo=2000   hi=3000   cost=0.63       Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T7   lo=3000   hi=5000   cost=0.59       Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T8   lo=5000   hi=None   cost=0.52       Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T1   lo=1      hi=100    cost=2.1        Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T2   lo=100    hi=250    cost=1.58       Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T3   lo=250    hi=500    cost=1.26       Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T4   lo=500    hi=1000   cost=0.91       Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T5   lo=1000   hi=2000   cost=0.7        Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T6   lo=2000   hi=3000   cost=0.63       Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T7   lo=3000   hi=5000   cost=0.59       Active     Auvik ASM - Standard - Committed
+  CW-AUVIK-MRM-ASM                    UMM : Solution Partners   T8   lo=5000   hi=None   cost=0.52       Active     Auvik ASM - Standard - Committed
+  SEWRSSAT10                          Cybersecurity : Solution Partners T0   lo=1      hi=99     cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 1-99
+  SEWRSSAT10                          Cybersecurity : Solution Partners T0   lo=1      hi=99     cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 1-99
+  SEWRSSAT100                         Cybersecurity : Solution Partners T0   lo=100    hi=249    cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 100-249
+  SEWRSSAT100                         Cybersecurity : Solution Partners T0   lo=100    hi=249    cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 100-249
+  SEWRSSAT1000                        Cybersecurity : Solution Partners T0   lo=1000   hi=2500   cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 1000-2499
+  SEWRSSAT1000                        Cybersecurity : Solution Partners T0   lo=1000   hi=2500   cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 1000-2499
+  SEWRSSAT10000                       Cybersecurity : Solution Partners T0   lo=10000  hi=20000  cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 10K-19999
+  SEWRSSAT10000                       Cybersecurity : Solution Partners T0   lo=10000  hi=20000  cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 10K-19999
+  SEWRSSAT20000                       Cybersecurity : Solution Partners T0   lo=20000  hi=None   cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 20000+
+  SEWRSSAT20000                       Cybersecurity : Solution Partners T0   lo=20000  hi=None   cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 20000+
+  SEWRSSAT250                         Cybersecurity : Solution Partners T0   lo=250    hi=500    cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 250-499
+  SEWRSSAT250                         Cybersecurity : Solution Partners T0   lo=250    hi=500    cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 250-499
+  SEWRSSAT2500                        Cybersecurity : Solution Partners T0   lo=2500   hi=4999   cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 2500-4999
+  SEWRSSAT2500                        Cybersecurity : Solution Partners T0   lo=2500   hi=4999   cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 2500-4999
+  SEWRSSAT500                         Cybersecurity : Solution Partners T0   lo=500    hi=749    cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 500-749
+  SEWRSSAT500                         Cybersecurity : Solution Partners T0   lo=500    hi=749    cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 500-749
+  SEWRSSAT5000                        Cybersecurity : Solution Partners T0   lo=5000   hi=10000  cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 5000-9999
+  SEWRSSAT5000                        Cybersecurity : Solution Partners T0   lo=5000   hi=10000  cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 5000-9999
+  SEWRSSAT750                         Cybersecurity : Solution Partners T0   lo=750    hi=1000   cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 750-999
+  SEWRSSAT750                         Cybersecurity : Solution Partners T0   lo=750    hi=1000   cost=0.02       ACTIVE MARKETPLACE Webroot SecureAnywhere SecAwarenessTrain 750-999
+  CU-WEBROOT-EPP-RMM                  Cybersecurity : Solution Partners T1   lo=1      hi=100    cost=0.52       Active     Webroot Endpoint Protection- for CW RMM
+  CU-WEBROOT-EPP-RMM                  Cybersecurity : Solution Partners T10  lo=20000  hi=None   cost=0.52       Active     Webroot Endpoint Protection- for CW RMM
+  CU-WEBROOT-EPP-RMM                  Cybersecurity : Solution Partners T2   lo=100    hi=250    cost=0.52       Active     Webroot Endpoint Protection- for CW RMM
+  CU-WEBROOT-EPP-RMM                  Cybersecurity : Solution Partners T3   lo=250    hi=500    cost=0.52       Active     Webroot Endpoint Protection- for CW RMM
+  CU-WEBROOT-EPP-RMM                  Cybersecurity : Solution Partners T4   lo=500    hi=750    cost=0.52       Active     Webroot Endpoint Protection- for CW RMM
+  CU-WEBROOT-EPP-RMM                  Cybersecurity : Solution Partners T5   lo=750    hi=1000   cost=0.52       Active     Webroot Endpoint Protection- for CW RMM
+  CU-WEBROOT-EPP-RMM                  Cybersecurity : Solution Partners T6   lo=1000   hi=2500   cost=0.52       Active     Webroot Endpoint Protection- for CW RMM
+  CU-WEBROOT-EPP-RMM                  Cybersecurity : Solution Partners T7   lo=2500   hi=5000   cost=0.52       Active     Webroot Endpoint Protection- for CW RMM
+  CU-WEBROOT-EPP-RMM                  Cybersecurity : Solution Partners T8   lo=5000   hi=10000  cost=0.52       Active     Webroot Endpoint Protection- for CW RMM
+  CU-WEBROOT-EPP-RMM                  Cybersecurity : Solution Partners T9   lo=10000  hi=20000  cost=0.52       Active     Webroot Endpoint Protection- for CW RMM
+  SP1AMSENS                           BDR : Solution Partners   T1   lo=1      hi=2      cost=0          ACTIVE MARKETPLACE Acronis Files Sync&Share-GB-Hosted Strg per GB-G1
+  SP1AMSENS                           BDR : Solution Partners   T2   lo=2      hi=5      cost=0          ACTIVE MARKETPLACE Acronis Files Sync&Share-GB-Hosted Strg per GB-G1
+  SP1AMSENS                           BDR : Solution Partners   T3   lo=5      hi=11     cost=0          ACTIVE MARKETPLACE Acronis Files Sync&Share-GB-Hosted Strg per GB-G1
+  SP1AMSENS                           BDR : Solution Partners   T4   lo=11     hi=20     cost=0          ACTIVE MARKETPLACE Acronis Files Sync&Share-GB-Hosted Strg per GB-G1
+  SP1AMSENS                           BDR : Solution Partners   T5   lo=20     hi=None   cost=0          ACTIVE MARKETPLACE Acronis Files Sync&Share-GB-Hosted Strg per GB-G1
+  SP1AMSENS                           BDR : Solution Partners   T1   lo=1      hi=2      cost=0          ACTIVE MARKETPLACE Acronis Files Sync&Share-GB-Hosted Strg per GB-G1
+  SP1AMSENS                           BDR : Solution Partners   T2   lo=2      hi=5      cost=0          ACTIVE MARKETPLACE Acronis Files Sync&Share-GB-Hosted Strg per GB-G1
+  SP1AMSENS                           BDR : Solution Partners   T3   lo=5      hi=11     cost=0          ACTIVE MARKETPLACE Acronis Files Sync&Share-GB-Hosted Strg per GB-G1
+  SP1AMSENS                           BDR : Solution Partners   T4   lo=11     hi=20     cost=0          ACTIVE MARKETPLACE Acronis Files Sync&Share-GB-Hosted Strg per GB-G1
+  SP1AMSENS                           BDR : Solution Partners   T5   lo=20     hi=None   cost=0          ACTIVE MARKETPLACE Acronis Files Sync&Share-GB-Hosted Strg per GB-G1
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T1   lo=1      hi=100    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T10  lo=20000  hi=None   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T2   lo=100    hi=250    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T3   lo=250    hi=500    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T4   lo=500    hi=750    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T5   lo=750    hi=1000   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T6   lo=1000   hi=2500   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T7   lo=2500   hi=5000   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T8   lo=5000   hi=10000  cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T9   lo=10000  hi=20000  cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T1   lo=1      hi=100    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T10  lo=20000  hi=None   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T2   lo=100    hi=250    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T3   lo=250    hi=500    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T4   lo=500    hi=750    cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T5   lo=750    hi=1000   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T6   lo=1000   hi=2500   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T7   lo=2500   hi=5000   cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T8   lo=5000   hi=10000  cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  WSADNSP-STAND-ALONE                 Cybersecurity : Solution Partners T9   lo=10000  hi=20000  cost=0.42       ACTIVE MARKETPLACE Webroot SecureAnywhere DNS
+  EXIUM_CGW                           Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=50         Active     Exium CGW-CyberGateway
+  CU-BITDFEDRMSPSECURE                Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.47       Active     Bitdefender EDR (MSP Secure)
+  CUBITDFEDSEC-4-MOBIL                Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.72       Active     Bitdefender Security for Mobile
+  TA-SENTINELONE-COMPLETE             Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.01       Active     TA-SentinelOne Complete
+  TA-SENTINELONE-CONTROL              Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.69       Active     TA-SentinelOne Control
+  TA-BITDEFENDER-EDR-MSP-SECURE       Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.6        Active     TA-Bitdefender EDR (MSP Secure)
+  APP-SA-SRJGMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.7455     Active     APP-Acronis Cyber Protect Cloud Backup-Geo-redundant-WL-Micr
+  APP-SA-SQBGMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.7455     Active     APP-Acronis Cyber Protect Cloud Backup-Geo-redundant-WL-Goog
+  APP-SA-SO6AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.7        Active     APP-Acronis Cyber Protect Cloud Advanced Collaboration Apps 
+  APP-SA-SP5AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.0105     Active     APP-Acronis Cyber Protect Cloud Backup-Geo-redundant-GB/WL-A
+  APP-SA-SPDCMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0          Active     APP-Acronis Cyber Protect Cloud Cyber Protect Cloud-Essentia
+  APP-SA-SP1AMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.0504     Active     APP-Acronis Cyber Protect Cloud Files Sync & Share-GB-Acroni
+  APP-SA-SQBPMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.5075     Active     APP-Acronis Cyber Protect Cloud Backup-WL-Google Workspace s
+  APP-SA-SP4BMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.0259     Active     APP-Acronis Cyber Protect Cloud Backup-GB-Customer Storage (
+  APP-SA-SQACMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=21         Active     APP-Acronis Cyber Protect Cloud Advanced Automation (Per use
+  APP-SA-SRGAMSENS                    UMM : Solution Partners   T0   lo=1      hi=1      cost=0.315      Active     APP-Acronis Cyber Protect Cloud Advanced Backup-WL-Hosting S
+  CW-BITDFEDRMSPSECURE                Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.47       ACTIVE MARKETPLACE CW Bitdefender EDR (MSP Secure)
+  M2M-CU-PP-ESS-ADV                   Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.65       Active     M2M-CU-Proofpoint Advanced
+  M2M-SENTINELONE-CONTROL             Cybersecurity : Fortify   T0   lo=1      hi=1      cost=0.69       Active     M2M-SentinelOne Control
+  M2M-SENTINELONE-COMPLETE            Cybersecurity : Fortify   T0   lo=1      hi=1      cost=1.01       Active     M2M-SentinelOne Complete
+  EX-XDR-7DAY                         Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=2          Active     Exium XDR with 7-day Retention
+  EX-XDR-30DAY                        Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=4          Active     Exium XDR with 30-day Retention
+  EX-SASE-PRO                         Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=8.75       Active     Exium SASE Pro
+  EX-SASE-ESSENTIALS                  Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=5.5        Active     Exium SASE Essentials
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T1   lo=1      hi=10     cost=210        Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T10  lo=1000   hi=2000   cost=208.65     Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T11  lo=2000   hi=5000   cost=208.58     Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T12  lo=5000   hi=10000  cost=208.53     Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T13  lo=10000  hi=100000 cost=208.49     Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T2   lo=10     hi=40     cost=210        Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T3   lo=40     hi=75     cost=209.75     Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T4   lo=75     hi=100    cost=209.48     Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T5   lo=100    hi=175    cost=209.18     Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T6   lo=175    hi=250    cost=209.04     Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T7   lo=250    hi=500    cost=208.91     Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T8   lo=500    hi=750    cost=208.78     Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T9   lo=750    hi=1000   cost=208.71     Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T1   lo=1      hi=10     cost=17.5       Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T10  lo=1000   hi=2000   cost=17.39      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T11  lo=2000   hi=5000   cost=17.38      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T12  lo=5000   hi=10000  cost=17.38      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T13  lo=10000  hi=100000 cost=17.37      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T2   lo=10     hi=40     cost=17.5       Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T3   lo=40     hi=75     cost=17.48      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T4   lo=75     hi=100    cost=17.46      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T5   lo=100    hi=175    cost=17.43      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T6   lo=175    hi=250    cost=17.42      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T7   lo=250    hi=500    cost=17.41      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T8   lo=500    hi=750    cost=17.4       Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T9   lo=750    hi=1000   cost=17.39      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T1   lo=1      hi=10     cost=17.5       Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T10  lo=1000   hi=2000   cost=17.39      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T11  lo=2000   hi=5000   cost=17.38      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T12  lo=5000   hi=10000  cost=17.38      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T13  lo=10000  hi=100000 cost=17.37      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T2   lo=10     hi=40     cost=17.5       Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T3   lo=40     hi=75     cost=17.48      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T4   lo=75     hi=100    cost=17.46      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T5   lo=100    hi=175    cost=17.43      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T6   lo=175    hi=250    cost=17.42      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T7   lo=250    hi=500    cost=17.41      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T8   lo=500    hi=750    cost=17.4       Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-NEW-BUSSINESS         UMM : Solution Partners   T9   lo=750    hi=1000   cost=17.39      Active     Auvik ANM - Full Performance - Committed
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T1   lo=1      hi=40     cost=240        Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T2   lo=40     hi=75     cost=239.71     Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T3   lo=75     hi=100    cost=239.4      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T4   lo=100    hi=175    cost=239.06     Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T5   lo=175    hi=250    cost=238.91     Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T6   lo=250    hi=500    cost=238.76     Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T7   lo=500    hi=750    cost=238.61     Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T8   lo=750    hi=1000   cost=238.53     Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T9   lo=1000   hi=None   cost=238.45     Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T1   lo=1      hi=40     cost=20         Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T2   lo=40     hi=75     cost=19.98      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T3   lo=75     hi=100    cost=19.95      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T4   lo=100    hi=175    cost=19.92      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T5   lo=175    hi=250    cost=19.91      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T6   lo=250    hi=500    cost=19.9       Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T7   lo=500    hi=750    cost=19.88      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T8   lo=750    hi=1000   cost=19.88      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T9   lo=1000   hi=None   cost=19.87      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T1   lo=1      hi=40     cost=20         Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T2   lo=40     hi=75     cost=19.98      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T3   lo=75     hi=100    cost=19.95      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T4   lo=100    hi=175    cost=19.92      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T5   lo=175    hi=250    cost=19.91      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T6   lo=250    hi=500    cost=19.9       Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T7   lo=500    hi=750    cost=19.88      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T8   lo=750    hi=1000   cost=19.88      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  AUVIK-PRM-ANM-TRANSFER              UMM : Solution Partners   T9   lo=1000   hi=None   cost=19.87      Active     Auvik ANM - Full Performance - Committed (Transfer)
+  APP-SH3AMSENS                       BDR : Solution Partners   T0   lo=1      hi=1      cost=0.0575     ACTIVE MARKETPLACE APP-Acronis Archiving GB Google Hosted Storage Acronis Cyber
+  APP-SHBBMSENS                       BDR : Solution Partners   T0   lo=1      hi=1      cost=0.0291     ACTIVE MARKETPLACE APP-Acronis Cyber Protect Cloud - Acronis Archiving Partner 
+  APP-SHBAMSENS                       BDR : Solution Partners   T0   lo=1      hi=1      cost=0.0511     ACTIVE MARKETPLACE APP-Acronis Cyber Protect Cloud - Archiving Acronis Hosted S
+  APP-SRMAMSENS                       BDR : Solution Partners   T0   lo=1      hi=1      cost=0.6        ACTIVE MARKETPLACE APP-Acronis Cyber Protect Cloud - Acronis Advanced Managemen
+  APP-SPZBMSENS                       BDR : Solution Partners   T0   lo=1      hi=1      cost=0.0923     ACTIVE MARKETPLACE APP-Acronis Microsoft 365 Backup Storage (per GB) Microsoft 
+  CMS-S1-CYBR-SOLP-SAAS-IDDETRESP     Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.25       Active     SentinelOne Identity Detection and Response
+  2765PHMSN012AAZZ                    Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.11       Active     Bitdefender PHASR
+  2765SEESN012AAZZ0                   Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=3.3        Active     Bitdefender Secure Extra
+  2765SEPSN012AAZZ                    Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=2.3        Active     Bitdefender Secure Plus
+  CMS-SEC-SAAS-SEC-CYB-XDRNTWK        Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.65       Active     Bitdefender XDR - Network
+  CMS-SEC-SAAS-SEC-CYB-XDRIDEN        Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.65       Active     Bitdefender XDR - Identity
+  CMS-SEC-SAAS-SEC-CYB-XDRCLOD        Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.65       Active     Bitdefender XDR - Cloud
+  CMS-SEC-SAAS-SEC-CYB-XDRPROD        Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.65       Active     Bitdefender XDR - Productivity Apps
+  WRSECGSM10                          Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.52       ACTIVE MARKETPLACE Webroot SecureAnywhere GSM Key 10-99
+  WRSECGSM10                          Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.52       ACTIVE MARKETPLACE Webroot SecureAnywhere GSM Key 10-99
+  WRSECGSM100                         Cybersecurity : Solution Partners T0   lo=100    hi=249    cost=0.52       ACTIVE MARKETPLACE Webroot SecureAnywhere GSM Key 100-249
+  WRSECGSM100                         Cybersecurity : Solution Partners T0   lo=100    hi=249    cost=0.52       ACTIVE MARKETPLACE Webroot SecureAnywhere GSM Key 100-249
+  WRSECGSM1000                        Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.52       ACTIVE MARKETPLACE Webroot SecureAnywhere GSM Key 1000+
+  WRSECGSM1000                        Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.52       ACTIVE MARKETPLACE Webroot SecureAnywhere GSM Key 1000+
+  WRSECGSM250                         Cybersecurity : Solution Partners T0   lo=250    hi=500    cost=0.52       ACTIVE MARKETPLACE Webroot SecureAnywhere GSM Key 250-499
+  WRSECGSM250                         Cybersecurity : Solution Partners T0   lo=250    hi=500    cost=0.52       ACTIVE MARKETPLACE Webroot SecureAnywhere GSM Key 250-499
+  WRSECGSM500                         Cybersecurity : Solution Partners T0   lo=500    hi=749    cost=0.52       ACTIVE MARKETPLACE Webroot SecureAnywhere GSM Key 500-749
+  WRSECGSM500                         Cybersecurity : Solution Partners T0   lo=500    hi=749    cost=0.52       ACTIVE MARKETPLACE Webroot SecureAnywhere GSM Key 500-749
+  WRSECGSM750                         Cybersecurity : Solution Partners T0   lo=50     hi=100    cost=0.52       ACTIVE MARKETPLACE Webroot SecureAnywhere GSM Key 750-999
+  WRSECGSM750                         Cybersecurity : Solution Partners T0   lo=50     hi=100    cost=0.52       ACTIVE MARKETPLACE Webroot SecureAnywhere GSM Key 750-999
+  SwO-IH-CYBR-SOLP-SAAS-ENDPPRMM      Cybersecurity : Solution Partners T1   lo=1      hi=100    cost=0.41       Active     SwO Webroot Endpoint Protection- for CW RMM
+  SwO-IH-CYBR-SOLP-SAAS-ENDPPRMM      Cybersecurity : Solution Partners T10  lo=20000  hi=None   cost=0.41       Active     SwO Webroot Endpoint Protection- for CW RMM
+  SwO-IH-CYBR-SOLP-SAAS-ENDPPRMM      Cybersecurity : Solution Partners T2   lo=100    hi=250    cost=0.41       Active     SwO Webroot Endpoint Protection- for CW RMM
+  SwO-IH-CYBR-SOLP-SAAS-ENDPPRMM      Cybersecurity : Solution Partners T3   lo=250    hi=500    cost=0.41       Active     SwO Webroot Endpoint Protection- for CW RMM
+  SwO-IH-CYBR-SOLP-SAAS-ENDPPRMM      Cybersecurity : Solution Partners T4   lo=500    hi=750    cost=0.41       Active     SwO Webroot Endpoint Protection- for CW RMM
+  SwO-IH-CYBR-SOLP-SAAS-ENDPPRMM      Cybersecurity : Solution Partners T5   lo=750    hi=1000   cost=0.41       Active     SwO Webroot Endpoint Protection- for CW RMM
+  SwO-IH-CYBR-SOLP-SAAS-ENDPPRMM      Cybersecurity : Solution Partners T6   lo=1000   hi=2500   cost=0.41       Active     SwO Webroot Endpoint Protection- for CW RMM
+  SwO-IH-CYBR-SOLP-SAAS-ENDPPRMM      Cybersecurity : Solution Partners T7   lo=2500   hi=5000   cost=0.41       Active     SwO Webroot Endpoint Protection- for CW RMM
+  SwO-IH-CYBR-SOLP-SAAS-ENDPPRMM      Cybersecurity : Solution Partners T8   lo=5000   hi=10000  cost=0.41       Active     SwO Webroot Endpoint Protection- for CW RMM
+  SwO-IH-CYBR-SOLP-SAAS-ENDPPRMM      Cybersecurity : Solution Partners T9   lo=10000  hi=20000  cost=0.41       Active     SwO Webroot Endpoint Protection- for CW RMM
+  SwO-3P-CYBR-SOLP-SAAS-S1CNTROL      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.69       Active     SwO SentinelOne Control
+  SwO-3P-CYBR-SOLP-SAAS-S1CMPLET      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.01       Active     SwO SentinelOne Complete
+  SwO-3P-CYBR-SOLP-SAAS-S1-1YRET      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.36       Active     SwO SentinelOne 365 Day Data Retention
+  SwO-3P-CYBR-MDR-SAAS-EDR-MSPS       Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.47       Active     SwO Bitdefender EDR - MSP Secure
+  SwO-3P-CYBR-SOLP-SAAS-S1-30RET      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.09       Active     SwO SentinelOne 30-Day Data Retention
+  SwO-3P-CYBR-SOLP-SAAS-S1-6MRET      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.27       Active     SwO SentinelOne 180 Day Data Retention
+  SwO-3P-CYBR-SOLP-SAAS-S1-90RET      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.18       Active     SwO SentinelOne 90-Day Data Retention
+  SwO-3P-CYBR-SOLP-SAAS-NTWKDSCV      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.38       Active     SwO SentinelOne-Singularity-Network-Discovery
+  SwO-3P-CYBR-SOLP-ESS-ADV2           Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=2.05       Active     SwO Proofpoint Advanced Plus
+  SwO-3P-CYBR-SOLP-BDATSEDR           Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.05       Active     SwO Bitdefender ATS & EDR
+  SwO-3P-CYBR-SOLP-SAAS-30021010      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0          Active     SwO Webroot DNS Protection
+  SwO-3P-CYBR-SOLP-SAAS-SECMOBIL      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.72       Active     SwO Bitdefender Security for Mobile
+  SwO-3P-CYBR-SOLP-SAAS-RSONDT1C      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.3        Active     SwO SentinelOne RemoteOps
+  SwO-3P-CYBR-SOLP-SAAS-CLDENCRY      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.4        Active     SwO Bitdefender Cloud Encryption
+  SwO-3P-CYBR-SOLP-SAAS-ADVTHRET      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.55       Active     SwO Bitdefender Advanced Threat Security
+  SwO-3P-CYBR-SOLP-SAAS-PATCHMGT      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.95       Active     SwO Bitdefender Patch Management
+  SwO-3P-CYBR-SOLP-SAAS-IDETRESP      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=1.25       Active     SwO SentinelOne Identity Detection and Response
+  SwO-3P-CYBR-SOLP-SAAS-PROFPLUS      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=2.74       Active     SwO Proofpoint Professional Plus
+  SwO-3P-CYBR-SOLP-SAAS-CLDSECEX      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.42       Active     SwO Bitdefender Cloud Security Exchange
+  CULICSAAS1007200003                 UMM : Solution Partners   T1   lo=1      hi=11     cost=0          Active     ConnectWise RMM Network - Auvik Performance Unmapped
+  CULICSAAS1007200003                 UMM : Solution Partners   T2   lo=11     hi=41     cost=0          Active     ConnectWise RMM Network - Auvik Performance Unmapped
+  CULICSAAS1007200003                 UMM : Solution Partners   T3   lo=41     hi=101    cost=0          Active     ConnectWise RMM Network - Auvik Performance Unmapped
+  CULICSAAS1007200003                 UMM : Solution Partners   T4   lo=101    hi=251    cost=0          Active     ConnectWise RMM Network - Auvik Performance Unmapped
+  CULICSAAS1007200003                 UMM : Solution Partners   T5   lo=251    hi=501    cost=0          Active     ConnectWise RMM Network - Auvik Performance Unmapped
+  CULICSAAS1007200003                 UMM : Solution Partners   T6   lo=501    hi=100001 cost=0          Active     ConnectWise RMM Network - Auvik Performance Unmapped
+  CMS-EG-CYBR-SOLP-SAAS-MDRDSKTP      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.52       Active     CMS EVG Webroot Endpoint Protection-(MDR) Desktop
+  CMS-EG-CYBR-SOLP-SAAS-MDRSERVR      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.52       Active     CMS EVG Webroot Endpoint Protection-(MDR) Server
+  CMS-IH-CYBR-SOLP-SAAS-MDRSERVR      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.52       Active     CMS Webroot Endpoint Protection-(MDR) Server
+  CMS-IH-CYBR-SOLP-SAAS-MDRDSKTP      Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0.52       Active     CMS Webroot Endpoint Protection-(MDR) Desktop
+  MSP2FDE4                            Cybersecurity : Solution Partners T0   lo=500    hi=749    cost=0.75       ACTIVE MARKETPLACE ESET Full Disk Encryption 500-749
+  MSP2FDE4                            Cybersecurity : Solution Partners T0   lo=500    hi=749    cost=0.75       ACTIVE MARKETPLACE ESET Full Disk Encryption 500-749
+  3P-SAAS30022019FFSAT                Cybersecurity : Solution Partners T0   lo=1      hi=1      cost=0          Active     ConnectWise Webroot SAT-01-01-2015
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T1   lo=1      hi=100    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T10  lo=20000  hi=None   cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T2   lo=100    hi=250    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T3   lo=250    hi=500    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T4   lo=500    hi=750    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T5   lo=750    hi=1000   cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T6   lo=1000   hi=2500   cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T7   lo=2500   hi=5000   cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T8   lo=5000   hi=10000  cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T9   lo=10000  hi=20000  cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T1   lo=1      hi=100    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T10  lo=20000  hi=None   cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T2   lo=100    hi=250    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T3   lo=250    hi=500    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T4   lo=500    hi=750    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T5   lo=750    hi=1000   cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T6   lo=1000   hi=2500   cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T7   lo=2500   hi=5000   cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T8   lo=5000   hi=10000  cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  3PARTYONPREMBTCDSCCW                Cybersecurity : Solution Partners T9   lo=10000  hi=20000  cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Security Gravity Zone
+  AL1795A00C-EN250-499                Cybersecurity : Solution Partners T0   lo=250    hi=500    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Encryption 250-499
+  AL1795A00C-EN250-499                Cybersecurity : Solution Partners T0   lo=250    hi=500    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Encryption 250-499
+  AL1795A00C-EN500-749                Cybersecurity : Solution Partners T0   lo=500    hi=750    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Encryption 500-749
+  AL1795A00C-EN500-749                Cybersecurity : Solution Partners T0   lo=500    hi=750    cost=0.4        ACTIVE MARKETPLACE Bitdefender Cloud Encryption 500-749

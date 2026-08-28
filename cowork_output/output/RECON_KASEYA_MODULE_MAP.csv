@@ -1,0 +1,9 @@
+vendor,product,rft_entitlement_flag,vendor_report_count_2026_05,cw_billed_count_2026_05,unit_price_usd,separately_billed,cw_bill_metric,notes,basis_month,seed_generated_on
+Kaseya,Base,CTM_NA,945,0,11,FALSE,COUNT of MEMBERS with entitlement flag = Yes (NOT UserCount),All active members carry Base (Network Automation); not separately billed as a royalty line.,2026-05,2026-07-15
+Kaseya,Premium,CTM_NAP,336,280,16,TRUE,COUNT of MEMBERS with entitlement flag = Yes (NOT UserCount),,2026-05,2026-07-15
+Kaseya,Security,CTM_SA,282,234,41,TRUE,COUNT of MEMBERS with entitlement flag = Yes (NOT UserCount),,2026-05,2026-07-15
+Kaseya,Exchange,CTM_EA,40,25,41,TRUE,COUNT of MEMBERS with entitlement flag = Yes (NOT UserCount),,2026-05,2026-07-15
+Kaseya,SQL,CTM_MSSQL,23,11,41,TRUE,COUNT of MEMBERS with entitlement flag = Yes (NOT UserCount),,2026-05,2026-07-15
+Kaseya,Client Connector,CTM_CONNECTOR,46,34,15,TRUE,COUNT of MEMBERS with entitlement flag = Yes (NOT UserCount),,2026-05,2026-07-15
+Kaseya,Hipaa,CTM_HIPAA,37,18,125,TRUE,COUNT of MEMBERS with entitlement flag = Yes (NOT UserCount),,2026-05,2026-07-15
+Kaseya,PCI Compliance,CTM_PCI,13,19,100,TRUE,COUNT of MEMBERS with entitlement flag = Yes (NOT UserCount),,2026-05,2026-07-15

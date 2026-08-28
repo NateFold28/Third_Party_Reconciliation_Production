@@ -1,0 +1,25 @@
+vendor_partner_name | bucket | rows | abs_qty_delta
+1SWISS1 SA | B_SF_ID_NO_BILLING | 3 | 16.0
+1SWISS1 SA | C_PERFECT_MATCH | 24 | 0.0
+American Products | B_SF_ID_NO_BILLING | 1 | 201.0
+BZW Consulting Group, Inc. | B_SF_ID_NO_BILLING | 2 | 3151.0
+BZW Consulting Group, Inc. | C_PERFECT_MATCH | 10 | 0.0
+Cypher Connect LLC | B_SF_ID_NO_BILLING | 1 | 76.0
+HighPoint Medical | B_SF_ID_NO_BILLING | 6 | 64.0
+HighPoint Medical | C_PERFECT_MATCH | 16 | 0.0
+HighPoint Medical | E_VENDOR_OVER_BILLING | 2 | 5.0
+Lavoda Systems | B_SF_ID_NO_BILLING | 6 | 1151.0
+Lavoda Systems | C_PERFECT_MATCH | 29 | 0.0
+Lavoda Systems | E_VENDOR_OVER_BILLING | 1 | 1.0
+Merit Technologies, LLC | B_SF_ID_NO_BILLING | 1 | 307.0
+Merit Technologies, LLC | C_PERFECT_MATCH | 4 | 0.0
+Pearson-Kelly Office Products | D_BILLING_OVER_VENDOR | 3 | 1083.0
+Plains Internet | B_SF_ID_NO_BILLING | 2 | 149.0
+Plains Internet | C_PERFECT_MATCH | 14 | 0.0
+Sieve Networks, Inc. | C_PERFECT_MATCH | 6 | 0.0
+Sieve Networks, Inc. | D_BILLING_OVER_VENDOR | 6 | 571.0
+Source One Business Services, LLC | B_SF_ID_NO_BILLING | 6 | 68.0
+Source One Business Services, LLC | C_PERFECT_MATCH | 17 | 0.0
+Source One Business Services, LLC | E_VENDOR_OVER_BILLING | 1 | 49.0
+Windsor Telecom | B_SF_ID_NO_BILLING | 4 | 397.0
+Windsor Telecom | C_PERFECT_MATCH | 1 | 0.0

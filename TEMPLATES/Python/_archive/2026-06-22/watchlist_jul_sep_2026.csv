@@ -1,0 +1,51 @@
+CONTRACT_ID,PARTNER,SEGMENT,PRODUCT_GROUP,PRODUCT_PORTFOLIO,RENEWAL_MONTH,RENEWAL_MANAGER,ACCOUNT_OWNER,ATR,LOSS_EXPOSURE,CHURN_PCT,RETENTION_PCT,RISK_TIER,RISK_PCTL_IN_SEG,FINANCE_ANCHOR_SOURCE,ML_VS_ANCHOR_PP,IS_NEAR_TERM
+8004v000002yPDOAA2,"Computer Integration Technologies, Inc.",Strategic,Managed Endpoint,Security Mgmt,2026-07-01,Unassigned,Ralph Reidell,737736.0,293172.0,62.0,60.3,HIGH,85.0,V5_ML,2.0,True
+800Pj00000mLFA9IAO,Air-IT,Strategic,Managed Endpoint,Security Mgmt,2026-07-01,Joe Crisafulli,Ieuan Thomas,879048.0,275716.0,47.4,68.6,HIGH,78.0,V5_ML,2.0,True
+8004v000002TM8CAAW,"Velocity Network, Inc.",Strategic,Security Solution Partners,Security Mgmt,2026-09-01,Unassigned,Ralph Reidell,524107.0,221854.0,59.1,57.7,HIGH,86.0,V5_ML,2.0,True
+8004v000002TM8CAAW,"Velocity Network, Inc.",Strategic,Managed Endpoint,Security Mgmt,2026-09-01,Unassigned,Ralph Reidell,453260.0,191865.0,59.1,57.7,HIGH,86.0,V5_ML,2.0,True
+800Pj00000XdILWIA3,Air-IT,Strategic,Security Info & Event Mgmt,Security Mgmt,2026-08-01,Joe Crisafulli,Ieuan Thomas,404546.0,162184.0,73.5,59.9,HIGH,93.0,V5_ML,2.0,True
+8004v000002ef1rAAA,"Granite Telecommunications, LLC",Strategic,ConnectWise PSA/Pkgs,Business Mgmt,2026-09-01,Unassigned,Moe Adnan,337086.0,151394.0,52.4,55.1,HIGH,82.0,V5_ML,2.0,True
+800Pj00000iOzFWIA0,"Heartland Business Systems, LLC",Strategic,ConnectWise PSA/Pkgs,Business Mgmt,2026-08-01,Unassigned,Moe Adnan,434856.0,139989.0,62.0,67.8,HIGH,85.0,V5_ML,2.0,True
+800Pj00000mlOkqIAE,"Wipfli Advisory, LLC",Strategic,Security Info & Event Mgmt,Security Mgmt,2026-09-01,Unassigned,Steven Serrano,467896.0,135001.0,42.1,71.1,MEDIUM,66.0,V5_ML,2.0,True
+8004v000002TM8CAAW,"Velocity Network, Inc.",Strategic,CW Legacy Backup,Data Protection,2026-09-01,Unassigned,Ralph Reidell,290239.0,122858.0,59.1,57.7,HIGH,86.0,V5_ML,2.0,True
+800Pj00000tLP2EIAW,"Ntiva, Inc",Strategic,Automate,Unified Mgmt,2026-07-01,Unassigned,Sean Baroody,271147.0,98218.0,47.4,63.8,HIGH,78.0,V5_ML,2.0,True
+800Pj00000iOzFWIA0,"Heartland Business Systems, LLC",Strategic,Automate,Unified Mgmt,2026-08-01,Unassigned,Moe Adnan,295046.0,94981.0,62.0,67.8,HIGH,85.0,V5_ML,2.0,True
+800Pj00000FkfKbIAJ,ITEC Connect Limited,Strategic,ConnectWise PSA/Pkgs,Business Mgmt,2026-07-01,Joe Crisafulli,Ieuan Thomas,417548.0,94288.0,45.1,77.4,MEDIUM,69.0,V5_ML,2.0,True
+800Pj00000kTz7HIAS,"Kraft & Kennedy, Inc.",Strategic,Security Info & Event Mgmt,Security Mgmt,2026-08-01,Unassigned,Luke Wiley,306973.0,92183.0,47.4,70.0,HIGH,79.0,V5_ML,2.0,True
+800Pj00000h1zSTIAY,"Wipfli Advisory, LLC",Strategic,CW RMM,Unified Mgmt,2026-07-01,Unassigned,Steven Serrano,367692.0,90155.0,45.1,75.5,MEDIUM,69.0,V5_ML,2.0,True
+800Pj00000ivqIJIAY,VC3,Strategic,ConnectWise PSA/Pkgs,Business Mgmt,2026-08-01,Unassigned,Moe Adnan,300431.0,85773.0,45.1,71.4,MEDIUM,70.0,V5_ML,2.0,True
+800Pj00000kwfeeIAA,Computers NOW Pty Ltd,Core,ConnectWise PSA/Pkgs,Business Mgmt,2026-09-01,Unassigned,Hugh Jarman,218252.0,83004.0,41.4,61.2,HIGH,77.0,V5_ML,2.0,True
+800Pj00000ivVVfIAM,One Diversified LLC,Strategic,ConnectWise PSA/Pkgs,Business Mgmt,2026-08-01,Unassigned,Luke Wiley,370307.0,80900.0,29.8,78.2,MEDIUM,58.0,V5_ML,2.0,True
+800Pj00000kwaaBIAQ,Meriplex Communications,Strategic,ConnectWise PSA/Pkgs,Business Mgmt,2026-09-01,Unassigned,Sean Baroody,306249.0,77495.0,16.6,74.7,LOW,33.0,V5_ML,2.0,True
+800Pj00000iOzFWIA0,"Heartland Business Systems, LLC",Strategic,ConnectWise CPQ,Business Mgmt,2026-08-01,Unassigned,Moe Adnan,240214.0,77330.0,62.0,67.8,HIGH,85.0,V5_ML,2.0,True
+800Pj00000mrTwOIAU,"Sedona, Inc.",Strategic,CW RMM,Unified Mgmt,2026-09-01,Unassigned,Lisa Kelley,177057.0,77309.0,68.8,56.3,HIGH,90.0,V5_ML,2.0,True
+800Pj00000i7Z6CIAU,Spectrum Technologies,Strategic,Managed Endpoint,Security Mgmt,2026-09-01,Unassigned,John Nguyen,217684.0,71331.0,47.4,67.2,MEDIUM,73.0,V5_ML,2.0,True
+800Pj00000JbNihIAF,"Blue Valley Technologies, Inc. operating as Networks Plus",Strategic,CW RMM,Unified Mgmt,2026-07-01,Unassigned,Luke Wiley,236854.0,70702.0,51.4,70.1,HIGH,82.0,V5_ML,2.0,True
+800Pj00000mrTwOIAU,"Sedona, Inc.",Strategic,Managed Endpoint,Security Mgmt,2026-09-01,Unassigned,Lisa Kelley,158253.0,69098.0,68.8,56.3,HIGH,90.0,V5_ML,2.0,True
+800Pj00000iPq8aIAC,Marco Technologies LLC,Strategic,ConnectWise CPQ,Business Mgmt,2026-08-01,Unassigned,John Nguyen,170351.0,68294.0,47.4,59.9,HIGH,79.0,V5_ML,2.0,True
+800Pj00000mdhHeIAI,Alt Gr SA,Core,CW RMM,Unified Mgmt,2026-09-01,Hunter Smith,Ralf Stöhr,154320.0,67024.0,70.0,56.6,HIGH,89.0,V5_ML,2.0,True
+8004v000002T8xzAAC,Kelser Corporation,Strategic,Expert Services,Unified Mgmt,2026-07-01,Kim Harris,Steven Serrano,276342.0,65760.0,45.1,76.2,MEDIUM,69.0,V5_ML,2.0,True
+800Pj00000h1zSTIAY,"Wipfli Advisory, LLC",Strategic,Managed Endpoint,Security Mgmt,2026-07-01,Unassigned,Steven Serrano,265017.0,64980.0,45.1,75.5,MEDIUM,69.0,V5_ML,2.0,True
+800Pj00000ivGekIAE,Loffler Companies Inc,Strategic,Security Info & Event Mgmt,Security Mgmt,2026-08-01,Unassigned,John Nguyen,239919.0,62550.0,31.4,73.9,MEDIUM,60.0,V5_ML,2.0,True
+8004v000002TM8CAAW,"Velocity Network, Inc.",Strategic,CW RMM,Unified Mgmt,2026-09-01,Unassigned,Ralph Reidell,145641.0,61650.0,59.1,57.7,HIGH,86.0,V5_ML,2.0,True
+800Pj00000mrTwOIAU,"Sedona, Inc.",Strategic,CW Legacy Backup,Data Protection,2026-09-01,Unassigned,Lisa Kelley,140193.0,61213.0,68.8,56.3,HIGH,90.0,V5_ML,2.0,True
+800Pj00000Vc0EtIAJ,"Eze Castle Integration, Inc.",Strategic,Automate,Unified Mgmt,2026-08-01,Unassigned,Moe Adnan,151200.0,60617.0,66.3,59.9,HIGH,89.0,V5_ML,2.0,True
+800Pj00000ivPWkIAM,Kocho Group Ltd,Strategic,ConnectWise PSA/Pkgs,Business Mgmt,2026-08-01,Joe Crisafulli,Ieuan Thomas,230718.0,55025.0,45.1,76.2,MEDIUM,70.0,V5_ML,2.0,True
+800Pj00000ViKxpIAF,Solutions Plus Inc dba Vector Tech Group,Strategic,Security Solution Partners,Security Mgmt,2026-07-01,Unassigned,Ziad Ashkar,136968.0,53665.0,47.4,60.8,HIGH,78.0,V5_ML,2.0,True
+800Pj00000kqyVWIAY,Alternative Network Solutions,Strategic,CW RMM,Unified Mgmt,2026-09-01,Unassigned,Lisa Kelley,169120.0,52913.0,49.2,68.7,HIGH,78.0,V5_ML,2.0,True
+800Pj00000l3I5TIAU,Absolute IT Solutions,Core,CW RMM,Unified Mgmt,2026-09-01,Unassigned,Oscar Settle,119166.0,51756.0,65.3,56.6,HIGH,86.0,V5_ML,2.0,True
+800Pj00000JbNihIAF,"Blue Valley Technologies, Inc. operating as Networks Plus",Strategic,Managed Endpoint,Security Mgmt,2026-07-01,Unassigned,Luke Wiley,169249.0,50522.0,51.4,70.1,HIGH,82.0,V5_ML,2.0,True
+800Pj00000gAP3RIAW,"Boston HelpDesk, Inc.",Core,Managed Endpoint,Security Mgmt,2026-07-01,Joe Crisafulli,Jessy Dicaire,145949.0,48359.0,40.2,66.9,HIGH,78.0,V5_ML,2.0,True
+800Pj00000hxmJKIAY,Proven Business Systems,Strategic,ConnectWise PSA/Pkgs,Business Mgmt,2026-08-01,Unassigned,John Nguyen,173346.0,47924.0,45.1,72.4,MEDIUM,70.0,V5_ML,2.0,True
+800Pj00000kwMaOIAU,"Kraft & Kennedy, Inc.",Strategic,ConnectWise PSA/Pkgs,Business Mgmt,2026-09-01,Unassigned,Luke Wiley,157852.0,46673.0,42.1,70.4,MEDIUM,66.0,V5_ML,2.0,True
+800Pj00000kwSPhIAM,"Central Technologies, Inc.",Core,ConnectWise PSA/Pkgs,Business Mgmt,2026-09-01,David Vadasy,Steve Behling,126783.0,44905.0,42.2,64.6,HIGH,80.0,V5_ML,2.0,True
+800Pj00000geJtNIAU,Jungle It Ltd,Core,CW RMM,Unified Mgmt,2026-07-01,Hunter Smith,Ieuan Thomas,115589.0,44406.0,82.3,61.6,HIGH,93.0,V5_ML,2.0,True
+8004v000002JFDeAAO,Kenn-Feld Group,Core,Security Info & Event Mgmt,Security Mgmt,2026-09-01,Joe Crisafulli,Philip Henderson,98714.0,42873.0,57.9,56.6,HIGH,85.0,V5_ML,2.0,True
+800Pj00000l3Q7mIAE,BIZITSS,Strategic,Expert Services,Unified Mgmt,2026-09-01,Unassigned,Spencer Wilson,148455.0,42605.0,49.2,71.3,HIGH,78.0,V5_ML,2.0,True
+800Pj00000i7Z6CIAU,Spectrum Technologies,Strategic,CW RMM,Unified Mgmt,2026-09-01,Unassigned,John Nguyen,128884.0,42233.0,47.4,67.2,MEDIUM,73.0,V5_ML,2.0,True
+800Pj00000kZr2EIAS,Anders Minkler Huber & Helm LLP,Strategic,Managed Endpoint,Security Mgmt,2026-08-01,Joe Crisafulli,Lisa Kelley,156000.0,42209.0,45.1,72.9,MEDIUM,70.0,V5_ML,2.0,True
+800Pj00000kwpUHIAY,MediaNews Group Inc.,Strategic,ConnectWise PSA/Pkgs,Business Mgmt,2026-09-01,David Vadasy,Philip Henderson,169416.0,42206.0,16.6,75.1,LOW,33.0,V5_ML,2.0,True
+800Pj000010UR2KIAW,Servatech,Strategic,Automate,Unified Mgmt,2026-09-01,Unassigned,Raymond Parkinson,92770.0,41665.0,59.1,55.1,HIGH,86.0,V5_ML,2.0,True
+800Pj00000ivPWmIAM,GFI Digital,Strategic,Automate,Unified Mgmt,2026-08-01,Unassigned,Steven Serrano,151614.0,41309.0,31.4,72.8,MEDIUM,60.0,V5_ML,2.0,True
+8004v000002yjKQAAY,Digital323,Core,CW RMM,Unified Mgmt,2026-07-01,Kim Harris,Jordan Novelly,107932.0,41076.0,55.5,61.9,HIGH,85.0,V5_ML,2.0,True
+800Pj00000jNK4GIAW,Ekaru,Core,CW RMM,Unified Mgmt,2026-08-01,Caesar Liwag,Dean Georgoulias,102297.0,40606.0,55.5,60.3,HIGH,85.0,V5_ML,2.0,True

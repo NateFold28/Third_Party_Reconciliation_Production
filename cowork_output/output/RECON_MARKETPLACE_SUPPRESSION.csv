@@ -1,0 +1,14 @@
+vendor,mp_suppression,rule,source,seed_generated_on
+Acronis,TRUE,"If the partner is on Marketplace, take no action (do not chase as leakage).",SOP 6.3.1 / Gap plan G6,2026-07-15
+Bitdefender,TRUE,"If the partner is on Marketplace, take no action (do not chase as leakage).",SOP 6.3.1 / Gap plan G6,2026-07-15
+Piriform,TRUE,"If the partner is on Marketplace, take no action (do not chase as leakage).",SOP 6.3.1 / Gap plan G6,2026-07-15
+CCleaner,TRUE,"If the partner is on Marketplace, take no action (do not chase as leakage).",SOP 6.3.1 / Gap plan G6,2026-07-15
+ESET,TRUE,"If the partner is on Marketplace, take no action (do not chase as leakage).",SOP 6.3.1 / Gap plan G6,2026-07-15
+Malwarebytes,TRUE,"If the partner is on Marketplace, take no action (do not chase as leakage).",SOP 6.3.1 / Gap plan G6,2026-07-15
+Proofpoint,TRUE,"If the partner is on Marketplace, take no action (do not chase as leakage).",SOP 6.3.1 / Gap plan G6,2026-07-15
+SentinelOne,TRUE,"If the partner is on Marketplace, take no action (do not chase as leakage).",SOP 6.3.1 / Gap plan G6,2026-07-15
+StorageCraft,TRUE,"If the partner is on Marketplace, take no action (do not chase as leakage).",SOP 6.3.1 / Gap plan G6,2026-07-15
+Webroot CMS,TRUE,"If the partner is on Marketplace, take no action (do not chase as leakage).",SOP 6.3.1 / Gap plan G6,2026-07-15
+Webroot CW,TRUE,"If the partner is on Marketplace, take no action (do not chase as leakage).",SOP 6.3.1 / Gap plan G6,2026-07-15
+Auvik CW,FALSE,Auvik does NOT sell via Marketplace; MP suppression does not apply.,Gap plan G6,2026-07-15
+Auvik CMS,FALSE,Auvik does NOT sell via Marketplace; MP suppression does not apply.,Gap plan G6,2026-07-15

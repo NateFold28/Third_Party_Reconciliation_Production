@@ -42,6 +42,9 @@ USE = (
     "USE SCHEMA DBT_NFOLD_TRANSFORMATION;"
 )
 
+DETAIL_TABLE_PROD = "THIRD_PARTY_RECON_DETAIL_PROD"
+DETAIL_TABLE_STAGE = "THIRD_PARTY_RECON_DETAIL_PROD_STAGING"
+
 # ---------------------------------------------------------------------------
 # VENDOR ROUTING
 #
@@ -85,6 +88,12 @@ VENDOR_FALLBACK: dict[str, str] = {}
 # ---------------------------------------------------------------------------
 CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
     CASE
+        -- Duplicate-billing is intentionally not a primary outcome category.
+        -- Keep DUPLICATE_BILLING_FLAG for visibility, but do not mask core
+        -- reconciliation outcomes by forcing a duplicate bucket here.
+        -- WHEN COALESCE(ZUORA_AMOUNT, 0) > 0
+        --      AND COALESCE(MARKETPLACE_AMOUNT, 0) > 0
+        --     THEN 'Duplicated CW Invoice'
         WHEN OUTCOME_FLAG IN (
             'Clear', 'Unmapped Partner', 'Duplicated CW Invoice',
             'Marketplace Billing Delay', 'Known Discount / Bundle',
@@ -126,8 +135,9 @@ CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
             THEN 'Vendor SKU, No CW SKU'
         WHEN OUTCOME_FLAG IN ('CW_ONLY_ADDON_NO_VENDOR','CW_SKU_NO_VENDOR_SKU')
             THEN 'CW SKU, No Vendor SKU'
-        WHEN OUTCOME_FLAG IN ('DUPLICATE_BILLING','Duplicate Billing')
-            THEN 'Duplicated CW Invoice'
+        -- Duplicate-billing remains a side-signal only.
+        -- WHEN OUTCOME_FLAG IN ('DUPLICATE_BILLING','Duplicate Billing')
+        --     THEN 'Duplicated CW Invoice'
         WHEN OUTCOME_FLAG IN ('RMM_DISCOUNTED','KNOWN_DISCOUNT_BUNDLE','MDR_BUNDLE',
                               'CW_INCLUDED_ZERO_DOLLAR','INTENTIONAL_DISCOUNT')
             THEN 'Known Discount / Bundle'
@@ -170,7 +180,7 @@ CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
 """.strip()
 
 
-def emit_vendor_block(vendor: str, source_table: str) -> str:
+def emit_vendor_block(vendor: str, source_table: str, target_table: str = DETAIL_TABLE_STAGE) -> str:
     """Return the SQL that publishes one vendor's rows into DETAIL_PROD.
 
     Contract: source_table must have the STANDALONE-shape columns:
@@ -189,9 +199,9 @@ def emit_vendor_block(vendor: str, source_table: str) -> str:
     return f"""{USE}
 
 -- Wipe any prior rows for this vendor so this run is idempotent.
-DELETE FROM THIRD_PARTY_RECON_DETAIL_PROD WHERE VENDOR = '{vendor}';
+DELETE FROM {target_table} WHERE VENDOR = '{vendor}';
 
-INSERT INTO THIRD_PARTY_RECON_DETAIL_PROD (
+INSERT INTO {target_table} (
     VENDOR, BILLING_MONTH, SF_ID, INV_ID, BILLING_TYPE,
     VENDOR_PARTNER_NAME, VENDOR_PRODUCT, SKU_MATCH_GROUP,
     CW_SKUS, ZUORA_SKUS, MARKETPLACE_SKUS, BILLING_SOURCE_MIX,
@@ -240,14 +250,19 @@ SELECT
                     / TOTAL_BILLING_AMOUNT * 100, 1)
          ELSE NULL END::FLOAT                                                 AS CW_MARGIN_PCT,
     'FALSE'::VARCHAR                                                          AS HAS_DISCOUNT,        -- flipped below for Webroot/BD
-    IFF(DUPLICATE_BILLING_FLAG, 'TRUE', 'FALSE')::VARCHAR                     AS DUPLICATE_BILLING_FLAG,
+    IFF(
+        DUPLICATE_BILLING_FLAG
+        OR (COALESCE(ZUORA_AMOUNT, 0) > 0 AND COALESCE(MARKETPLACE_AMOUNT, 0) > 0),
+        'TRUE',
+        'FALSE'
+    )::VARCHAR                                                                 AS DUPLICATE_BILLING_FLAG,
     ({CANONICAL_OUTCOME_FLAG_NORMALIZATION})                                  AS OUTCOME_FLAG,
     INVESTIGATION_REASON                                                      AS INVESTIGATION_REASON
 FROM {source_table};
 """
 
 
-def live_emit_block(vendor: str, live_table: str) -> str:
+def live_emit_block(vendor: str, live_table: str, target_table: str = DETAIL_TABLE_STAGE) -> str:
     """Emit from a vendor's live <VENDOR>_RECON_DETAIL into DETAIL_PROD.
 
     Live tables share a common shape but differ from SNAPSHOT tables in
@@ -309,9 +324,9 @@ def live_emit_block(vendor: str, live_table: str) -> str:
     return f"""{USE}
 
 -- Idempotent: remove any prior rows for this vendor.
-DELETE FROM THIRD_PARTY_RECON_DETAIL_PROD WHERE VENDOR = '{vendor}';
+DELETE FROM {target_table} WHERE VENDOR = '{vendor}';
 
-INSERT INTO THIRD_PARTY_RECON_DETAIL_PROD (
+INSERT INTO {target_table} (
     VENDOR, BILLING_MONTH, SF_ID, INV_ID, BILLING_TYPE,
     VENDOR_PARTNER_NAME, VENDOR_PRODUCT, SKU_MATCH_GROUP,
     CW_SKUS, ZUORA_SKUS, MARKETPLACE_SKUS, BILLING_SOURCE_MIX,
@@ -360,7 +375,12 @@ SELECT
                     / TOTAL_BILLING_AMOUNT * 100, 1)
          ELSE NULL END::FLOAT                                                  AS CW_MARGIN_PCT,
     'FALSE'::VARCHAR                                                           AS HAS_DISCOUNT,
-    IFF(DUPLICATE_BILLING_FLAG, 'TRUE', 'FALSE')::VARCHAR                      AS DUPLICATE_BILLING_FLAG,
+    IFF(
+        DUPLICATE_BILLING_FLAG
+        OR (COALESCE(ZUORA_AMOUNT, 0) > 0 AND COALESCE(MARKETPLACE_AMOUNT, 0) > 0),
+        'TRUE',
+        'FALSE'
+    )::VARCHAR                                                                  AS DUPLICATE_BILLING_FLAG,
     ({CANONICAL_OUTCOME_FLAG_NORMALIZATION})                                   AS OUTCOME_FLAG,
     INVESTIGATION_REASON                                                       AS INVESTIGATION_REASON
 FROM {live_table};
@@ -390,7 +410,7 @@ def run_repo_sql_file(conn, relative_path: str, label: str) -> bool:
 # in the shared table. These stay identical to the current pipeline.
 # ---------------------------------------------------------------------------
 API_BACKFILL_SQL = f"""{USE}
-UPDATE THIRD_PARTY_RECON_DETAIL_PROD d
+UPDATE {DETAIL_TABLE_STAGE} d
 SET API_QUANTITY     = t.trt_quantity,
     AVG_API_QUANTITY = t.avg_api_quantity
 FROM THIRD_PARTY_RECON_SOURCE_TRT_PROD t
@@ -398,11 +418,66 @@ WHERE d.VENDOR         = t.VENDOR
   AND d.SF_ID          = t.SF_ID
   AND d.BILLING_MONTH  = t.BILLING_MONTH
   AND t.SF_ID IS NOT NULL
-  AND d.VENDOR IN ('SentinelOne', 'Bitdefender', 'Webroot', 'Auvik');
+    AND d.VENDOR IN ('SentinelOne', 'Bitdefender', 'Webroot', 'Auvik');
+"""
+
+PROOFPOINT_API_BACKFILL_SQL = f"""{USE}
+UPDATE {DETAIL_TABLE_STAGE} d
+SET API_QUANTITY     = p.trt_quantity,
+    AVG_API_QUANTITY = p.avg_api_quantity
+FROM (
+    WITH proofpoint_detail AS (
+        SELECT DISTINCT
+            d.sf_id,
+            d.billing_month,
+            d.vendor_product,
+            t.cms_id,
+            DATEADD('day', 20, d.billing_month)::DATE AS snapshot_date,
+            DATEADD('day', 20, DATEADD('month', -1, d.billing_month))::DATE AS prev_snapshot_date,
+            UPPER(TRIM(tok.value::VARCHAR)) AS cw_sku_token
+        FROM {DETAIL_TABLE_STAGE} d
+        JOIN THIRD_PARTY_RECON_SOURCE_TRT_PROD t
+          ON t.vendor = 'Proofpoint'
+         AND d.vendor = t.vendor
+         AND d.sf_id = t.sf_id
+         AND d.billing_month = t.billing_month
+        , LATERAL FLATTEN(input => SPLIT(COALESCE(d.cw_skus, ''), ',')) tok
+        WHERE d.vendor = 'Proofpoint'
+          AND t.cms_id IS NOT NULL
+          AND TRIM(tok.value::VARCHAR) <> ''
+    ),
+    proofpoint_daily AS (
+        SELECT
+            p.sf_id,
+            p.billing_month,
+            p.vendor_product,
+            u.on_date::DATE AS on_date,
+            SUM(COALESCE(u.agent_cnt, 0)) AS day_quantity
+        FROM proofpoint_detail p
+        JOIN ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+          ON u.partner_id::VARCHAR = p.cms_id
+         AND UPPER(TRIM(u.product_sku)) = p.cw_sku_token
+         AND u.on_date::DATE > p.prev_snapshot_date
+         AND u.on_date::DATE <= p.snapshot_date
+        GROUP BY 1, 2, 3, 4
+    )
+    SELECT
+        sf_id,
+        billing_month,
+        vendor_product,
+        MAX(IFF(on_date = DATEADD('day', 20, billing_month)::DATE, day_quantity, NULL)) AS trt_quantity,
+        AVG(day_quantity) AS avg_api_quantity
+    FROM proofpoint_daily
+    GROUP BY 1, 2, 3
+) p
+WHERE d.vendor = 'Proofpoint'
+  AND d.sf_id = p.sf_id
+  AND d.billing_month = p.billing_month
+  AND d.vendor_product = p.vendor_product;
 """
 
 BITDEFENDER_MDR_BUNDLE_SQL = f"""{USE}
-UPDATE THIRD_PARTY_RECON_DETAIL_PROD d
+UPDATE {DETAIL_TABLE_STAGE} d
 SET HAS_DISCOUNT = 'TRUE'
 FROM (
     SELECT DISTINCT
@@ -425,7 +500,7 @@ WHERE d.VENDOR = 'Bitdefender'
 """
 
 WEBROOT_RMM_DISCOUNT_SQL = f"""{USE}
-UPDATE THIRD_PARTY_RECON_DETAIL_PROD d
+UPDATE {DETAIL_TABLE_STAGE} d
 SET HAS_DISCOUNT = 'TRUE'
 FROM (
     WITH rmm_daily AS (
@@ -468,7 +543,7 @@ WHERE d.VENDOR = 'Webroot'
 """
 
 INV_ID_BACKFILL_SQL = f"""{USE}
-UPDATE THIRD_PARTY_RECON_DETAIL_PROD d
+UPDATE {DETAIL_TABLE_STAGE} d
 SET INV_ID = z.inv_id
 FROM (
         SELECT
@@ -489,10 +564,32 @@ WHERE d.INV_ID IS NULL
     AND d.SF_ID = z.sf_id
     AND d.BILLING_MONTH = z.billing_month
     AND COALESCE(d.ZUORA_AMOUNT, 0) <> 0;
+
+UPDATE {DETAIL_TABLE_STAGE} d
+SET INV_ID = m.inv_id
+FROM (
+        SELECT
+                vendor,
+                sf_id,
+                billing_month,
+                CASE
+                        WHEN COUNT(DISTINCT marketplace_invoice_id) = 1 THEN MAX(marketplace_invoice_id)
+                        ELSE 'MULTI_MP_INV_' || COUNT(DISTINCT marketplace_invoice_id)::VARCHAR
+                END AS inv_id
+        FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
+        WHERE marketplace_invoice_id IS NOT NULL
+            AND sf_id IS NOT NULL
+        GROUP BY 1,2,3
+) m
+WHERE d.INV_ID IS NULL
+    AND d.VENDOR = m.vendor
+    AND d.SF_ID = m.sf_id
+    AND d.BILLING_MONTH = m.billing_month
+    AND COALESCE(d.MARKETPLACE_AMOUNT, 0) <> 0;
 """
 
 INIT_SQL = f"""{USE}
-CREATE TABLE IF NOT EXISTS THIRD_PARTY_RECON_DETAIL_PROD (
+CREATE TABLE IF NOT EXISTS {DETAIL_TABLE_PROD} (
     VENDOR VARCHAR, BILLING_MONTH DATE, SF_ID VARCHAR, INV_ID VARCHAR, BILLING_TYPE VARCHAR,
     VENDOR_PARTNER_NAME VARCHAR, VENDOR_PRODUCT VARCHAR, SKU_MATCH_GROUP VARCHAR,
     CW_SKUS VARCHAR, ZUORA_SKUS VARCHAR, MARKETPLACE_SKUS VARCHAR, BILLING_SOURCE_MIX VARCHAR,
@@ -503,7 +600,14 @@ CREATE TABLE IF NOT EXISTS THIRD_PARTY_RECON_DETAIL_PROD (
     ABS_QTY_DELTA FLOAT, AMOUNT_DELTA FLOAT, ABS_AMOUNT_DELTA FLOAT, CW_MARGIN_PCT FLOAT,
     HAS_DISCOUNT VARCHAR, DUPLICATE_BILLING_FLAG VARCHAR, OUTCOME_FLAG VARCHAR, INVESTIGATION_REASON VARCHAR
 );
-TRUNCATE TABLE THIRD_PARTY_RECON_DETAIL_PROD;
+CREATE OR REPLACE TABLE {DETAIL_TABLE_STAGE} LIKE {DETAIL_TABLE_PROD};
+TRUNCATE TABLE {DETAIL_TABLE_STAGE};
+"""
+
+PUBLISH_DETAIL_SQL = f"""{USE}
+-- Atomic publish: app keeps seeing the last good detail snapshot until
+-- the staged rebuild is complete, then swaps to the new snapshot instantly.
+ALTER TABLE {DETAIL_TABLE_PROD} SWAP WITH {DETAIL_TABLE_STAGE};
 """
 
 
@@ -530,8 +634,8 @@ def main() -> int:
         database="ANALYTICS_DEV", schema="DBT_NFOLD_TRANSFORMATION",
     )
     try:
-        print("\n=== STEP 0: initialize THIRD_PARTY_RECON_DETAIL_PROD ===")
-        run_sql(conn, INIT_SQL, "init + truncate DETAIL_PROD")
+        print("\n=== STEP 0: initialize staging detail table ===")
+        run_sql(conn, INIT_SQL, f"init + truncate {DETAIL_TABLE_STAGE}")
 
         print("\n=== STEP 1a: run live vendor SQL files (rebuild <VENDOR>_RECON_DETAIL) ===")
         sql_fail: dict[str, str] = {}
@@ -573,9 +677,22 @@ def main() -> int:
 
         print("\n=== STEP 2: overlays on the shared table (per-vendor) ===")
         run_sql(conn, API_BACKFILL_SQL, "backfill API_QUANTITY / AVG_API_QUANTITY (S1/BD/Webroot/Auvik)")
+        run_sql(conn, PROOFPOINT_API_BACKFILL_SQL, "backfill API_QUANTITY / AVG_API_QUANTITY (Proofpoint product-scoped)")
         run_sql(conn, BITDEFENDER_MDR_BUNDLE_SQL, "Bitdefender MDR bundle flag")
         run_sql(conn, WEBROOT_RMM_DISCOUNT_SQL, "Webroot RMM discount flag")
         run_sql(conn, INV_ID_BACKFILL_SQL, "backfill INV_ID from Zuora billing source")
+
+        print("\n=== STEP 2b: build vendor invoice vs raw usage control (invoice gate) ===")
+        if not run_repo_sql_file(
+            conn,
+            r"Reconciliation\10_vendor_invoice_usage_intra_prod.sql",
+            "build THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD",
+        ):
+            return 1
+
+        print("\n=== STEP 2c: atomically publish staged detail table ===")
+        if not run_sql(conn, PUBLISH_DETAIL_SQL, f"publish {DETAIL_TABLE_PROD} from {DETAIL_TABLE_STAGE}"):
+            return 1
 
         print("\n=== STEP 3: build THIRD_PARTY_RECON_OUTPUT_PROD (classifier) ===")
         # The classifier already knows how to turn DETAIL_PROD into the 45-column
@@ -590,14 +707,6 @@ def main() -> int:
             print(f"  classifier exit {result.returncode}: {result.stderr[:500]}")
             return 1
 
-        print("\n=== STEP 3b: build vendor invoice vs raw usage control ===")
-        if not run_repo_sql_file(
-            conn,
-            r"Reconciliation\10_vendor_invoice_usage_intra_prod.sql",
-            "build THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD",
-        ):
-            return 1
-
         print("\n=== STEP 4: verification ===")
         cur = conn.cursor()
 
@@ -605,8 +714,11 @@ def main() -> int:
         det_rows, det_vendors = cur.fetchone()
         cur.execute("SELECT COUNT(*), COUNT(DISTINCT VENDOR) FROM THIRD_PARTY_RECON_OUTPUT_PROD")
         out_rows, out_vendors = cur.fetchone()
+        cur.execute("SELECT COUNT(*), COUNT(DISTINCT VENDOR) FROM THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD")
+        intra_rows, intra_vendors = cur.fetchone()
         print(f"  DETAIL_PROD:  {det_rows:>7,} rows across {det_vendors} vendors")
         print(f"  OUTPUT_PROD:  {out_rows:>7,} rows across {out_vendors} vendors")
+        print(f"  INTRA_PROD:   {intra_rows:>7,} rows across {intra_vendors} vendors")
 
         print("\n  OUTCOME_FLAG in DETAIL_PROD (only canonical 12 should appear):")
         cur.execute("""
@@ -635,11 +747,14 @@ def main() -> int:
             WHERE VENDOR = 'Proofpoint'
         """)
         pp_total, pp_clear, pp_pct, pp_v, pp_b = cur.fetchone()
+        pp_total = int(pp_total or 0)
+        pp_clear = int(pp_clear or 0)
+        pp_pct_display = "n/a" if pp_pct is None else f"{float(pp_pct):.1f}%"
         print(f"    total rows           : {pp_total:>7,}")
-        print(f"    clear rows           : {pp_clear:>7,}   ({pp_pct}%)")
-        print(f"    vendor $             : ${pp_v:>14,.0f}")
-        print(f"    billing $            : ${pp_b:>14,.0f}")
-        parity_ok = 90.0 <= float(pp_pct) <= 97.0
+        print(f"    clear rows           : {pp_clear:>7,}   ({pp_pct_display})")
+        print(f"    vendor $             : ${(pp_v or 0):>14,.0f}")
+        print(f"    billing $            : ${(pp_b or 0):>14,.0f}")
+        parity_ok = pp_pct is not None and 90.0 <= float(pp_pct) <= 97.0
         print(f"    parity gate (90-97%) : {'PASS' if parity_ok else 'FAIL'}")
 
         print("\n  Per-vendor clear rate:")

@@ -1,0 +1,66 @@
+{
+  "run_date": "2026-06-15",
+  "fit_window": "2021-02 \u2192 2025-11",
+  "test_window": "2025-12 \u2192 2026-05",
+  "n_fit": 145611,
+  "n_test": 14844,
+  "portfolio_sigmoid": {
+    "a": 29.5,
+    "b": 0.7000000000000001,
+    "fit_mae_pp": 16.751,
+    "oos_mae_pp": 28.68
+  },
+  "oos_comparison": {
+    "current_model_mae_pp": 26.25,
+    "naive_linear_mae_pp": 33.79,
+    "sigmoid_mae_pp": 28.68,
+    "sigmoid_vs_current_pp": 2.43
+  },
+  "segment_results": [
+    {
+      "segment": "Core",
+      "n": 4850,
+      "cur_mae": 24.78,
+      "lin_mae": 32.86,
+      "sig_mae": 25.89,
+      "sig_vs_cur_pp": 1.11,
+      "best": "current"
+    },
+    {
+      "segment": "Emerging",
+      "n": 1643,
+      "cur_mae": 21.59,
+      "lin_mae": 24.54,
+      "sig_mae": 18.17,
+      "sig_vs_cur_pp": -3.42,
+      "best": "sigmoid"
+    },
+    {
+      "segment": "Growth",
+      "n": 6017,
+      "cur_mae": 21.99,
+      "lin_mae": 27.09,
+      "sig_mae": 21.87,
+      "sig_vs_cur_pp": -0.12,
+      "best": "sigmoid"
+    },
+    {
+      "segment": "ScreenConnect Only",
+      "n": 454,
+      "cur_mae": 14.49,
+      "lin_mae": 15.39,
+      "sig_mae": 4.9,
+      "sig_vs_cur_pp": -9.59,
+      "best": "sigmoid"
+    },
+    {
+      "segment": "Strategic",
+      "n": 1880,
+      "cur_mae": 30.84,
+      "lin_mae": 39.54,
+      "sig_mae": 36.77,
+      "sig_vs_cur_pp": 5.93,
+      "best": "current"
+    }
+  ]
+}

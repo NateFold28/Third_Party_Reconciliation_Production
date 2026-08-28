@@ -1,0 +1,27 @@
+vendor,ki_family,cw_charge_name,cw_sku,in_scope,observed_qty_2026_05,scope_reason,source_tab,basis_month,seed_generated_on
+KeepIT,KI-M365-FUL,CW RMM SaaS Backup Microsoft 365 Users,CW-RMM-SB-M365,TRUE,104526,base M365 seat,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-M365-FUL,ConnectWise SaaS Backup Microsoft 365 Users,CW-RMM-SB-M365,TRUE,40864,base M365 seat,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-M365-FUL,M2M RMM SaaS Backup Microsoft 365 Users,CW-RMM-SB-M365,TRUE,31497,base M365 seat (month-to-month),KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-M365-FUL,M2M-ConnectWise SaaS Backup Microsoft 365 Users,CW-RMM-SB-M365,TRUE,5050,base M365 seat (month-to-month),KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-AZUR-CSP,CW RMM SaaS Backup for Azure AD Advanced Users,CW-RMM-SB-AZ-ADV,TRUE,16498,base Azure AD Advanced seat,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-AZUR-CSP,M2M RMM SaaS Backup for Azure AD Advanced Users,CW-RMM-SB-AZ-ADV,TRUE,16015,base Azure AD Advanced seat (m2m),KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-AZUR-CSP,ConnectWise SaaS Backup Azure AD Advanced Users,CW-RMM-SB-AZ-ADV,TRUE,4672,base Azure AD Advanced seat,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-GOOG-FUL,ConnectWise SaaS Backup Google Workspace User,CW-RMM-SB-GW,TRUE,3006,base Google Workspace seat,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-GOOG-FUL,CW RMM SaaS Backup Google Workspace Users,CW-RMM-SB-GW,TRUE,1731,base Google Workspace seat,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-GOOG-FUL,M2M RMM SaaS Backup Google Workspace Users,CW-RMM-SB-GW,TRUE,1235,base Google Workspace seat (m2m),KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-GOOG-FUL,M2M-ConnectWise SaaS Backup Google User,CW-RMM-SB-GW,TRUE,1164,base Google Workspace seat (m2m),KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-D365-FUL,CW RMM SaaS Backup for Dynamics (CRM) Users,CW-RMM-SB-DYNMCS,TRUE,385,base Dynamics seat,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-D365-FUL,ConnectWise SaaS Backup Microsoft Dynamics Users,CW-RMM-SB-DYNMCS,TRUE,317,base Dynamics seat,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-D365-FUL,M2M-ConnectWise SaaS Backup Microsoft Dynamics Users,CW-RMM-SB-DYNMCS,TRUE,38,base Dynamics seat (m2m),KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-SFDC-FUL,CW RMM SaaS Backup Salesforce Users,CW-RMM-SB-SF,TRUE,384,base Salesforce seat,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-SFDC-FUL,M2M RMM SaaS Backup Salesforce Users,CW-RMM-SB-SF,TRUE,291,base Salesforce seat (m2m),KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-SFDC-FUL,ConnectWise SaaS Backup Salesforce Users,CW-RMM-SB-SF,TRUE,283,base Salesforce seat,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,KI-SFDC-FUL,M2M-ConnectWise SaaS Backup Salesforce Users,CW-RMM-SB-SF,TRUE,129,base Salesforce seat (m2m),KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,(exclude),CW Recover SaaS 3-year Promo - Recover SaaS MS 365 Users,,FALSE,278760,"Recover SaaS promo line -> handled in KeepIT Promo Recon, not main",KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,(exclude),CW SaaS Backup 3-year Promo - Unlimited Retention Add-on,,FALSE,73016,"retention add-on, not a seat SKU",KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,(exclude),CW RMM SaaS Backup Unlimited Retention Add-on,,FALSE,23864,"retention add-on, not a seat SKU",KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,(exclude),CW SaaS Backup 3-year Promo - Azure AD Advanced,,FALSE,20514,3-year promo line -> Promo Recon,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,(exclude),M2M RMM SaaS Backup Unlimited Retention Add-on,,FALSE,18151,"retention add-on, not a seat SKU",KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,(exclude),CW Recover SaaS 3-year Promo - Recover SaaS Google Workspace,,FALSE,13561,Recover SaaS promo line -> Promo Recon,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,(exclude),CW Recover SaaS 3-year Promo - Recover SaaS Salesforce Users,,FALSE,377,Recover SaaS promo line -> Promo Recon,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15
+KeepIT,(exclude),CW Recover SaaS 3-year Promo - Recover SaaS MS  Dynamics Users,,FALSE,186,Recover SaaS promo line -> Promo Recon,KeepIT Recon May'26.xlsx :: Zuora Usage[Vendor SKU],2026-05,2026-07-15

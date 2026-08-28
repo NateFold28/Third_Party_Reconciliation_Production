@@ -1,0 +1,25 @@
+                          approach  MAE $ per-contract  MAE pp per-contract  Median |err| $  Aggregate $ off ($M)  Aggregate rate off (pp)
+A. CURRENT (PRED_RENEW_RATE_FINAL)                6262               32.300            1833               -17.650                   -1.030
+      B. CALIBRATED EXPECTED VALUE                5572               25.800            1142                43.910                    2.560
+               C. BIMODAL DECISION                5879               20.800               0                -0.860                   -0.050
+
+BIMODAL_CLASS     N   ATR_M  avg_actual_rate  median_actual_rate  pct_full_renew  pct_full_churn
+      At Risk  6623 184.900            0.611               0.901          41.400          30.200
+ Likely Renew 24704 671.100            0.747               1.000          63.400          20.600
+    Uncertain  2081 303.600            0.667               0.839          38.000          14.800
+   Will Churn  8478  70.400            0.236               0.000          16.900          73.000
+   Will Renew 44641 487.200            0.885               1.000          83.200           9.400
+
+       class  n_contracts  % ATR  % actually FULL RENEW  % actually FULL CHURN  % actually partial  avg actual rate
+  Will Renew        44641 28.400                 83.200                  9.400               7.400            0.885
+Likely Renew        24704 39.100                 63.400                 20.600              16.000            0.747
+     At Risk         6623 10.800                 41.400                 30.200              28.400            0.611
+  Will Churn         8478  4.100                 16.900                 73.000              10.100            0.236
+   Uncertain         2081 17.700                 38.000                 14.800              47.100            0.667
+
+       class     n  MAE_$  MAE_pp
+Likely Renew 24704   7302  27.000
+  Will Churn  8478   2404  23.600
+  Will Renew 44641   1377  11.500
+     At Risk  6623  13298  48.000
+   Uncertain  2081  76089  51.000

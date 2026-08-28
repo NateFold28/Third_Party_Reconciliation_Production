@@ -1,0 +1,47 @@
+{
+  "run_date": "2026-06-15",
+  "fit_window_end": "2024-12-31",
+  "hold_window": "2025-01-01 \u2192 2025-12-31",
+  "recent_window": "2026-01-01 \u2192 latest matured",
+  "portfolio_sigmoid": {
+    "a": 19.5,
+    "b": 0.7200000000000004,
+    "fit_mae_pp": 15.33907321566119,
+    "description": "renewal_rate = 100 * (1 - sigmoid(19.5 * (p_churn - 0.72)))"
+  },
+  "piecewise_cliff_pct": 60.0,
+  "partial_mean_pct": 30.102717933379456,
+  "best_binary_threshold_pct": 60.0,
+  "segment_sigmoids": {
+    "Core": {
+      "a": 19.5,
+      "b": 0.7000000000000004,
+      "fit_mae": 14.763079225917366,
+      "source": "segment_fit"
+    },
+    "Emerging": {
+      "a": 19.5,
+      "b": 0.7600000000000005,
+      "fit_mae": 14.5312782261519,
+      "source": "segment_fit"
+    },
+    "Growth": {
+      "a": 19.5,
+      "b": 0.7400000000000004,
+      "fit_mae": 13.362649157933113,
+      "source": "segment_fit"
+    },
+    "ScreenConnect Only": {
+      "a": 19.5,
+      "b": 0.7200000000000004,
+      "fit_mae": 10.40654210629213,
+      "source": "segment_fit"
+    },
+    "Strategic": {
+      "a": 19.5,
+      "b": 0.6800000000000004,
+      "fit_mae": 16.705538807896787,
+      "source": "segment_fit"
+    }
+  }
+}

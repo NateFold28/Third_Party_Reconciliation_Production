@@ -182,13 +182,36 @@ mapped_sf_ids AS (
     WHERE old_sf_id IS NOT NULL
 ),
 
+manual_partner_map AS (
+    SELECT
+        TRIM(partner_name) AS partner_name,
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_norm,
+        sf_id
+    FROM RECON_VENDOR_PARTNER_MANUAL_MAP
+    WHERE UPPER(TRIM(vendor)) = 'SENTINELONE'
+      AND sf_id ILIKE 'ACT-%'
+      AND partner_name IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
+        ORDER BY COALESCE(updated_at, CURRENT_TIMESTAMP()) DESC, sf_id
+    ) = 1
+),
+
+sentinel_child_sfid_lock AS (
+    SELECT DISTINCT sf_id
+    FROM manual_partner_map
+),
+
 partner_map_monthly AS (
     -- Unified partner map (no billing_month dimension — RECON_PARTNER_MAP is
     -- partner-level). Canonicalize merged sf_ids via SENTINELONE_SF_ID_RESOLVER.
     SELECT
         TRIM(s.PARTNER_NAME)  AS partner_name,
         NULL::DATE            AS billing_month,   -- not applicable in unified map
-        COALESCE(mr.canonical_sf_id, s.sf_id)    AS sf_id,
+        CASE
+            WHEN s.sf_id IN (SELECT sf_id FROM sentinel_child_sfid_lock) THEN s.sf_id
+            ELSE COALESCE(mr.canonical_sf_id, s.sf_id)
+        END AS sf_id,
         s.ZUORA_NAME          AS zuora_name
     FROM RECON_PARTNER_MAP s
     LEFT JOIN merged_account_resolver mr
@@ -222,12 +245,13 @@ vendor_usage_normalized AS (
     SELECT
         u.BILLING_MONTH::DATE AS billing_month,
         u.VENDOR_PARTNER_NAME,
-        COALESCE(pm_month.sf_id, pm_exact.sf_id, pm_accent.sf_id, pm_prefix.sf_id) AS raw_sf_id,
+        COALESCE(mpm.sf_id, pm_month.sf_id, pm_exact.sf_id, pm_accent.sf_id, pm_prefix.sf_id) AS raw_sf_id,
         TRIM(u.VENDOR_PRODUCT_SKU) AS source_vendor_product,
         NULL::VARCHAR AS entity,
         NULL::VARCHAR AS retention_desc,
         TRIM(u.VENDOR_PRODUCT_SKU) AS vendor_product,
         CASE
+            WHEN mpm.sf_id IS NOT NULL THEN 'MANUAL_VENDOR_PARTNER_MAP'
             WHEN pm_month.sf_id IS NOT NULL THEN 'MONTHLY_PARTNER_MAP'
             WHEN pm_exact.sf_id IS NOT NULL THEN 'PARTNER_MAP_EXACT'
             WHEN pm_accent.sf_id IS NOT NULL THEN 'PARTNER_MAP_ACCENT_NORM'
@@ -237,23 +261,29 @@ vendor_usage_normalized AS (
         SUM(u.QUANTITY) AS quantity,
         COUNT(*) AS source_row_count
     FROM SENTINELONE_USAGE u
+    LEFT JOIN manual_partner_map mpm
+        ON mpm.partner_name_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
     LEFT JOIN partner_map_monthly pm_month
-        ON UPPER(pm_month.partner_name) = UPPER(TRIM(u.VENDOR_PARTNER_NAME))
+        ON mpm.sf_id IS NULL
+       AND UPPER(pm_month.partner_name) = UPPER(TRIM(u.VENDOR_PARTNER_NAME))
        AND pm_month.billing_month = u.BILLING_MONTH::DATE
     LEFT JOIN partner_map pm_exact
-        ON pm_month.sf_id IS NULL
+        ON mpm.sf_id IS NULL
+       AND pm_month.sf_id IS NULL
        AND UPPER(pm_exact.partner_name) = UPPER(TRIM(u.VENDOR_PARTNER_NAME))
     -- Accent-normalized fallback: translates common diacritics to ASCII so
     -- PARROINFODÃ‰VELOPPEMENT matches PARROINFODEVELOPPEMENT.
     LEFT JOIN partner_map pm_accent
-        ON pm_month.sf_id IS NULL
+        ON mpm.sf_id IS NULL
+       AND pm_month.sf_id IS NULL
        AND pm_exact.sf_id IS NULL
        AND UPPER(TRANSLATE(pm_accent.partner_name,
            'Ã Ã¡Ã¢Ã£Ã¤Ã¥Ã¨Ã©ÃªÃ«Ã¬Ã­Ã®Ã¯Ã²Ã³Ã´ÃµÃ¶Ã¹ÃºÃ»Ã¼Ã½Ã€ÃÃ‚ÃƒÃ„Ã…ÃˆÃ‰ÃŠÃ‹ÃŒÃÃŽÃÃ’Ã“Ã”Ã•Ã–Ã™ÃšÃ›ÃœÃ',
            'aaaaaaeeeeiiiiooooouuuuyAAAAAAEEEEIIIIOOOOOUUUUY'))
            = UPPER(TRIM(u.VENDOR_PARTNER_NAME))
     LEFT JOIN partner_map pm_prefix
-        ON pm_month.sf_id IS NULL
+        ON mpm.sf_id IS NULL
+       AND pm_month.sf_id IS NULL
        AND pm_exact.sf_id IS NULL
        AND pm_accent.sf_id IS NULL
        AND UPPER(pm_prefix.partner_name) = UPPER(TRIM(SPLIT_PART(u.VENDOR_PARTNER_NAME, '-', 1)))
@@ -419,6 +449,7 @@ vendor_usage_mapped AS (
         COALESCE(
             IFF(
                 v.raw_sf_id IS NOT NULL
+                AND scl.sf_id IS NULL
                 AND COALESCE(child_billing.total_billing_quantity, 0) = 0
                 AND COALESCE(parent_billing.total_billing_quantity, 0) > 0,
                 pr.parent_sf_id,
@@ -438,7 +469,8 @@ vendor_usage_mapped AS (
         LISTAGG(DISTINCT
             CASE
                 WHEN v.raw_sf_id IS NULL THEN 'UNMAPPED'
-                WHEN COALESCE(child_billing.total_billing_quantity, 0) = 0
+                WHEN scl.sf_id IS NULL
+                 AND COALESCE(child_billing.total_billing_quantity, 0) = 0
                  AND COALESCE(parent_billing.total_billing_quantity, 0) > 0 THEN 'VENDOR_PORTAL|PARENT_ROLLUP'
                 ELSE v.partner_match_method
             END,
@@ -446,7 +478,8 @@ vendor_usage_mapped AS (
         ) WITHIN GROUP (ORDER BY
             CASE
                 WHEN v.raw_sf_id IS NULL THEN 'UNMAPPED'
-                WHEN COALESCE(child_billing.total_billing_quantity, 0) = 0
+                WHEN scl.sf_id IS NULL
+                 AND COALESCE(child_billing.total_billing_quantity, 0) = 0
                  AND COALESCE(parent_billing.total_billing_quantity, 0) > 0 THEN 'VENDOR_PORTAL|PARENT_ROLLUP'
                 ELSE v.partner_match_method
             END
@@ -454,6 +487,8 @@ vendor_usage_mapped AS (
     FROM vendor_usage_mapped_pre v
     LEFT JOIN parent_rollup pr
         ON pr.child_sf_id = v.raw_sf_id
+    LEFT JOIN sentinel_child_sfid_lock scl
+        ON scl.sf_id = v.raw_sf_id
     LEFT JOIN product_billing child_billing
         ON child_billing.sf_id = v.raw_sf_id
        AND child_billing.billing_month = v.billing_month

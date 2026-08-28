@@ -29,7 +29,7 @@ import pandas as pd
 
 WEBROOT_ROOT = Path(__file__).resolve().parents[2]
 PROJECT_ROOT = WEBROOT_ROOT.parent
-WORKSPACE_ROOT = PROJECT_ROOT.parents[1]
+WORKSPACE_ROOT = next((p for p in (PROJECT_ROOT, *PROJECT_ROOT.parents) if (p / "TEMPLATES").exists()), PROJECT_ROOT)
 
 DEFAULT_SOURCE_ROOT_CW = Path(
     r"C:\Users\Nate.Fold\OneDrive - ConnectWise, Inc\THIRD_PARTY_RECONCILIATION\2026 - Vendor Files\Webroot CW"

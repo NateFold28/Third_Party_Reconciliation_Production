@@ -1,0 +1,16 @@
+OEM no-billing root causes
+- BILLING_EXISTS_ACCOUNT_MONTH_BUT_NO_SKU_OVERLAP: rows=39, abs_qty=1442.0
+- NO_BILLING_IN_EITHER_SOURCE: rows=11, abs_qty=507.0
+- OTHER_REVIEW: rows=1, abs_qty=307.0
+
+OEM billing-over root causes
+- BASIC_ONLY_VENDOR_BUT_BILLED_HIGHER_FAMILY: rows=24, qty_delta=3002.0
+- LARGE_OVERAGE_POSSIBLE_CONTRACT_FLOOR_OR_TIMING: rows=37, qty_delta=2874.0
+- GENERAL_OVERAGE: rows=52, qty_delta=2768.0
+- MIXED_OEM_PRODUCTS_COLLAPSED: rows=6, qty_delta=897.0
+
+OEM vendor-vs-zuora lineup
+- Rows with matched Zuora SKU: 140
+- Rows without matched Zuora SKU: 51
+- mapping_source=DYNAMIC_OEM_FAMILY_BRIDGE: rows=181
+- mapping_source=SCOPED_ZUORA_VALIDATED_OVERRIDE: rows=10

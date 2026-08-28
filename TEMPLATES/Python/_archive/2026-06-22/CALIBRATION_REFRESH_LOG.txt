@@ -1,0 +1,58 @@
+
+================================================================================
+CALIBRATION REFRESH  2026-06-22T19:59:01  dry_run=True
+================================================================================
+Loading validation predictions + actuals...
+  Loaded 86,527 rows across 6 months
+  Train months:   ['2026-02-01', '2026-03-01', '2026-04-01']
+  Holdout months: ['2026-05-01']
+  Train rows: 41,916 | Holdout rows: 12,789
+
+Loading current knots from Snowflake...
+  Current knots: 84 entries
+
+Fitting isotonic calibrators per (segment × horizon)...
+  Fitted: 70 calibrators | Skipped (insufficient data): 0
+
+Validating new calibrators on holdout month...
+  Metric                     New       Old      Gate
+  --------------------------------------------------
+  ece_logo                0.0243    0.0299      PASS
+  ece_full                0.0297    0.0428      PASS
+  auc_logo                0.7534    0.7554      PASS
+  auc_full                0.7593    0.7536      PASS
+
+  ✓ All gates passed
+
+DRY RUN — would write 70 knot rows to STREAMLIT_APPS.DBO.V5_CALIBRATION_KNOTS
+
+================================================================================
+CALIBRATION REFRESH  2026-06-22T19:59:22  dry_run=False
+================================================================================
+Loading validation predictions + actuals...
+  Loaded 86,527 rows across 6 months
+  Train months:   ['2026-02-01', '2026-03-01', '2026-04-01']
+  Holdout months: ['2026-05-01']
+  Train rows: 41,916 | Holdout rows: 12,789
+
+Loading current knots from Snowflake...
+  Current knots: 84 entries
+
+Fitting isotonic calibrators per (segment × horizon)...
+  Fitted: 70 calibrators | Skipped (insufficient data): 0
+
+Validating new calibrators on holdout month...
+  Metric                     New       Old      Gate
+  --------------------------------------------------
+  ece_logo                0.0243    0.0299      PASS
+  ece_full                0.0297    0.0428      PASS
+  auc_logo                0.7534    0.7554      PASS
+  auc_full                0.7593    0.7536      PASS
+
+  ✓ All gates passed
+
+Writing 70 knot rows to STREAMLIT_APPS.DBO.V5_CALIBRATION_KNOTS...
+  Verified 70 rows in Snowflake
+  ECE_FULL (new): 0.0297  AUC_FULL (new): 0.759
+
+CALIBRATION REFRESH COMPLETE ✓

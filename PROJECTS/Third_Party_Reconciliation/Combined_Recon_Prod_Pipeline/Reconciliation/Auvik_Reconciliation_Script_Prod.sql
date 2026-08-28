@@ -57,15 +57,12 @@ vendor_product_map AS (
     GROUP BY 1, 2, 3, 4
 ),
 cw_sku_map AS (
-    SELECT
-        UPPER(TRIM(cw_sku)) AS cw_sku_key,
-        REGEXP_REPLACE(sku_match_key, '^AUVIK_(CMS|CW)_', 'AUVIK_') AS sku_match_group,
-        REGEXP_REPLACE(sku_match_key, '^AUVIK_(CMS|CW)_', '') AS auvik_product_group,
-        LISTAGG(DISTINCT mapping_notes, ' | ') WITHIN GROUP (ORDER BY mapping_notes) AS mapping_sources
+    -- Preserve a de-duplicated CW SKU list only. Do not carry sku_match_group
+    -- from this map because many Auvik CW SKUs map to numerous historical keys,
+    -- which can fan out billing rows when joined directly.
+    SELECT DISTINCT UPPER(TRIM(cw_sku)) AS cw_sku_key
     FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Auvik')
     WHERE cw_sku IS NOT NULL
-      AND sku_match_key IS NOT NULL
-    GROUP BY 1, 2, 3
 ),
 contract_group_rates AS (
     SELECT
@@ -208,45 +205,91 @@ vendor_cw_skus AS (
        AND m.cw_sku IS NOT NULL
     GROUP BY 1, 2, 3
 ),
-auvik_vendor_keys AS (
-    SELECT DISTINCT sf_id, billing_month
-    FROM vendor_agg
-    WHERE sf_id IS NOT NULL
-),
 auvik_zuora_rows AS (
         SELECT
                 z.sf_id,
-                z.billing_month::DATE AS billing_month,
-                cw.sku_match_group AS sku_match_group,
-                cw.auvik_product_group AS auvik_product_group,
+        z.billing_month::DATE AS billing_month,
+                'AUVIK_' ||
+                        CASE
+                                WHEN UPPER(z.product_sku) LIKE '%ASM%'
+                                    OR UPPER(z.product_sku) LIKE '%SAM%' THEN 'ASM'
+                                WHEN UPPER(z.product_sku) LIKE '%PARM%'
+                                    OR UPPER(z.product_sku) LIKE '%PERF%'
+                                    OR UPPER(z.product_sku) LIKE '%ADDON%'
+                                    OR UPPER(z.product_sku) LIKE '%ADD-ON%'
+                                    OR UPPER(z.product_sku) LIKE '%AUVIKPERFORMANCADDON%' THEN 'PERFORMANCE'
+                                ELSE 'ESSENTIALS'
+                        END AS sku_match_group,
+                CASE
+                        WHEN UPPER(z.product_sku) LIKE '%ASM%'
+                            OR UPPER(z.product_sku) LIKE '%SAM%' THEN 'ASM'
+                        WHEN UPPER(z.product_sku) LIKE '%PARM%'
+                            OR UPPER(z.product_sku) LIKE '%PERF%'
+                            OR UPPER(z.product_sku) LIKE '%ADDON%'
+                            OR UPPER(z.product_sku) LIKE '%ADD-ON%'
+                            OR UPPER(z.product_sku) LIKE '%AUVIKPERFORMANCADDON%' THEN 'PERFORMANCE'
+                        ELSE 'ESSENTIALS'
+                END AS auvik_product_group,
                 UPPER(TRIM(z.product_sku)) AS product_sku,
                 z.charge_name AS charge_names,
                 NULL::VARCHAR AS billing_unit_types,
-                1::NUMBER AS billing_qty_multiplier,
+                CASE
+                        WHEN COALESCE(z.qty, 0) = 1
+                         AND UPPER(COALESCE(z.charge_name, '')) LIKE '%PACKAGE MSP%'
+                         AND REGEXP_SUBSTR(UPPER(TRIM(COALESCE(z.product_sku, ''))), 'M([[:digit:]]{2,5})', 1, 1, 'e', 1) IS NOT NULL
+                            THEN TO_NUMBER(REGEXP_SUBSTR(UPPER(TRIM(z.product_sku)), 'M([[:digit:]]{2,5})', 1, 1, 'e', 1))
+                        WHEN COALESCE(z.qty, 0) = 1
+                         AND REGEXP_SUBSTR(UPPER(TRIM(COALESCE(z.product_sku, ''))), 'AVNMM([[:digit:]]{2,5})', 1, 1, 'e', 1) IS NOT NULL
+                            THEN TO_NUMBER(REGEXP_SUBSTR(UPPER(TRIM(z.product_sku)), 'AVNMM([[:digit:]]{2,5})', 1, 1, 'e', 1))
+                        ELSE 1::NUMBER
+                END AS billing_qty_multiplier,
                 COALESCE(z.qty, 0) AS zuora_native_quantity,
-                COALESCE(z.qty, 0) AS zuora_quantity,
+                COALESCE(z.qty, 0) *
+                CASE
+                        WHEN COALESCE(z.qty, 0) = 1
+                         AND UPPER(COALESCE(z.charge_name, '')) LIKE '%PACKAGE MSP%'
+                         AND REGEXP_SUBSTR(UPPER(TRIM(COALESCE(z.product_sku, ''))), 'M([[:digit:]]{2,5})', 1, 1, 'e', 1) IS NOT NULL
+                            THEN TO_NUMBER(REGEXP_SUBSTR(UPPER(TRIM(z.product_sku)), 'M([[:digit:]]{2,5})', 1, 1, 'e', 1))
+                        WHEN COALESCE(z.qty, 0) = 1
+                         AND REGEXP_SUBSTR(UPPER(TRIM(COALESCE(z.product_sku, ''))), 'AVNMM([[:digit:]]{2,5})', 1, 1, 'e', 1) IS NOT NULL
+                            THEN TO_NUMBER(REGEXP_SUBSTR(UPPER(TRIM(z.product_sku)), 'AVNMM([[:digit:]]{2,5})', 1, 1, 'e', 1))
+                        ELSE 1::NUMBER
+                END AS zuora_quantity,
                 COALESCE(z.unit_price_usd, 0) AS zuora_unit_price,
                 COALESCE(z.charge_amount_usd, 0) AS zuora_charge_amount,
                 1::NUMBER AS billing_row_count
         FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD z
-        INNER JOIN cw_sku_map cw
+        LEFT JOIN cw_sku_map cw
             ON cw.cw_sku_key = UPPER(TRIM(z.product_sku))
         WHERE z.vendor = 'Auvik'
             AND z.sf_id ILIKE 'ACT-%'
             AND COALESCE(z.qty, 0) <> 0
-            AND EXISTS (
-                    SELECT 1
-                    FROM auvik_vendor_keys vk
-                    WHERE vk.sf_id = z.sf_id
-                        AND vk.billing_month = z.billing_month::DATE
-            )
 ),
 auvik_marketplace_rows AS (
         SELECT
                 m.sf_id,
                 m.billing_month::DATE AS billing_month,
-                cw.sku_match_group AS sku_match_group,
-                cw.auvik_product_group AS auvik_product_group,
+                'AUVIK_' ||
+                        CASE
+                                WHEN UPPER(m.product_sku) LIKE '%ASM%'
+                                    OR UPPER(m.product_sku) LIKE '%SAM%' THEN 'ASM'
+                                WHEN UPPER(m.product_sku) LIKE '%PARM%'
+                                    OR UPPER(m.product_sku) LIKE '%PERF%'
+                                    OR UPPER(m.product_sku) LIKE '%ADDON%'
+                                    OR UPPER(m.product_sku) LIKE '%ADD-ON%'
+                                    OR UPPER(m.product_sku) LIKE '%AUVIKPERFORMANCADDON%' THEN 'PERFORMANCE'
+                                ELSE 'ESSENTIALS'
+                        END AS sku_match_group,
+                CASE
+                        WHEN UPPER(m.product_sku) LIKE '%ASM%'
+                            OR UPPER(m.product_sku) LIKE '%SAM%' THEN 'ASM'
+                        WHEN UPPER(m.product_sku) LIKE '%PARM%'
+                            OR UPPER(m.product_sku) LIKE '%PERF%'
+                            OR UPPER(m.product_sku) LIKE '%ADDON%'
+                            OR UPPER(m.product_sku) LIKE '%ADD-ON%'
+                            OR UPPER(m.product_sku) LIKE '%AUVIKPERFORMANCADDON%' THEN 'PERFORMANCE'
+                        ELSE 'ESSENTIALS'
+                END AS auvik_product_group,
                 UPPER(TRIM(m.product_sku)) AS product_sku,
                 COALESCE(m.qty, 0) AS marketplace_quantity,
                 COALESCE(m.amount, 0) AS marketplace_amount,
@@ -258,12 +301,6 @@ auvik_marketplace_rows AS (
         WHERE m.vendor = 'Auvik'
             AND m.sf_id ILIKE 'ACT-%'
             AND COALESCE(m.qty, 0) <> 0
-            AND EXISTS (
-                    SELECT 1
-                    FROM auvik_vendor_keys vk
-                    WHERE vk.sf_id = m.sf_id
-                        AND vk.billing_month = m.billing_month::DATE
-            )
 ),
 zuora_agg AS (
     SELECT
