@@ -118,6 +118,10 @@ proofpoint_loaded_billing_months AS (
     SELECT DISTINCT billing_month::DATE AS billing_month
     FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
     WHERE vendor = 'Proofpoint'
+    UNION
+    SELECT DISTINCT billing_month::DATE AS billing_month
+    FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
+    WHERE vendor = 'Proofpoint'
 ),
 
 proofpoint_base AS (

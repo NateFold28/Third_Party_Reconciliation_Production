@@ -302,7 +302,10 @@ joined_vendor AS (
         COALESCE(z.zuora_charge_names, zp.zuora_charge_names) AS zuora_charge_names,
         c.carr_skus,
         CASE
+            WHEN (z.sf_id IS NOT NULL OR zp.billing_month IS NOT NULL)
+                 AND c.sf_id IS NOT NULL THEN 'ZUORA_AND_MARKETPLACE'
             WHEN z.sf_id IS NOT NULL OR zp.billing_month IS NOT NULL THEN 'ZUORA_ONLY'
+            WHEN c.sf_id IS NOT NULL THEN 'MARKETPLACE_ONLY'
             ELSE 'NO_BILLING_SOURCE'
         END AS billing_source_mix,
         v.vendor_quantity,
@@ -317,14 +320,18 @@ joined_vendor AS (
         c.carr_row_count,
         NULL::NUMBER AS support_quantity,
         NULL::NUMBER AS support_row_count,
-        CASE
-            WHEN COALESCE(w.vendor_group_quantity, 0) > 0 THEN COALESCE(z.zuora_quantity, zp.zuora_quantity, 0) * COALESCE(v.vendor_quantity, 0) / NULLIF(w.vendor_group_quantity, 0)
-            ELSE 0
-        END AS total_billing_quantity,
-        CASE
-            WHEN COALESCE(w.vendor_group_quantity, 0) > 0 THEN COALESCE(z.zuora_amount, zp.zuora_amount, 0) * COALESCE(v.vendor_quantity, 0) / NULLIF(w.vendor_group_quantity, 0)
-            ELSE 0
-        END AS total_billing_amount,
+        COALESCE(c.carr_quantity, 0)
+            + CASE
+                WHEN COALESCE(w.vendor_group_quantity, 0) > 0
+                    THEN COALESCE(z.zuora_quantity, zp.zuora_quantity, 0) * COALESCE(v.vendor_quantity, 0) / NULLIF(w.vendor_group_quantity, 0)
+                ELSE 0
+              END AS total_billing_quantity,
+        COALESCE(c.carr_amount, 0)
+            + CASE
+                WHEN COALESCE(w.vendor_group_quantity, 0) > 0
+                    THEN COALESCE(z.zuora_amount, zp.zuora_amount, 0) * COALESCE(v.vendor_quantity, 0) / NULLIF(w.vendor_group_quantity, 0)
+                ELSE 0
+              END AS total_billing_amount,
         v.vendor_source_row_count,
         v.vendor_partner_guid_count,
         v.vendor_unmapped_partner_rows

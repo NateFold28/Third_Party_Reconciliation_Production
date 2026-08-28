@@ -18,7 +18,7 @@ USE WAREHOUSE REPORTING_WH;
 USE DATABASE ANALYTICS_DEV;
 USE SCHEMA DBT_NFOLD_TRANSFORMATION;
 
-CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SOURCE_ZUORA_PROD AS
+CREATE OR REPLACE VIEW THIRD_PARTY_RECON_SOURCE_ZUORA_PROD AS
 WITH fx_rates AS (
     SELECT UPPER(currency_id) AS currency_id, budget_ex_rate
     FROM analytics.dbo_seed_files.seed__fpa_budget_exchange_rates
@@ -102,7 +102,7 @@ WHERE z.VENDOR_NAME IN (
   AND z.BILLING_MONTH >= '2026-01-01'
     AND COALESCE(z.CHARGE_AMOUNT, 0) <> 0;
 
-CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD AS
+CREATE OR REPLACE VIEW THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD AS
 WITH carr_base AS (
     SELECT
         'Auvik' AS vendor,
@@ -375,7 +375,7 @@ WHERE COALESCE(qty, 0) <> 0
 --   min_api_quantity    - trough daily count in the cycle
 --   days_reporting      - # distinct days in the cycle with any usage row for the partner
 -- =============================================================================
-CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SOURCE_TRT_PROD AS
+CREATE OR REPLACE VIEW THIRD_PARTY_RECON_SOURCE_TRT_PROD AS
 WITH vendor_config AS (
     -- Cycle day + vendor pattern for seed__product_categorization scope.
     -- To enroll another cycle-billed vendor, add a row here plus a matching
@@ -586,7 +586,7 @@ LEFT JOIN RECON_ACCOUNT_MERGE_RESOLVER am
        ON am.old_sf_id = COALESCE(pm.SF_ID, zb.sf_id)
 WHERE m.billing_month >= '2026-01-01';
 
-CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SOURCE_ROYALTIES_PROD AS
+CREATE OR REPLACE VIEW THIRD_PARTY_RECON_SOURCE_ROYALTIES_PROD AS
 WITH royalties_base AS (
     SELECT
         COALESCE(seed_vendor, vendor) AS vendor,
