@@ -371,7 +371,7 @@ WHERE COALESCE(qty, 0) <> 0
 -- ZUORA.ACCOUNT_CONTINUUM_ID. Two lookup paths are combined, preferring the
 -- curated map:
 --   1. THIRD_PARTY_RECON_PARTNER_MAP_PROD.CMS_ID = raw.partner_id (curated per-vendor)
---   2. ZUORA_THIRD_PARTY_RECON_BASE.ACCOUNT_CONTINUUM_ID -> SFDC_ACCOUNT_NUMBER
+--   2. FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2.ACCOUNT_CONTINUUM_ID -> SFDC_ACCOUNT_NUMBER
 --      (all-vendor Zuora bridge — daily-refreshed, ACT-* preferred)
 --
 -- Zuora bridge coverage: ~98% of BD partners, 100% of S1/Auvik/Webroot partners.
@@ -522,8 +522,8 @@ merged AS (
      AND p.billing_month = a.billing_month
 ),
 zuora_bridge AS (
-    -- Bridge CW numeric partner_id -> SFDC_ACCOUNT_NUMBER using Zuora directly.
-    -- ZUORA.ACCOUNT_CONTINUUM_ID is the CW partner_id and SFDC_ACCOUNT_NUMBER is
+    -- Bridge CW numeric partner_id -> SFDC_ACCOUNT_NUMBER using the live Zuora source directly.
+    -- FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2.ACCOUNT_CONTINUUM_ID is the CW partner_id and SFDC_ACCOUNT_NUMBER is
     -- the salesforce ACT- id we want on every row. This replaces the previous
     -- CORE__RPT_CMS_USAGE fallback which stopped refreshing in March 2023.
     -- Zuora refreshes daily, so this bridge is always current.

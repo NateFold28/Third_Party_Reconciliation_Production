@@ -55,11 +55,13 @@ vendor_rows AS (
             WHEN UPPER(u.VENDOR_PRODUCT_SKU) LIKE '%SECURE AUTHENTICATION%' THEN 'SECURE_AUTH'
             ELSE 'OTHER'
         END AS sku_match_group,
-        COALESCE(TRY_TO_NUMBER(u.MODIFIER), 0) AS quantity
+        COALESCE(u.MODIFIER, 0) AS quantity,
+        COALESCE(u.QUANTITY, 0) AS seat_days_quantity,
+        COALESCE(u.AMOUNT, 0) AS vendor_amount
     FROM ESET_USAGE u
     LEFT JOIN partner_map p
         ON p.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
-    WHERE COALESCE(TRY_TO_NUMBER(u.MODIFIER), 0) > 0
+    WHERE COALESCE(u.MODIFIER, 0) > 0
 ),
 vendor_agg AS (
     SELECT
@@ -67,6 +69,8 @@ vendor_agg AS (
         LISTAGG(DISTINCT VENDOR_PARTNER_NAME, ' | ') WITHIN GROUP (ORDER BY VENDOR_PARTNER_NAME) AS vendor_partner_name,
         LISTAGG(DISTINCT VENDOR_PRODUCT_SKU, ' | ') WITHIN GROUP (ORDER BY VENDOR_PRODUCT_SKU) AS vendor_product,
         SUM(quantity)  AS vendor_quantity,
+        SUM(seat_days_quantity) AS vendor_seat_days_quantity,
+        SUM(vendor_amount) AS vendor_amount,
         COUNT(*)       AS vendor_row_count
     FROM vendor_rows
     WHERE sf_id IS NOT NULL
@@ -309,6 +313,8 @@ joined AS (
             ELSE 'NO_BILLING'
         END AS billing_source_mix,
         COALESCE(v.vendor_quantity, 0)::NUMBER AS vendor_quantity,
+        COALESCE(v.vendor_seat_days_quantity, 0)::NUMBER AS vendor_seat_days_quantity,
+        COALESCE(v.vendor_amount, 0)::NUMBER AS vendor_source_amount,
         z.zuora_quantity,
         z.zuora_unit_price,
         z.zuora_amount,
@@ -365,8 +371,8 @@ scored AS (
         -- amount here -- it would be misleading. Reconciliation is on QUANTITY;
         -- vendor $ stays NULL. The contract overlay columns below still expose
         -- billing-vs-cost as a separate (flagged) lane where a rate exists.
-        NULL::NUMBER AS vendor_amount,
-        NULL::NUMBER AS vendor_unit_price,
+        vendor_source_amount AS vendor_amount,
+        IFF(COALESCE(vendor_quantity, 0) = 0, NULL, vendor_source_amount / NULLIF(vendor_quantity, 0)) AS vendor_unit_price,
         total_billing_amount / NULLIF(total_billing_quantity, 0) AS total_billing_unit_price,
         total_billing_quantity - vendor_quantity      AS qty_delta,
         ABS(total_billing_quantity - vendor_quantity)  AS abs_qty_delta,
@@ -413,8 +419,8 @@ SELECT
     s.vendor_row_count AS vendor_source_row_count,
     s.partner_match_methods,
     s.sku_mapping_sources,
-    s.contract_cost_rate AS contract_cost_basis_quantity,
-    ROUND(s.vendor_quantity * COALESCE(s.contract_cost_rate, 0), 2)::NUMBER AS contract_cost_basis_amount,
+    s.vendor_seat_days_quantity AS contract_cost_basis_quantity,
+    ROUND(s.vendor_seat_days_quantity * COALESCE(s.contract_cost_rate, 0), 2)::NUMBER AS contract_cost_basis_amount,
     s.contract_cost_rate,
     CASE WHEN s.contract_cost_rate IS NOT NULL AND s.total_billing_quantity > 0
         THEN (s.total_billing_amount / s.total_billing_quantity) - s.contract_cost_rate ELSE NULL END AS billing_vs_cost_delta_per_seat,

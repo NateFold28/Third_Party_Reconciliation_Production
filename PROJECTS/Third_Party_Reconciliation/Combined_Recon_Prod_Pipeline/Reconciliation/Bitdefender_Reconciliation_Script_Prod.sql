@@ -4,14 +4,14 @@
 -- Vendor side  = BITDEFENDER_USAGE_PROD, materialized from
 --                PRODUCT_MANAGEMENT__ROYALTIES (what CW owes Bitdefender; all
 --                THIRD_PARTY_TYPEs: Usage + Contract + Marketplace)
--- CW side      = ZUORA_THIRD_PARTY_RECON_BASE (Posted BillRun) + Manage/NetSuite
+-- CW side      = live Zuora source v2 (Posted BillRun) + Manage/NetSuite
 --                Evergreen Marketplace (CARR__ALL_TRANSACTIONS)
 -- Grain        = (sf_id, billing_month)  -- partner-month (the Bitdefender manual
 --                recon DATA-tab grain). Products LISTAGG'd; a primary
 --                sku_match_group is resolved per account for the contract overlay.
 --
 -- KEY CHANGES vs prior build (2026-08-03):
---  1. FX FIX (systemic). ZUORA_THIRD_PARTY_RECON_BASE.CHARGE_AMOUNT / UNIT_PRICE
+--  1. FX FIX (systemic). Live Zuora source charge_amount / unit_price
 --     are NATIVE currency (ACCOUNT_CURRENCY; HOME_CURRENCY is 100% NULL). ~740
 --     non-USD Bitdefender rows/mo (CAD/GBP/AUD/EUR) were summed as if USD. Now
 --     converted to USD via analytics.dbo_seed_files.seed__fpa_budget_exchange_rates

@@ -36,6 +36,13 @@ Production reconciliation system for 9 third-party vendors against ConnectWise b
      THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
      THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
      THIRD_PARTY_RECON_SOURCE_TRT_PROD
+   Source policy:
+     - THIRD_PARTY_RECON_SOURCE_ZUORA_PROD is built from the live
+       ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2 source.
+     - THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD is built directly from the
+       live ANALYTICS.DBO.CARR__ALL_TRANSACTIONS source.
+     - Active production recon scripts must not point back to the older
+       ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE object.
 
 4) Vendor Reconciliation (9 distinct scripts)
    <Vendor>_Reconciliation_Script_Prod.sql -> <VENDOR>_RECON_DETAIL
@@ -46,6 +53,7 @@ Production reconciliation system for 9 third-party vendors against ConnectWise b
 
 5) App
    app/combined_recon_app.py reads OUTPUT_PROD + SUMMARY_PROD
+  and hides any vendor-month where vendor usage files are absent.
 ```
 
 No production logic is allowed outside this flow.
@@ -62,6 +70,7 @@ No production logic is allowed outside this flow.
 ## Dependency Policy
 
 - No legacy matched/resolved billing tables are used by active vendor recon scripts.
+- No active production path may read the older `ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE` object.
 - Vendor recon logic is housed in each vendor's script under Reconciliation/.
 - Improvement levers are limited to:
   1) unified partner map, 2) unified SKU map, 3) vendor recon SQL logic.
@@ -96,6 +105,7 @@ that invoice control before recon/app metrics are trusted.
 Important:
 - `_run_skeleton_pipeline.py` does not run ingestion or invoice parsing.
 - `_run_full_refresh_pipeline.py` default behavior is incremental/idempotent with smart-skip when unchanged.
+- `_run_full_refresh_pipeline.py` is the canonical refresh path when vendor usage changes, because it rebuilds ingestion, maps, live billing sources, vendor recon detail, OUTPUT_PROD, and SUMMARY_PROD together.
 - Use `--full-refresh-now` for a guaranteed one-time full baseline rebuild.
 - In `--full-refresh-now` mode, the runner now clears one vendor slice at a time before each ingestion script to prevent shared-table wipeouts if a later step fails.
 - Use `--force-ingestion --force-invoices` to bypass smart-skip without forcing destructive reset semantics.
@@ -163,3 +173,4 @@ ORDER BY 1,2;
 - Do NOT create per-vendor staging tables beyond `<VENDOR>_RECON_DETAIL`
 - `_LEGACY_20260823` tables are historical snapshots only; do not route active pipeline logic through them
 - Do NOT recreate legacy matched/resolved billing tables; vendor recon scripts are source-driven from unified billing sources
+- Do NOT route app-visible months through CW-only future billing periods when vendor usage files do not exist for that vendor

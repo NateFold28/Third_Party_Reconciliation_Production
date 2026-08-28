@@ -209,6 +209,13 @@ def _month_from_folder(path: Path) -> str | None:
     return f"{match.group('yyyy')}-{match.group('mm')}"
 
 
+def _billing_month_from_source(path: Path, billing_date: dt.date | None) -> dt.date | None:
+    folder_month = _month_from_folder(path)
+    if folder_month:
+        return dt.date.fromisoformat(f"{folder_month}-01")
+    return _first_day(billing_date)
+
+
 def _canonical_row(values: Iterable[object]) -> str:
     return "\t".join(_clean_text(v) or "" for v in values)
 
@@ -325,7 +332,8 @@ def parse_aggregator_file(source: SourceFile, *, ingested_at: dt.datetime) -> tu
 
     billing_dates = data_df["Billing Date"].map(_to_date)
     order_dates = data_df["Order Date"].map(_to_date)
-    billing_months = billing_dates.map(_first_day)
+    billing_month = _billing_month_from_source(source.path, billing_dates.dropna().iloc[0] if not billing_dates.dropna().empty else None)
+    billing_months = pd.Series([billing_month] * len(data_df), index=data_df.index)
     usage_df = pd.DataFrame(
         {
             "BILLING_MONTH": billing_months,
@@ -408,9 +416,7 @@ def _build_audit(
         billing_date = None
         if not category_data.empty:
             billing_date = _to_date(category_data["Billing Date"].iloc[0])
-        billing_month = _first_day(billing_date) or (
-            dt.date.fromisoformat(f"{_month_from_folder(source.path)}-01") if _month_from_folder(source.path) else None
-        )
+        billing_month = _billing_month_from_source(source.path, billing_date)
         rows.append(
             {
                 "STREAM": source.stream,
@@ -460,15 +466,17 @@ def build_usage(source_root_cw: Path, source_root_cms: Path) -> tuple[pd.DataFra
 
     usage_frames: list[pd.DataFrame] = []
     audit_frames: list[pd.DataFrame] = []
-    seen_content_hashes: set[str] = set()
+    seen_content_keys: set[tuple[str, object, str]] = set()
     for source in files:
         usage_df, audit_df = parse_aggregator_file(source, ingested_at=ingested_at)
         content_hash = audit_df["SOURCE_CONTENT_HASH"].iloc[0]
-        if content_hash in seen_content_hashes:
+        billing_month_key = audit_df["BILLING_MONTH"].iloc[0] if not audit_df.empty else None
+        dedupe_key = (content_hash, billing_month_key, source.stream)
+        if dedupe_key in seen_content_keys:
             audit_df["LOAD_STATUS"] = "SKIPPED_DUPLICATE_CONTENT"
             usage_df = pd.DataFrame(columns=USAGE_COLUMNS)
         elif not usage_df.empty:
-            seen_content_hashes.add(content_hash)
+            seen_content_keys.add(dedupe_key)
         audit_frames.append(audit_df)
         usage_frames.append(usage_df)
 

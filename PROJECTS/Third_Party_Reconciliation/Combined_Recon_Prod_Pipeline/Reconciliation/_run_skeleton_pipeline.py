@@ -280,8 +280,8 @@ def live_emit_block(vendor: str, live_table: str, target_table: str = DETAIL_TAB
     Per-vendor overrides:
       - Auvik's live table names the vendor product column AUVIK_PRODUCT
         (not VENDOR_PRODUCT). Alias it.
-      - KeepIT's live table does not emit a MARKETPLACE_SKUS array (KeepIT
-        marketplace billing is folded into ZUORA billing). Substitute NULL.
+            - KeepIT's live table emits CARR_SKUS instead of MARKETPLACE_SKUS.
+                Map that into the shared marketplace-sku slot.
       - Webroot's live table does not emit a separate CW_SKUS array; CW SKUs
         are carried in ZUORA_SKUS since Webroot bills directly via CW SKU.
     """
@@ -291,7 +291,7 @@ def live_emit_block(vendor: str, live_table: str, target_table: str = DETAIL_TAB
     }.get(vendor, "VENDOR_PRODUCT")
     marketplace_skus_expr = {
         "ESET": "MARKETPLACE_SKUS",
-        "KeepIT": "NULL::VARCHAR",
+        "KeepIT": "ARRAY_TO_STRING(CARR_SKUS, ',')",
     }.get(vendor, "ARRAY_TO_STRING(MARKETPLACE_SKUS, ',')")
     cw_skus_expr = {
         "ESET": "CW_SKUS",
@@ -306,21 +306,10 @@ def live_emit_block(vendor: str, live_table: str, target_table: str = DETAIL_TAB
         "Webroot": "SKU_MATCH_GROUP",
         "Auvik": "SKU_MATCH_GROUP",
     }.get(vendor, "NULL::VARCHAR")
-    vendor_unit_price_expr = {
-        # ESET source files are quantity-first. Carry the contract-cost overlay
-        # into the shared mart for margin visibility, while classification stays
-        # quantity-driven through OUTCOME_FLAG handling in the classifier.
-        "ESET": "CONTRACT_COST_RATE",
-    }.get(vendor, "VENDOR_UNIT_PRICE")
-    vendor_amount_expr = {
-        "ESET": "CONTRACT_COST_BASIS_AMOUNT",
-    }.get(vendor, "VENDOR_AMOUNT")
-    amount_delta_expr = {
-        "ESET": "COALESCE(TOTAL_BILLING_AMOUNT, 0) - COALESCE(CONTRACT_COST_BASIS_AMOUNT, 0)",
-    }.get(vendor, "AMOUNT_DELTA")
-    abs_amount_delta_expr = {
-        "ESET": "ABS(COALESCE(TOTAL_BILLING_AMOUNT, 0) - COALESCE(CONTRACT_COST_BASIS_AMOUNT, 0))",
-    }.get(vendor, "ABS_AMOUNT_DELTA")
+    vendor_unit_price_expr = "VENDOR_UNIT_PRICE"
+    vendor_amount_expr = "VENDOR_AMOUNT"
+    amount_delta_expr = "AMOUNT_DELTA"
+    abs_amount_delta_expr = "ABS_AMOUNT_DELTA"
     return f"""{USE}
 
 -- Idempotent: remove any prior rows for this vendor.

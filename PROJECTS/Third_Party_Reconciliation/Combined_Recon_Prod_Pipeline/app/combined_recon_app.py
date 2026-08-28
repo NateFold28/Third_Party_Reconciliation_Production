@@ -944,7 +944,7 @@ def _load_combined_vendor_impl(
                 mask = mask | (pd.to_numeric(summary[amt_col], errors="coerce").fillna(0) > 0)
             loaded = set(pd.to_datetime(summary.loc[mask, "BILLING_MONTH"]).unique())
             for key, df in (("summary", summary), ("detail", detail), ("coverage", coverage)):
-                if df is None or df.empty or "BILLING_MONTH" not in df.columns:
+                if df.empty or "BILLING_MONTH" not in df.columns:
                     continue
                 if key == "summary":
                     summary = df.loc[df["BILLING_MONTH"].isin(loaded)].reset_index(drop=True)
@@ -1885,6 +1885,17 @@ class VendorSlice:
         self.vendor = vendor
         self.name: str = vendor["name"]
         self.category: str = vendor["category"]
+
+        if not detail_all.empty and "VENDOR_SOURCE_ROW_COUNT" in detail_all.columns and "BILLING_MONTH" in detail_all.columns:
+            vendor_loaded_mask = pd.to_numeric(detail_all["VENDOR_SOURCE_ROW_COUNT"], errors="coerce").fillna(0) > 0
+            vendor_loaded_months = set(pd.to_datetime(detail_all.loc[vendor_loaded_mask, "BILLING_MONTH"]).unique())
+            if vendor_loaded_months:
+                if not summary_all.empty and "BILLING_MONTH" in summary_all.columns:
+                    summary_all = summary_all[pd.to_datetime(summary_all["BILLING_MONTH"]).isin(vendor_loaded_months)].reset_index(drop=True)
+                detail_all = detail_all[pd.to_datetime(detail_all["BILLING_MONTH"]).isin(vendor_loaded_months)].reset_index(drop=True)
+                if not coverage_all.empty and "BILLING_MONTH" in coverage_all.columns:
+                    coverage_all = coverage_all[pd.to_datetime(coverage_all["BILLING_MONTH"]).isin(vendor_loaded_months)].reset_index(drop=True)
+
         self.summary_all = summary_all
         self.detail_all = detail_all
         self.coverage_all = coverage_all
