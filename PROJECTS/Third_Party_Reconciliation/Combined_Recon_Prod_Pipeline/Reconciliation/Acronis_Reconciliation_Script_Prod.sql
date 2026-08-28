@@ -312,7 +312,7 @@ zuora_zero_amount_rows AS (
         COALESCE(z.QUANTITY, 0) AS qty,
         z.UNIT_PRICE AS unit_price_usd,
         0::FLOAT AS charge_amount_usd
-    FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE z
+    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2 z
     WHERE z.VENDOR_NAME = 'Acronis'
       AND z.INVOICE_STATUS = 'Posted'
       AND z.INVOICE_SOURCE = 'BillRun'
@@ -1030,7 +1030,7 @@ WITH usage_qty AS (
 ),
 zuora_base AS (
     SELECT BILLING_MONTH::DATE AS billing_month, SUM(QUANTITY) AS zuora_posted_billrun_quantity
-    FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE
+    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2
     WHERE VENDOR_NAME = 'Acronis'
       AND INVOICE_STATUS = 'Posted'
       AND INVOICE_SOURCE = 'BillRun'

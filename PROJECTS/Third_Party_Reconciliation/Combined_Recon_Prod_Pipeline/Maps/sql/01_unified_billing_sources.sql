@@ -50,10 +50,21 @@ zuora_base AS (
                 THEN 'sfdc_account_number_non_act'
             ELSE 'unresolved'
         END AS raw_sf_id_source
-    FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE z
+    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2 z
 )
 SELECT
-    z.VENDOR_NAME AS vendor,
+    CASE UPPER(TRIM(z.VENDOR_NAME))
+        WHEN 'PROOFPOINT' THEN 'Proofpoint'
+        WHEN 'SENTINELONE' THEN 'SentinelOne'
+        WHEN 'WEBROOT' THEN 'Webroot'
+        WHEN 'ACRONIS' THEN 'Acronis'
+        WHEN 'KEEPIT' THEN 'KeepIT'
+        WHEN 'AUVIK' THEN 'Auvik'
+        WHEN 'BITDEFENDER' THEN 'Bitdefender'
+        WHEN 'ESET' THEN 'ESET'
+        WHEN 'EXIUM' THEN 'Exium'
+        ELSE z.VENDOR_NAME
+    END AS vendor,
     CASE
         WHEN am.old_sf_id IS NOT NULL
          AND (am.merge_effective_month IS NULL OR z.BILLING_MONTH::DATE >= am.merge_effective_month)
@@ -93,9 +104,9 @@ LEFT JOIN fx_rates fx
     ON fx.currency_id = UPPER(z.ACCOUNT_CURRENCY)
 LEFT JOIN RECON_ACCOUNT_MERGE_RESOLVER am
     ON am.old_sf_id = z.raw_sf_id
-WHERE z.VENDOR_NAME IN (
-    'Proofpoint', 'SentinelOne', 'Webroot', 'Acronis', 'KeepIT',
-    'Auvik', 'Bitdefender', 'ESET', 'Exium'
+WHERE UPPER(TRIM(z.VENDOR_NAME)) IN (
+    'PROOFPOINT', 'SENTINELONE', 'WEBROOT', 'ACRONIS', 'KEEPIT',
+    'AUVIK', 'BITDEFENDER', 'ESET', 'EXIUM'
 )
   AND z.INVOICE_STATUS = 'Posted'
   AND z.INVOICE_SOURCE = 'BillRun'
@@ -408,7 +419,7 @@ vendor_skus AS (
             vc.vendor,
             z.PRODUCT_SKU AS prod_sku
         FROM vendor_config vc
-        JOIN ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE z
+        JOIN ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2 z
           ON UPPER(z.VENDOR_NAME) = UPPER(vc.vendor)
         WHERE z.PRODUCT_SKU IS NOT NULL
           AND z.INVOICE_STATUS = 'Posted'
@@ -529,7 +540,7 @@ zuora_bridge AS (
                 ORDER BY CASE WHEN SFDC_ACCOUNT_NUMBER ILIKE 'ACT-%' THEN 0 ELSE 1 END,
                          BILLING_MONTH DESC
             ) AS rk
-        FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE
+        FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2
         WHERE SFDC_ACCOUNT_NUMBER IS NOT NULL
           AND TRIM(SFDC_ACCOUNT_NUMBER) <> ''
           AND INVOICE_STATUS = 'Posted'

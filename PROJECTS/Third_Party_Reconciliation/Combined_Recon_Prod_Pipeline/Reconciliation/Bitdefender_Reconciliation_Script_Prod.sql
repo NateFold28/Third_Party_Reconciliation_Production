@@ -175,7 +175,7 @@ zuora_rows AS (
         COALESCE(z.QUANTITY, 0) AS quantity,
         z.UNIT_PRICE * COALESCE(fx.budget_ex_rate, 1) AS unit_price_usd,
         COALESCE(z.CHARGE_AMOUNT, 0) * COALESCE(fx.budget_ex_rate, 1) AS charge_amount_usd
-    FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE z
+    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2 z
     LEFT JOIN fx_rates fx ON fx.currency_id = UPPER(z.ACCOUNT_CURRENCY)
     WHERE z.VENDOR_NAME = 'Bitdefender'
       AND z.INVOICE_STATUS = 'Posted'

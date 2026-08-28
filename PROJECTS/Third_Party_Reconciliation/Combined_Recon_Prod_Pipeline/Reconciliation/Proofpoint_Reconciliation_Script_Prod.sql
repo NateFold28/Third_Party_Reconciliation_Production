@@ -376,8 +376,7 @@ zuora_source AS (
     FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
     WHERE vendor = 'Proofpoint'
       AND sf_id ILIKE 'ACT-%'
-      AND COALESCE(qty, 0) <> 0
-            AND UPPER(TRIM(product_sku)) IN (SELECT cw_sku_token FROM proofpoint_cw_sku_tokens)
+            AND COALESCE(qty, 0) <> 0
 ),
 
 marketplace_source AS (
@@ -585,8 +584,9 @@ scored AS (
         zuora_skus,
         marketplace_skus,
         CASE
-            WHEN zuora_quantity IS NOT NULL AND marketplace_quantity IS NOT NULL THEN 'ZUORA_AND_MARKETPLACE'
-            WHEN zuora_quantity IS NOT NULL THEN 'ZUORA_ONLY'
+            WHEN (COALESCE(zuora_quantity, 0) > 0 OR COALESCE(any_zuora_quantity, 0) > 0)
+                 AND marketplace_quantity IS NOT NULL THEN 'ZUORA_AND_MARKETPLACE'
+            WHEN (COALESCE(zuora_quantity, 0) > 0 OR COALESCE(any_zuora_quantity, 0) > 0) THEN 'ZUORA_ONLY'
             WHEN marketplace_quantity IS NOT NULL THEN 'MARKETPLACE_ONLY'
             ELSE 'NO_BILLING_SOURCE'
         END AS source_presence_flag,
@@ -599,21 +599,61 @@ scored AS (
         marketplace_quantity,
         marketplace_amount,
         CASE
-            WHEN COALESCE(IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity, marketplace_quantity), 0) = 0
-             AND COALESCE(IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount, marketplace_amount), 0) > 0
+            WHEN COALESCE(
+                    IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity,
+                        IFF(COALESCE(any_zuora_quantity, 0) > 0, any_zuora_quantity, marketplace_quantity)
+                    ),
+                    0
+                 ) = 0
+             AND COALESCE(
+                    IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount,
+                        IFF(COALESCE(any_zuora_amount, 0) > 0, any_zuora_amount, marketplace_amount)
+                    ),
+                    0
+                 ) > 0
              AND UPPER(COALESCE(vendor_product, '')) IN ('BASIC OEM', 'ADVANCED OEM')
                 THEN COALESCE(vendor_quantity, 0)
-            ELSE COALESCE(IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity, marketplace_quantity), 0)
+            ELSE COALESCE(
+                    IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity,
+                        IFF(COALESCE(any_zuora_quantity, 0) > 0, any_zuora_quantity, marketplace_quantity)
+                    ),
+                    0
+                 )
         END AS total_billing_quantity,
-        COALESCE(IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount, marketplace_amount), 0) AS total_billing_amount,
+        COALESCE(
+            IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount,
+                IFF(COALESCE(any_zuora_amount, 0) > 0, any_zuora_amount, marketplace_amount)
+            ),
+            0
+        ) AS total_billing_amount,
         CASE
-            WHEN COALESCE(IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity, marketplace_quantity), 0) = 0
-             AND COALESCE(IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount, marketplace_amount), 0) > 0
+            WHEN COALESCE(
+                    IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity,
+                        IFF(COALESCE(any_zuora_quantity, 0) > 0, any_zuora_quantity, marketplace_quantity)
+                    ),
+                    0
+                 ) = 0
+             AND COALESCE(
+                    IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount,
+                        IFF(COALESCE(any_zuora_amount, 0) > 0, any_zuora_amount, marketplace_amount)
+                    ),
+                    0
+                 ) > 0
              AND UPPER(COALESCE(vendor_product, '')) IN ('BASIC OEM', 'ADVANCED OEM')
                 THEN 0
-            ELSE COALESCE(IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity, marketplace_quantity), 0) - COALESCE(vendor_quantity, 0)
+            ELSE COALESCE(
+                    IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity,
+                        IFF(COALESCE(any_zuora_quantity, 0) > 0, any_zuora_quantity, marketplace_quantity)
+                    ),
+                    0
+                 ) - COALESCE(vendor_quantity, 0)
         END AS qty_delta,
-        COALESCE(IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount, marketplace_amount), 0) - COALESCE(vendor_amount, 0) AS amount_delta,
+        COALESCE(
+            IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount,
+                IFF(COALESCE(any_zuora_amount, 0) > 0, any_zuora_amount, marketplace_amount)
+            ),
+            0
+        ) - COALESCE(vendor_amount, 0) AS amount_delta,
         vendor_row_count,
         partner_match_methods,
         sku_mapping_sources,

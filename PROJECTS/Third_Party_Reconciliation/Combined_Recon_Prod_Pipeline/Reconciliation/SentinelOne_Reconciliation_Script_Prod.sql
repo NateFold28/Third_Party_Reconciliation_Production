@@ -367,7 +367,7 @@ zuora_billing AS (
             THEN COALESCE(z.QUANTITY, 0) ELSE 0 END) AS mdr_bundle_quantity,
         -- Dominant billing category for this (sf_id, month, sku_group) grain
         MODE(bc.billing_category) AS dominant_billing_category
-    FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE z
+    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2 z
     LEFT JOIN merged_account_resolver mr
         ON mr.old_sf_id = z.SFDC_ACCOUNT_NUMBER
     JOIN cw_sku_group_map m
