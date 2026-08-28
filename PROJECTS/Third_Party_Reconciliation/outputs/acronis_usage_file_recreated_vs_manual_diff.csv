@@ -1,4 +1,0 @@
-BILLING_MONTH,Entity,Tenant name,Identifier,Type,Status,Mode,Service name,Edition,Metric name,Location,Metric unit,Quota,Production usage,Change in production usage,Trial usage,Change in trial usage,Total usage,Change in total usage,Price,Cost,Billing model,Storage type,Pricing tier ID,SKU,row_count_auto,row_count_manual,row_count_delta,month
-2026-05-01,SG1_GIG,Bel USA LLC,,Partner,Enabled,,Cyber Protection,,Local Storage Per gigabyte,,GB,,1749.95,0,0,0,1749.95,0,N/A,N/A,,,,SP4BMSENS,1,0,1,2026-05
-2026-05-01,SG1_GIG,Bel USA LLC,,Partner,Enabled,,Cyber Protection,Per gigabyte,Cloud Storage (abgw-sin2-acs1.acronis.com) used - Class 2,Acronis Cloud,GB,,10770.46,-4.08,0,0,10770.46,-4.08,N/A,N/A,,acronis,,SPBAMSENS,1,0,1,2026-05
-2026-05-01,SG1_GIG,Bel USA LLC,,Partner,Enabled,,Cyber Protection,Per gigabyte,Endpoints protected with EDR,,,,19,0,0,0,19,0,N/A,N/A,,,,SRIAMSENS,1,0,1,2026-05
