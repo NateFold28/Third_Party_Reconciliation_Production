@@ -421,6 +421,39 @@ marketplace_billing AS (
     GROUP BY 1, 2, 3
 ),
 
+zuora_grouped AS (
+    SELECT
+        v.sf_id,
+        v.billing_month,
+        v.sku_match_group,
+        ARRAY_AGG(DISTINCT z.product_sku) WITHIN GROUP (ORDER BY z.product_sku) AS zuora_skus,
+        SUM(z.zuora_quantity) AS zuora_quantity,
+        AVG(z.zuora_unit_price) AS zuora_unit_price,
+        SUM(z.zuora_amount) AS zuora_amount
+    FROM vendor_agg v
+    LEFT JOIN zuora_proofpoint z
+        ON z.sf_id = v.sf_id
+       AND LAST_DAY(z.billing_month) = LAST_DAY(v.billing_month)
+       AND ARRAY_CONTAINS(z.product_sku::VARIANT, v.cw_skus)
+    GROUP BY 1, 2, 3
+),
+
+marketplace_grouped AS (
+    SELECT
+        v.sf_id,
+        v.billing_month,
+        v.sku_match_group,
+        ARRAY_AGG(DISTINCT m.product_sku) WITHIN GROUP (ORDER BY m.product_sku) AS marketplace_skus,
+        SUM(m.marketplace_quantity) AS marketplace_quantity,
+        SUM(m.marketplace_amount) AS marketplace_amount
+    FROM vendor_agg v
+    LEFT JOIN marketplace_billing m
+        ON m.sf_id = v.sf_id
+       AND LAST_DAY(m.billing_month) = LAST_DAY(v.billing_month)
+       AND ARRAY_CONTAINS(m.product_sku::VARIANT, v.cw_skus)
+    GROUP BY 1, 2, 3
+),
+
 zuora_any_sf_month AS (
     SELECT
         sf_id,
@@ -481,35 +514,34 @@ joined AS (
         v.billing_month,
         v.sf_id,
         v.sku_match_group,
-        LISTAGG(DISTINCT v.vendor_partner_name, ', ')
-            WITHIN GROUP (ORDER BY v.vendor_partner_name) AS vendor_partner_name,
+        v.vendor_partner_name,
         v.vendor_product,
         v.cw_skus,
         v.vendor_skus_invoices,
-        ARRAY_AGG(DISTINCT z.product_sku) WITHIN GROUP (ORDER BY z.product_sku) AS zuora_skus,
-        ARRAY_AGG(DISTINCT m.product_sku) WITHIN GROUP (ORDER BY m.product_sku) AS marketplace_skus,
+        zg.zuora_skus,
+        mg.marketplace_skus,
         v.vendor_quantity,
         v.vendor_unit_price,
         v.vendor_amount,
-        SUM(z.zuora_quantity) AS zuora_quantity,
-        AVG(z.zuora_unit_price) AS zuora_unit_price,
-        SUM(z.zuora_amount) AS zuora_amount,
-        SUM(m.marketplace_quantity) AS marketplace_quantity,
-        SUM(m.marketplace_amount) AS marketplace_amount,
-        ANY_VALUE(za.any_zuora_quantity) AS any_zuora_quantity,
-        ANY_VALUE(za.any_zuora_amount) AS any_zuora_amount,
-        ANY_VALUE(za.any_zuora_row_count) AS any_zuora_row_count,
-        ANY_VALUE(za.any_zuora_skus) AS any_zuora_skus,
-        ANY_VALUE(ma.any_marketplace_quantity) AS any_marketplace_quantity,
-        ANY_VALUE(ma.any_marketplace_amount) AS any_marketplace_amount,
-        ANY_VALUE(ma.any_marketplace_row_count) AS any_marketplace_row_count,
-        ANY_VALUE(ma.any_marketplace_skus) AS any_marketplace_skus,
-        ANY_VALUE(mp.prior_month_marketplace_quantity) AS prior_month_marketplace_quantity,
-        ANY_VALUE(mp.prior_month_marketplace_amount) AS prior_month_marketplace_amount,
-        ANY_VALUE(mp.prior_month_marketplace_row_count) AS prior_month_marketplace_row_count,
-        ANY_VALUE(mp.prior_month_marketplace_skus) AS prior_month_marketplace_skus,
-        ANY_VALUE(zn.nearby_zuora_month_count) AS nearby_zuora_month_count,
-        ANY_VALUE(zn.nearby_zuora_quantity) AS nearby_zuora_quantity,
+        zg.zuora_quantity,
+        zg.zuora_unit_price,
+        zg.zuora_amount,
+        mg.marketplace_quantity,
+        mg.marketplace_amount,
+        za.any_zuora_quantity,
+        za.any_zuora_amount,
+        za.any_zuora_row_count,
+        za.any_zuora_skus,
+        ma.any_marketplace_quantity,
+        ma.any_marketplace_amount,
+        ma.any_marketplace_row_count,
+        ma.any_marketplace_skus,
+        mp.prior_month_marketplace_quantity,
+        mp.prior_month_marketplace_amount,
+        mp.prior_month_marketplace_row_count,
+        mp.prior_month_marketplace_skus,
+        zn.nearby_zuora_month_count,
+        zn.nearby_zuora_quantity,
         v.vendor_row_count,
         v.partner_match_methods,
         v.sku_mapping_sources,
@@ -519,14 +551,14 @@ joined AS (
         v.contract_rate_missing_row_count,
         v.contract_rate_source_docs
     FROM vendor_agg v
-    LEFT JOIN zuora_proofpoint z
-        ON z.sf_id = v.sf_id
-       AND LAST_DAY(z.billing_month) = LAST_DAY(v.billing_month)
-       AND ARRAY_CONTAINS(z.product_sku::VARIANT, v.cw_skus)
-    LEFT JOIN marketplace_billing m
-        ON m.sf_id = v.sf_id
-       AND LAST_DAY(m.billing_month) = LAST_DAY(v.billing_month)
-       AND ARRAY_CONTAINS(m.product_sku::VARIANT, v.cw_skus)
+    LEFT JOIN zuora_grouped zg
+        ON zg.sf_id = v.sf_id
+       AND zg.billing_month = v.billing_month
+       AND zg.sku_match_group = v.sku_match_group
+    LEFT JOIN marketplace_grouped mg
+        ON mg.sf_id = v.sf_id
+       AND mg.billing_month = v.billing_month
+       AND mg.sku_match_group = v.sku_match_group
     LEFT JOIN zuora_any_sf_month za
         ON za.sf_id = v.sf_id
        AND LAST_DAY(za.billing_month) = LAST_DAY(v.billing_month)
@@ -539,7 +571,6 @@ joined AS (
     LEFT JOIN zuora_nearby_sf zn
         ON zn.sf_id = v.sf_id
        AND LAST_DAY(zn.billing_month) = LAST_DAY(v.billing_month)
-    GROUP BY ALL
 ),
 
 scored AS (
@@ -568,21 +599,21 @@ scored AS (
         marketplace_quantity,
         marketplace_amount,
         CASE
-            WHEN COALESCE(zuora_quantity, 0) + COALESCE(marketplace_quantity, 0) = 0
-             AND COALESCE(zuora_amount, 0) + COALESCE(marketplace_amount, 0) > 0
+            WHEN COALESCE(IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity, marketplace_quantity), 0) = 0
+             AND COALESCE(IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount, marketplace_amount), 0) > 0
              AND UPPER(COALESCE(vendor_product, '')) IN ('BASIC OEM', 'ADVANCED OEM')
                 THEN COALESCE(vendor_quantity, 0)
-            ELSE COALESCE(zuora_quantity, 0) + COALESCE(marketplace_quantity, 0)
+            ELSE COALESCE(IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity, marketplace_quantity), 0)
         END AS total_billing_quantity,
-        COALESCE(zuora_amount, 0) + COALESCE(marketplace_amount, 0) AS total_billing_amount,
+        COALESCE(IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount, marketplace_amount), 0) AS total_billing_amount,
         CASE
-            WHEN COALESCE(zuora_quantity, 0) + COALESCE(marketplace_quantity, 0) = 0
-             AND COALESCE(zuora_amount, 0) + COALESCE(marketplace_amount, 0) > 0
+            WHEN COALESCE(IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity, marketplace_quantity), 0) = 0
+             AND COALESCE(IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount, marketplace_amount), 0) > 0
              AND UPPER(COALESCE(vendor_product, '')) IN ('BASIC OEM', 'ADVANCED OEM')
                 THEN 0
-            ELSE COALESCE(zuora_quantity, 0) + COALESCE(marketplace_quantity, 0) - COALESCE(vendor_quantity, 0)
+            ELSE COALESCE(IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity, marketplace_quantity), 0) - COALESCE(vendor_quantity, 0)
         END AS qty_delta,
-        COALESCE(zuora_amount, 0) + COALESCE(marketplace_amount, 0) - COALESCE(vendor_amount, 0) AS amount_delta,
+        COALESCE(IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount, marketplace_amount), 0) - COALESCE(vendor_amount, 0) AS amount_delta,
         vendor_row_count,
         partner_match_methods,
         sku_mapping_sources,
