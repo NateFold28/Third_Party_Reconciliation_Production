@@ -1,0 +1,12 @@
+from pathlib import Path
+import sys
+from textwrap import dedent
+sys.path.insert(0, str(Path.cwd()))
+from TEMPLATES.Python.connection import fetch_dataframe
+q = dedent("""
+SELECT BILLING_MONTH, VENDOR_PARTNER_NAME, SF_ID, SF_ID_ORIGINAL, BILLING_SOURCE_MIX, OUTCOME_FLAG, EXCEPTION_TYPE, VENDOR_QUANTITY, TOTAL_BILLING_QUANTITY, INVESTIGATION_REASON
+FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_OUTPUT_PROD
+WHERE VENDOR='SentinelOne' AND UPPER(TRIM(VENDOR_PARTNER_NAME))='GFLEX'
+ORDER BY BILLING_MONTH
+""")
+print(fetch_dataframe(q).to_string(index=False))

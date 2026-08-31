@@ -711,6 +711,94 @@ scored AS (
         END AS outcome_flag
     FROM joined_with_flags
     WHERE COALESCE(vendor_quantity, 0) > 0 OR COALESCE(total_billing_quantity, 0) > 0
+),
+
+-- =============================================================================
+-- API TELEMETRY (direct raw-TRT join, 2026-08-28 rewrite)
+-- =============================================================================
+-- Architecture parity with Proofpoint (see PROOFPOINT_RECON_DETAIL script).
+-- Prior implementation used the stale THIRD_PARTY_RECON_SOURCE_TRT_PROD snapshot
+-- for both the partner bridge (sf_id -> cms_id) and a fuzzy multi-column token
+-- match. That is now retired in favor of a single canonical wiring:
+--
+--   TRT usage row is matched to a recon row when
+--       partner_id::VARCHAR = RECON_PARTNER_MAP.cms_id
+--   AND charge_sku          = RECON_SKU_MAP.TRT_MATCH_KEY
+--
+-- Acronis uses TRT.charge_sku (not product_sku) because vendor products bill
+-- under an APP-BC-<SKU>-001 / APP-SA-<SKU>-001 code. TRT_MATCH_KEY on the SKU
+-- map is populated as CW_SKU || '-001' for the CW_SKU rows matching that pattern.
+--
+-- Cycle window: (day 21 prev month, day 21 current month] -> Acronis invoice cycle.
+--   api_quantity     = point-in-time seats on snapshot_date (day 21 current month)
+--   avg_api_quantity = daily average across the full cycle
+--
+acronis_trt_keys AS (
+    -- One row per (sku_match_key, charge_sku) that Acronis expects to see in TRT.
+    -- UPPER(TRIM(...)) both sides so case / whitespace never causes a miss.
+    SELECT DISTINCT
+        UPPER(TRIM(trt_match_key)) AS charge_sku_key,
+        UPPER(TRIM(sku_match_key)) AS sku_match_group_key
+    FROM RECON_SKU_MAP
+    WHERE vendor = 'Acronis'
+      AND trt_match_key IS NOT NULL
+      AND sku_match_key IS NOT NULL
+),
+
+acronis_api_partners AS (
+    -- One (sf_id, billing_month, sku_match_group) row per scored recon row with
+    -- CMS_ID resolved from the canonical RECON_PARTNER_MAP (not the stale TRT
+    -- snapshot). Distinct sf_id -> cms_id map is fine because RECON_PARTNER_MAP
+    -- is already de-duped upstream.
+    SELECT DISTINCT
+        s.sf_id,
+        s.billing_month,
+        s.sku_match_group,
+        UPPER(TRIM(s.sku_match_group)) AS sku_match_group_key,
+        p.cms_id
+    FROM scored s
+    JOIN (
+        SELECT DISTINCT sf_id, cms_id
+        FROM RECON_PARTNER_MAP
+        WHERE sf_id IS NOT NULL
+          AND cms_id IS NOT NULL
+          AND TRIM(cms_id) <> ''
+    ) p ON p.sf_id = s.sf_id
+    WHERE s.sf_id IS NOT NULL
+      AND s.sku_match_group IS NOT NULL
+),
+
+acronis_api_daily AS (
+    -- Direct raw-TRT usage join:
+    --   partner_id = cms_id  AND  UPPER(charge_sku) = UPPER(trt_match_key)
+    -- Cycle window is (day 21 prev month, day 21 current month].
+    SELECT
+        pa.sf_id,
+        pa.billing_month,
+        pa.sku_match_group,
+        DATEADD('day', 20, pa.billing_month)::DATE                       AS snapshot_date,
+        u.on_date::DATE                                                  AS on_date,
+        SUM(COALESCE(u.agent_cnt, 0))                                    AS day_quantity
+    FROM ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+    JOIN acronis_api_partners pa
+      ON u.partner_id::VARCHAR = pa.cms_id
+    JOIN acronis_trt_keys k
+      ON k.charge_sku_key      = UPPER(TRIM(u.charge_sku))
+     AND k.sku_match_group_key = pa.sku_match_group_key
+        WHERE u.on_date >  DATEADD('day', 20, DATEADD('month', -1, pa.billing_month))::DATE
+            AND u.on_date <= DATEADD('day', 20, pa.billing_month)::DATE
+    GROUP BY 1, 2, 3, 4, 5
+),
+
+acronis_api_rollup AS (
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        MAX(IFF(on_date = snapshot_date, day_quantity, NULL)) AS api_quantity,
+        AVG(day_quantity)                                     AS avg_api_quantity
+    FROM acronis_api_daily
+    GROUP BY 1, 2, 3
 )
 
 SELECT
@@ -723,6 +811,8 @@ SELECT
     s.zuora_skus,
     s.marketplace_skus,
     s.billing_source_mix,
+    api.api_quantity,
+    api.avg_api_quantity,
     s.vendor_quantity,
     s.vendor_unit_price,
     s.vendor_amount,
@@ -817,6 +907,10 @@ LEFT JOIN ACRONIS_CONTRACT_RATES cr
     ON cr.vendor_product = s.sku_match_group
     AND s.billing_month BETWEEN cr.valid_from AND cr.valid_to
     AND cr.currency = 'USD'
+LEFT JOIN acronis_api_rollup api
+    ON api.sf_id = s.sf_id
+   AND api.billing_month = s.billing_month
+   AND api.sku_match_group = s.sku_match_group
 QUALIFY ROW_NUMBER() OVER (PARTITION BY s.sf_id, s.billing_month, s.sku_match_group ORDER BY cr.contract_cost_rate DESC NULLS LAST) = 1;
 
 -- =============================================================================

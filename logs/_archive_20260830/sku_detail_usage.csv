@@ -1,0 +1,295 @@
+VENDOR,CW_SKUS,DETAIL_ROWS,VENDOR_AMT
+Acronis,"ACB-EUD-M00-TASPDAMSEN,ACB-UKD-M00-TASPDAMSEN,ACB-USD-M00-TASPDAMSEN,APP-BC-SPDAMSENS,BB-ACRONIS-WORKLOAD-BUNDLE,M2M-APP-BC-SPDAMSENS,SPDAMSENS,SPDAMSENS1GB,SPDAMSENS1GB / SPDAMSENSBUCLD1TB,SPDAMSENS1GB/SPDAMSENSBUCLD1TB,SPDAMSENSBUCLD1TB,SPDAMSENSOverage,TASPDAMSEN",2916,1073835.0
+Acronis,"ACB-EUD-M00-TASPEAMSEN,ACB-UKD-M00-TASPEAMSEN,ACB-USD-M00-TASPEAMSEN,APP-BC-SPEAMSENS,BB-ACRONIS-WORKLOAD-BUNDLE,M2M-APP-BC-SPEAMSENS,MP-SPEAMSENS,SPEAMSENS,TASPEAMSEN",2327,217402.0
+Acronis,"ACB-EUD-M00-TASPGAMSEN,ACB-UKD-M00-TASPGAMSEN,ACB-USD-M00-TASPGAMSEN,APP-BC-SPGAMSENS,BB-ACRONIS-WORKLOAD-BUNDLE,M2M-APP-BC-SPGAMSENS,MP-SPGAMSENS,SPGAMSENS,TASPGAMSEN",2250,105742.0
+Acronis,"ACB-UKD-M00-TASPFAMSEN,ACB-USD-M00-TASPFAMSEN,APP-BC-SPFAMSENS,BB-ACRONIS-WORKLOAD-BUNDLE,M2M-APP-BC-SPFAMSENS,MP-SPFAMSENS,SPFAMSENS,TASPFAMSEN",2206,275108.0
+Acronis,"ACB-USD-M00-TASPIAMSEN,APP-BC-SPIAMSENS,BB-ACRONIS-WORKLOAD-BUNDLE,M2M-APP-BC-SPIAMSENS,SPIAMSENS,TASPIAMSEN",1785,8924.0
+Acronis,"ACB-CAD-M00-TASRIAMSEN,ACB-UKD-M00-TASRIAMSEN,ACB-USD-M00-TASRIAMSEN,APP-BC-SRIAMSENS,BB-ACRONIS-ADV-PROTECTION-BUNDLE,M2M-APP-BC-SRIAMSENS,SRIAMSENS,TASRIAMSEN",1378,4046.0
+Acronis,"3PARTYONPREMACCLDDKT,3PARTYONPREMACCLDSV4,3PARTYONPREMCLOUDCAP,3PARTYONPREMCLOUDCAP / ACRONISCLOUDHOSTSTND,ACB-CAD-M00-TASPBAMSEN,ACB-USD-M00-TASPBAMSEN,ACRONISCLOUDHOSTSTND,APP-BC-SPBAMSENS,BB-ACRONIS-PER-GB-BUNDLE,M2M-APP-BC-SPBAMSENS,MP-SPBAMSENS,SPBAMSENS,SPBAMSENS / 3PARTYONPREMCLOUDCAP,SPBAMSENS / 3PARTYONPREMCLOUDCAP / ACRONISCLOUDHOSTSTND,SPBAMSENS/3PARTYONPREMCLOUDCAP,TASPBAMSEN,TBBUHYBRID",1215,588647.0
+Acronis,"ACB-USD-M00-TASRJAMSEN,APP-BC-SRJAMSENS,BB-ACRONIS-WORKLOAD-BUNDLE,M2M-APP-BC-SRJAMSENS,SRJAMSENS,TASRJAMSEN",1035,487139.0
+Acronis,"ACB-USD-M00-TASPDCMSEN,APP-SA-SPDCMSENS,M2M-APP-SA-SPDCMSENS,SPDCMSENS",838,0.0
+Acronis,"ACB-UKD-M00-TASRHAMSEN,ACB-USD-M00-TASRHAMSEN,APP-BC-SRHAMSENS,M2M-APP-BC-SRHAMSENS,SRHAMSENS,TASRHAMSEN",763,4075.0
+Acronis,"3PARTYONPREMHOSTEDDR,ACB-CAD-M00-TASVEAMSEN,ACB-UKD-M00-TASVEAMSEN,ACB-USD-M00-TASVEAMSEN,APP-BC-SVEAMSENS,BB-ACRONIS-ADV-PROTECTION-BUNDLE,LEGACYSKUTASPBAMSEN,MP-SVEAMSENS,SVEAMSENS,SVEAMSENS / 3PARTYONPREMHOSTEDDR,TASVEAMSEN",584,207214.0
+Acronis,"ACB-USD-M00-TASO4AMSEN,APP-BC-SO4AMSENS,BB-ACRONIS-ADV-PROTECTION-BUNDLE,M2M-APP-BC-SO4AMSENS,SO4AMSENS,TASO4AMSEN",541,76668.0
+Acronis,"3PARTYONPREMSP4BMSE1,3PARTYONPREMSP4BMSE2,APP-BC-SP4BMSENS,APP-SA-SP4BMSENS,BB-ACRONIS-PER-GB-BUNDLE,M2M-APP-BC-SP4BMSENS,SP4BMSENS,SP4BMSENS / 3PARTYONPREMSP4BMSE1,TBBUHYBRID",406,28410.0
+Acronis,"ACB-USD-M00-TASPD5MSEN,APP-SA-SPD5MSENS,M2M-APP-SA-SPD5MSENS,SPD5MSENS,TASPD5MSEN",297,2786.0
+Acronis,"ACB-USD-M00-TASQ8AMSEN,APP-BC-SQ8AMSENS,M2M-APP-BC-SQ8AMSENS,SQ8AMSENS,TASQ8AMSEN",223,19511.0
+Acronis,"ACB-USD-M00-TASRI5MSEN,APP-SA-SRI5MSENS,M2M-APP-SA-SRI5MSENS,SRI5MSENS,TASRI5MSEN",218,391.0
+Acronis,"APP-BC-SRAAMSENS,M2M-APP-BC-SRAAMSENS,MP-SRAAMSENS,SRAAMSENS",195,10030.0
+Acronis,"ACB-USD-M00-TASQYAMSEN,APP-BC-SQYAMSENS,BB-ACRONIS-ADV-PROTECTION-BUNDLE,M2M-APP-BC-SQYAMSENS,SQYAMSENS,TASQYAMSEN",163,5752.0
+Acronis,"APP-BC-SEDAMSENS,M2M-APP-BC-SEDAMSENS,SEDAMSENS",134,416.0
+Acronis,"ACB-USD-M00-TASP5AMSEN,APP-SA-SP5AMSENS,M2M-APP-SA-SP5AMSENS,SP5AMSENS,TASP5AMSEN",119,6321.0
+Acronis,"APP-SRMAMSENS,SRMAMSENS",64,4410.0
+Acronis,"APP-BC-SQ1AMSENS,M2M-APP-BC-SQ1AMSENS,SQ1AMSENS",62,8670.0
+Acronis,"APP-BC-SQ2AMSENS,M2M-APP-BC-SQ2AMSENS,SQ2AMSENS,SQ2AMSENS / 3PARTYONPREMSEFPRVSG,SQ2AMSENS PER GB,SQ2AMSENS PER TB,SQ2AMSENS PER TB / 3PARTYONPREMSEFPRVSG",60,12257.0
+Acronis,"APP-BC-SQ7AMSENS,M2M-APP-BC-SQ7AMSENS,SQ7AMSENS",50,487.0
+Acronis,"ACB-USD-M00-TASRBAMSEN,APP-BC-SRBAMSENS,M2M-APP-BC-SRBAMSENS,SRBAMSENS,TASRBAMSEN",36,3.0
+Acronis,"APP-BC-SPXAMSENS,M2M-APP-BC-SPXAMSENS,MP-SPXAMSENS,SPXAMSENS",28,21726.0
+Acronis,"APP-BC-SUVAMSENS,M2M-APP-BC-SUVAMSENS,SUVAMSENS,TASUVAMSEN",25,9.0
+Acronis,"APP-BC-SP1AMSENS,APP-SA-SP1AMSENS,LEGACYSKUTASP1AMSEN,M2M-APP-BC-SP1AMSENS,SP1AMSENS,SP1AMSENS BY GB",24,70.0
+Acronis,"ACB-CAD-M00-TASP3AMSEN,APP-BC-SP3AMSENS,SP3AMSENS,SP3AMSENS PER GB,SP3AMSENS PER TB,TASP3AMSEN",23,11655.0
+Acronis,"APP-SA-SBATFNLOS,SBATFNLOS",18,2272.0
+Acronis,"APP-SA-SQBPMSENS,SQBPMSENS",17,0.0
+Acronis,"APP-SA-SQACMSENS,SQACMSENS",14,994.0
+Acronis,"APP-SA-SO6AMSENS,SO6AMSENS",8,310.0
+Acronis,"APP-SA-SRXAMSENS,SRXAMSENS",7,60.0
+Acronis,"APP-BC-SR3AMSENS,M2M-APP-BC-SR3AMSENS,SR3AMSENS",7,14.0
+Acronis,"APP-BC-SPBBMSENS,M2M-APP-BC-SPBBMSENS,SELFPROVIDEDSTORAGE,SPBBMSENS",7,134.0
+Acronis,"APP-SA-SRJGMSENS,M2M-APP-SA-SRJGMSENS,SRJGMSENS",6,15.0
+Acronis,"APP-SPZBMSENS,SPZBMSENS",4,4.0
+Auvik,"AUVIK-ESSENTIALS,AUVIK-INVENT-BILLING,AVNMM10,AVNMM100,AVNMM250,AVNMM40,AVNMM500,CMS-3P-UMM-RMM-SAAS-10070101,CMS-3P-UMM-RMM-SAAS-10070203,CMS-3P-UMM-RMM-SAAS-10072002,CMS-UMM-SAAS-RMM-UMM-SRMMANM,CULCSAAS100706P00010,CULCSAAS100707P00040,CULCSAAS100708P00075,CULCSAAS100708P00100,CULCSAAS100709P00175,CULCSAAS100710P00250,CULCSAAS100711P00500,CULCSAAS100712P00750,CULCSAAS100713P10000,CULCSAAS100714P01500,CULCSAAS100727P00150,CULCSAS10071601M0010,CULCSAS10071701M0040,CULCSAS10071801M0075,CULCSAS10071801M0100,CULCSAS10071901M0150,CULCSAS10071901M0175,CULCSAS10072101M0750,CULCSAS10072201M1000,CULCSAS10072301M1500,CULCSAS10072501M0250,CULCSAS10072601M0500,CULIC-SAAS1007010001,CULICSAS100600MCMP18,CWAN M-0,CWAN M-1,CWANNMM0,CWANNMM1,CWANNMM2,CWANNMM3,CWANNMM4,CWANNMM5,CWANNMM7,M2MLICSAAS1007010001,SRM-SAM-MSP,SwO-3P-UMM-RMM-SAAS-ADVNETKM",1604,2628170.5999999996
+Auvik,"AUVIK-PRM-ANM-NEW-BUSSINESS,AUVIKPERFORMANCADDON,AVADDON10,AVADDON100,AVADDON40,CMS-3P-UMM-RMM-SAAS-10070202,CMS-3P-UMM-RMM-SAAS-10072003",713,849522.48
+Auvik,"CW-AUVIK-MRM-ASM,CW-AUVIK-MRM-ASM-IIT",121,50584.82
+Bitdefender,Bitdefender Cloud Security Gravity Zone,938,440706.0
+Bitdefender,Bitdefender Cloud Security Gravity Zone (Usage),772,171472.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage)",324,425159.0
+Bitdefender,Bitdefender Cloud Sec GravityZone 1 to 99 ep,256,9249.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage)",157,265890.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Sec GravityZone (MDR bundle split)",141,43854.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Cloud Security Gravity Zone",113,77525.0
+Bitdefender,Bitdefender Cloud Sec GravityZone 100 to 249 ep,91,19841.0
+Bitdefender,Bitdefender EDR (MSP Secure),82,18406.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Cloud Security Gravity Zone (Usage)",77,57203.0
+Bitdefender,"Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage)",72,30831.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage)",67,39401.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Cloud Security Gravity Zone",53,5119.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage)",44,17532.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Cloud Sec GravityZone 1 to 99 ep",42,3848.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage)",39,6773.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",34,22033.0
+Bitdefender,Bitdefender Cloud Sec GravityZone 500 to 749 ep,31,23356.0
+Bitdefender,"Bitdefender ATS & EDR, 1000-4999 ep,Bitdefender Cloud Security Gravity Zone",30,114299.0
+Bitdefender,"Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 1 to 99 ep",27,1938.0
+Bitdefender,Bitdefender Cloud Sec GravityZone 1000-2499 ep,26,28444.0
+Bitdefender,Bitdefender Cloud Sec GravityZone 250 to 499 ep,25,11573.0
+Bitdefender,Bitdefender Security for Mobile,25,387.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Patch Management",25,115894.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender EDR (MSP Secure)",24,3852.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender GravityZone Email Security, 100-499",21,15421.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Encryption,Bitdefender Cloud Sec GravityZone (MDR bundle split)",18,16020.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender GravityZone Email Security, 1-99",16,3356.0
+Bitdefender,TA-Bitdefender EDR (MSP Secure),16,6460.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Cloud Encryption (1-99 ep),Bitdefender Cloud Security Gravity Zone",16,5576.0
+Bitdefender,"Bitdefender ATS & EDR, 500-999 ep,Bitdefender Cloud Security Gravity Zone",16,26672.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security 100-499 ep,Bitdefender Cloud Security Gravity Zone",16,14171.0
+Bitdefender,"Bitdefender Cloud Encryption (1-99 ep),Bitdefender Cloud Sec GravityZone 1 to 99 ep",16,1033.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Encryption,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage)",15,10013.0
+Bitdefender,"Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",15,29084.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Patch Management",14,27957.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender Cloud Encryption,Bitdefender Cloud Security Gravity Zone (Usage)",13,19154.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 100 to 249 ep",13,4423.0
+Bitdefender,"Bitdefender Cloud Encryption,Bitdefender Cloud Security Gravity Zone",12,11974.0
+Bitdefender,"Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Security Gravity Zone",12,1332.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Security for Mobile",12,28294.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 1000-2499 ep",12,20471.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 1 to 99 ep",12,437.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage)",12,3639.0
+Bitdefender,Bitdefender Cloud Sec GravityZone 750 to 999 ep,11,9251.0
+Bitdefender,"Bitdefender Cloud Encryption 100-249,Bitdefender Cloud Security Gravity Zone",11,8151.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender Security for Mobile",11,4379.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Cloud Encryption,Bitdefender Cloud Security Gravity Zone (Usage)",10,5563.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender Patch Management",9,28369.0
+Bitdefender,Bitdefender 1YR Cloud Security Gravity Zone,8,936.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Advanced Threat Security 100-499 ep,Bitdefender Cloud Security Gravity Zone",8,6360.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone,Bitdefender GravityZone Email Security, 100-499",8,7109.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security 500-999 ep,Bitdefender Cloud Sec GravityZone 1000-2499 ep",8,12638.0
+Bitdefender,"Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 1 to 99 ep,Bitdefender Patch Management, 1 - 99 ep",8,92.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Patch Management, 1 - 99 ep",8,1040.0
+Bitdefender,"Bitdefender ATS & EDR, 500-999 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Security Gravity Zone",8,23072.0
+Bitdefender,"Bitdefender ATS & EDR, 1000-4999 ep,Bitdefender ATS & EDR, 5000+ ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Security Gravity Zone",8,72460.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Cloud Encryption,Bitdefender Cloud Security Gravity Zone",8,3962.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone,CW Bitdefender EDR (MSP Secure)",8,2191.0
+Bitdefender,"Bitdefender Advanced Threat Security 100-499 ep,Bitdefender Cloud Sec GravityZone 100 to 249 ep",8,2987.0
+Bitdefender,"Bitdefender Cloud Encryption 1000+,Bitdefender Cloud Security Gravity Zone",8,22840.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Advanced Threat Security 100-499 ep,Bitdefender Cloud Sec GravityZone 250 to 499 ep",8,5997.0
+Bitdefender,CW Bitdefender EDR (MSP Secure),8,44704.0
+Bitdefender,"Bitdefender ATS & EDR, 500-999 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 2500 to 4999 ep",8,35087.0
+Bitdefender,"Bitdefender GravityZone Email Security, 500-999",8,6000.0
+Bitdefender,"Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Patch Management, 1 - 99 ep",8,3608.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Security for Mobile",8,71.0
+Bitdefender,Bitdefender Security TSP CW Automate,8,272.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Advanced Threat Security 100-499 ep,Bitdefender Advanced Threat Security 500-999 ep,Bitdefender Cloud Security Gravity Zone",8,21752.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security 100-499 ep,Bitdefender Cloud Sec GravityZone 100 to 249 ep",7,3160.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Security for Mobile",7,21759.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Cloud Sec GravityZone 1000-2499 ep",7,7807.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender Secure Plus",7,18275.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Patch Management",7,5294.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Encryption,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Sec GravityZone 1 to 99 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender Security for Mobile",7,70345.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender PHASR",6,1189.0
+Bitdefender,"Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 250 to 499 ep",6,1864.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage)",6,18782.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Encryption 250-499,Bitdefender Cloud Sec GravityZone 500 to 749 ep",6,9532.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Security for Mobile",6,1157.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender XDR - Identity",6,4940.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Encryption,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage)",6,24229.0
+Bitdefender,"SwO Bitdefender ATS & EDR,SwO Bitdefender Advanced Threat Security,SwO Bitdefender Cloud Security Gravity Zone",6,4507.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Cloud Sec GravityZone 100 to 249 ep",6,1979.0
+Bitdefender,"Bitdefender Cloud Encryption 100-249,Bitdefender Cloud Encryption 500-749,Bitdefender Cloud Security Gravity Zone",5,7609.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 250 to 499 ep,Bitdefender Patch Management, 100 - 499 ep",5,4986.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 1 to 99 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",5,53356.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Encryption,Bitdefender Cloud Encryption (1-99 ep),Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Sec GravityZone 1 to 99 ep,Bitdefender Cloud Sec GravityZone 1000-2499 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender GravityZone Email Security, 1-99,Bitdefender Patch Management,Bitdefender Patch Management, 1 - 99 ep",5,39070.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Security for Mobile",5,1250.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Encryption,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Patch Management",5,24142.0
+Bitdefender,"Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender Secure Extra,Bitdefender Secure Plus",5,12532.0
+Bitdefender,"Bitdefender Cloud Encryption,Bitdefender Cloud Security Gravity Zone (Usage)",5,10905.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 250 to 499 ep",5,6133.0
+Bitdefender,"Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender PHASR,Bitdefender Security for Mobile",5,26351.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Sec GravityZone 500 to 749 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",4,18964.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Sec GravityZone 1 to 99 ep,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Patch Management",4,6380.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 250 to 499 ep",4,1321.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender XDR - Identity",4,158.0
+Bitdefender,"Bitdefender ATS & EDR, 500-999 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender GravityZone Email Security, 500-999",4,5393.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender Advanced Threat Security 100-499 ep,Bitdefender Cloud Security Gravity Zone (Usage)",4,29294.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 100 to 249 ep,Bitdefender Patch Management, 100 - 499 ep",3,2937.0
+Bitdefender,"BitDefender Security for Virtualized Environments VS,Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender ATS & EDR, 1-99 ep,Bitdefender ATS & EDR, 100-499 ep,Bitdefender ATS & EDR, 1000-4999 ep,Bitdefender Advanced Threat Security,Bitdefender Cloud Encryption,Bitdefender Cloud Encryption 100-249,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Sec GravityZone 250 to 499 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender Patch Management, 100 - 499 ep,Bitdefender Patch Management, 1000 - 4999 ep",3,81734.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Sec GravityZone (MDR bundle split)",3,2153.0
+Bitdefender,"Bitdefender Cloud Encryption (1-99 ep),Bitdefender Cloud Security Gravity Zone",3,2285.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Encryption,Bitdefender Cloud Encryption (1-99 ep),Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Sec GravityZone 1 to 99 ep,Bitdefender Cloud Sec GravityZone 1000-2499 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender GravityZone Email Security, 1-99,Bitdefender Patch Management,Bitdefender Patch Management, 1 - 99 ep,Bitdefender Security TSP CW Automate",3,24527.0
+Bitdefender,"BitDefender Security for Virtualized Environments VS,Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender ATS & EDR, 1-99 ep,Bitdefender ATS & EDR, 100-499 ep,Bitdefender ATS & EDR, 1000-4999 ep,Bitdefender Advanced Threat Security,Bitdefender Cloud Encryption,Bitdefender Cloud Encryption 100-249,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Sec GravityZone 250 to 499 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender Patch Management, 100 - 499 ep,Bitdefender Patch Management, 1000 - 4999 ep,Bitdefender Security for Mobile",3,77869.0
+Bitdefender,"Bitdefender ATS & EDR, 1000-4999 ep,Bitdefender Advanced Threat Security 1000-4999 ep,Bitdefender Cloud Sec GravityZone 2500 to 4999 ep",3,17874.0
+Bitdefender,"Bitdefender Advanced Threat Security,Bitdefender Cloud Encryption,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Patch Management",3,6858.0
+Bitdefender,"Bitdefender ATS & EDR, 1000-4999 ep,Bitdefender Advanced Threat Security 100-499 ep,Bitdefender Cloud Sec GravityZone 1000-2499 ep",3,13044.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender GravityZone Email Security",3,6681.0
+Bitdefender,"Bitdefender ATS & EDR, 1000-4999 ep,Bitdefender Advanced Threat Security 500-999 ep,Bitdefender Cloud Sec GravityZone 2500 to 4999 ep",3,18994.0
+Bitdefender,"Bitdefender GravityZone Email Security, 100-499",3,1302.0
+Bitdefender,"Bitdefender Cloud Encryption,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage)",3,2040.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender EDR (MSP Secure)",3,87.0
+Bitdefender,"Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage)",3,526.0
+Bitdefender,"Bitdefender EDR (MSP Secure),Bitdefender Secure Plus",2,3838.0
+Bitdefender,"Bitdefender EDR (MSP Secure),Bitdefender Security for Mobile",2,378.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security",2,52.0
+Bitdefender,"Bitdefender EDR (MSP Secure),Bitdefender GravityZone Email Security",2,193.0
+Bitdefender,"Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 1000-2499 ep",2,3786.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 1 to 99 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage)",2,21817.0
+Bitdefender,"Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender PHASR,Bitdefender Secure Extra,Bitdefender Security for Mobile",2,33747.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Secure Plus",2,763.0
+Bitdefender,"Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Patch Management",2,423.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",2,5254.0
+Bitdefender,"Bitdefender ATS & EDR, 500-999 ep,Bitdefender Cloud Sec GravityZone 2500 to 4999 ep",2,9115.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage)",2,1136.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender Patch Management,Bitdefender Secure Extra,Bitdefender Secure Plus,Bitdefender Security for Mobile",2,5919.0
+Bitdefender,"Bitdefender EDR (MSP Secure),Bitdefender Patch Management",2,304.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender GravityZone Email Security",2,967.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage)",2,6278.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Cloud Sec GravityZone 100 to 249 ep",2,784.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",2,256.0
+Bitdefender,"Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 100 to 249 ep",2,493.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Encryption 250-499,Bitdefender Cloud Sec GravityZone 250 to 499 ep",2,3211.0
+Bitdefender,"Bitdefender Cloud Sec GravityZone 500 to 749 ep,Bitdefender Cloud Sec GravityZone 750 to 999 ep",1,1635.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender GravityZone Email Security,Bitdefender Security for Mobile",1,3027.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Encryption,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage)",1,1387.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Advanced Threat Security 100-499 ep,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage)",1,6799.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 500 to 749 ep",1,1636.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",1,279.0
+Bitdefender,"Bitdefender ATS & EDR, 500-999 ep,Bitdefender Advanced Threat Security 100-499 ep,Bitdefender Cloud Sec GravityZone 1000-2499 ep",1,2621.0
+Bitdefender,"Bitdefender ATS & EDR, 100-499 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 100 to 249 ep",1,475.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Cloud Sec GravityZone 1000-2499 ep,Bitdefender Cloud Sec GravityZone 750 to 999 ep",1,2187.0
+Bitdefender,"Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender Secure Plus",1,1322.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Encryption,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Sec GravityZone 1 to 99 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Security for Mobile",1,9621.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender Cloud Encryption,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Secure Extra",1,2927.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split)",1,793.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Secure Extra",1,327.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",1,1668.0
+Bitdefender,"BitDefender Security for Virtualized Environments VS,Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender ATS & EDR, 1-99 ep,Bitdefender ATS & EDR, 100-499 ep,Bitdefender ATS & EDR, 1000-4999 ep,Bitdefender ATS & EDR, 500-999 ep,Bitdefender Advanced Threat Security,Bitdefender Cloud Encryption,Bitdefender Cloud Encryption 100-249,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Sec GravityZone 250 to 499 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Patch Management, 100 - 499 ep,Bitdefender Patch Management, 1000 - 4999 ep,Bitdefender Security for Mobile",1,26755.0
+Bitdefender,"Bitdefender ATS & EDR, 500-999 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 750 to 999 ep",1,2049.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Patch Management, 500 - 999 ep",1,-34.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Cloud Encryption,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Patch Management",1,183.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender Secure Extra,Bitdefender Secure Plus",1,3775.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender Secure Plus",1,806.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender XDR - Identity",1,853.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Cloud Encryption,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",1,78.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Advanced Threat Security,Bitdefender Cloud Encryption,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",1,2582.0
+Bitdefender,"BitDefender Security for Virtualized Environments VS,Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender ATS & EDR, 1-99 ep,Bitdefender ATS & EDR, 100-499 ep,Bitdefender ATS & EDR, 1000-4999 ep,Bitdefender Advanced Threat Security,Bitdefender Cloud Encryption,Bitdefender Cloud Encryption 100-249,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Sec GravityZone 250 to 499 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Patch Management, 100 - 499 ep,Bitdefender Patch Management, 1000 - 4999 ep,Bitdefender Security for Mobile",1,23958.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 1000-2499 ep,Bitdefender Cloud Sec GravityZone 750 to 999 ep",1,2466.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Cloud Encryption,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Patch Management",1,450.0
+Bitdefender,"Bitdefender Cloud Security Gravity Zone,Bitdefender GravityZone Email Security, 1-99",1,520.0
+Bitdefender,"Bitdefender Cloud Encryption,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",1,649.0
+Bitdefender,"Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 1 to 99 ep,Bitdefender Cloud Sec GravityZone 100 to 249 ep",1,317.0
+Bitdefender,"Bitdefender Cloud Sec GravityZone 1 to 99 ep,Bitdefender Cloud Sec GravityZone 100 to 249 ep",1,238.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Sec GravityZone 500 to 749 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",1,3276.0
+Bitdefender,"Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Secure Plus",1,1330.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",1,2359.0
+Bitdefender,"Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 1000-2499 ep,Bitdefender Cloud Sec GravityZone 250 to 499 ep",1,1995.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure),Bitdefender Patch Management",1,26.0
+Bitdefender,"Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender PHASR",1,4460.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender GravityZone Email Security",1,1092.0
+Bitdefender,"Bitdefender Advanced Threat Security,Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender Secure Extra",1,163.0
+Bitdefender,"Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split)",1,646.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR, 1-99 ep,Bitdefender Advanced Threat Security,Bitdefender Advanced Threat Security 1-99 ep,Bitdefender Cloud Sec GravityZone 1 to 99 ep,Bitdefender Cloud Sec GravityZone 100 to 249 ep,Bitdefender Cloud Security Gravity Zone,Bitdefender Cloud Security Gravity Zone (Usage)",1,12891.0
+Bitdefender,"Bitdefender ATS & EDR,Bitdefender ATS & EDR (MDR bundle split),Bitdefender Advanced Threat Security,Bitdefender Cloud Sec GravityZone (MDR bundle split),Bitdefender Cloud Security Gravity Zone (Usage),Bitdefender EDR (MSP Secure)",1,147.0
+ESET,MSP2-PE,154,74063.0
+ESET,EEA,112,19759.0
+ESET,WFS,111,4611.0
+ESET,DSLP,77,0.0
+ESET,EEPA,40,3441.0
+ESET,EEA | EESX,39,18292.0
+ESET,EES,33,8453.0
+ESET,3PARTYONPREMESETAVLP,29,376.0
+ESET,MSP2-PA,25,15895.0
+ESET,MSP2-PC,24,13521.0
+ESET,3PARTYONPREMESETWFSS,23,617.0
+ESET,MSP2-PE-IIT,20,1845.0
+ESET,EEA | WFS,17,7156.0
+ESET,EAVB,14,140.0
+ESET,3PARTYONPREMESETWSLP,11,1258.0
+ESET,ITN-EESX,10,40.0
+ESET,EEA | EESX | WFS,8,6012.0
+ESET,EXCH,7,315.0
+ESET,3PARTYONPREMESETESLP,7,5.0
+ESET,MSP2-PC-IIT,7,2117.0
+ESET,LEGACYSKUESETMOLP,7,40.0
+ESET,EEA | EESX | RMM-EAVB,7,1130.0
+ESET,3PARTYONPREMESWWEPAV,7,551.0
+ESET,3PARTYONPREMESETEPAV | EEA,7,734.0
+ESET,3PARTYONPREMESETWFSS | WFS,7,281.0
+ESET,MSP2-PA-IIT,7,3874.0
+ESET,3PARTYONPREMEPPROADV,7,0.0
+ESET,3PARTYONPREMESETWFSS | 3PARTYONPREMESWWFSVR,7,237.0
+ESET,MSP2-PEN,6,28.0
+ESET,EAVBM,6,30.0
+ESET,3PARTYONPREMESETAVLP | EAVB | RMM-EAVBM,5,600.0
+ESET,3PARTYONPREMESETENDP | EES,5,1820.0
+ESET,3PARTYONPREMESWWEPAV | EAVBM,5,563.0
+ESET,3PARTYONPREMESWWFSVR,5,76.0
+ESET,3PARTYONPREMESETEPAV | EEA | EESX,5,3859.0
+ESET,3PARTYONPREMESETWFSS | EEA | EES,4,1969.0
+ESET,EES | WFS,4,1438.0
+ESET,3PARTYONPREMESETEPAV,3,214.0
+ESET,EEA | EESX | EES | WFS,2,561.0
+ESET,3PARTYONPREMESETENDP | EES | WFS,2,730.0
+ESET,3PARTYONPREMESWWEPAV | EAVBM | 3PARTYONPREMESWWFSVR,2,330.0
+ESET,EEA | EESX | ITN-EESX | WFS,2,1155.0
+ESET,3PARTYONPREMESETAVLP | EAVB | RMM-EAVBM | 3PARTYONPREMESETWSLP,2,389.0
+ESET,3PARTYONPREMESETEPAV | EEA | EESX | 3PARTYONPREMESETWSLP | ITN-EESX,2,2151.0
+ESET,MSP-ECAT-Y1,1,0.0
+ESET,EEPA-N3-E,1,0.0
+ESET,EPA-Y1-GEN,1,0.0
+Exium,EXIUM_SIA,175,126153.5
+Exium,EXIUM_SPA,117,58817.0
+Exium,EX-SASE-PRO,97,39401.25
+Exium,EXIUM_CGW,94,17775.0
+Exium,EX-SASE-ESSENTIALS,20,3140.5
+KeepIT,"BB-3Y-PROMO-BUNDLE,BC-3Y-PROMO-OFC365UR,CMS-3P-UMM-BCDR-SAAS-OFC365UR,CMS-EG-BDR-SOLP-SAAS-RMSBM365,CULCSAS200310OFFICEP,CW-RMM-SB-M365,CWP-3P-UMM-BCDR-SAAS-OFC365UR,M2M-RMM-SB-M365,M2MLCSS200310OFFICEP,SwO-3P-BCDR-SOLP-SAAS-MSSBM365",4749,3660436.35
+KeepIT,"BB-3Y-PROMO-BUNDLE,BC-3Y-PROMO-GOOGLE,CMS-3P-UMM-BCDR-SAAS-GOOGLEWS,CMS-EG-BDR-SOLP-SAAS-RMM-SBGW,CULCSAS200311GSUITP,CW-RMM-SB-GW,CWP-3P-UMM-BCDR-SAAS-GOOGLEWS,M2M-RMM-SB-GW,M2MLCSS200311GSUITP,SWO-EG-UMM-SOLP-SAAS-GOOGLWSP,SwO-3P-UMM-SOLP-SAAS-GOOGLWSP",1288,199179.0
+KeepIT,"CMS-3P-UMM-BCDR-SAAS-UNLIMTRT,CW-3YPROMO-RETENTION,CW-RMM-SB-UNLTD,M2M-RMM-SB-UNLTD",1148,0.0
+KeepIT,"BB-3Y-PROMO-BUNDLE,BC-3Y-PROMO-AZURE-AD,CMS-3P-UMM-BCDR-SAAS-AZUREADA,CMS-EG-BDR-SOLP-SAAS-SB-AZADV,CU-AZURE-AD-ADV-USER,CW-RMM-SB-AZ-ADV,CWP-3P-UMM-BCDR-SAAS-AZUREADA,M2M-RMM-SB-AZ-ADV,SWO-EG-UMM-SOLP-SAAS-AZADUSRS,SwO-3P-UMM-SOLP-SAAS-AZADUSRS",862,257697.85
+KeepIT,"BB-3Y-PROMO-BUNDLE,BC-3Y-PROMO-SF-USER,CMS-3P-UMM-BCDR-SAAS-SALESFRC,CMS-EG-BDR-SOLP-SAAS-RMM-SBSF,CULCSAS200312SALESFP,CW-RMM-SB-SF,CWP-3P-UMM-BCDR-SAAS-SALESFRC,M2M-RMM-SB-SF,M2MLCSS200312SALESFP,SWO-EG-UMM-SOLP-SAAS-SF-USERS,SwO-3P-UMM-SOLP-SAAS-SF-USERS",169,10360.150000000001
+KeepIT,"BB-3Y-PROMO-BUNDLE,BC-3Y-PROMO-DYNAMICS,CMS-3P-UMM-BCDR-SAAS-DYNAMICS,CU-LIC-SAAS200313MDS,CW-RMM-SB-DYNMCS,CWP-3P-UMM-BCDR-SAAS-DYNAMICS,M2M-RMM-SB-DYNMCS,M2MLIC-SAAS200313MDS,SWO-EG-UMM-SOLP-SAAS-DYNMUSER,SwO-3P-UMM-SOLP-SAAS-DYNMUSER",133,6270.35
+KeepIT,CU-OTHERCORP900902RS,2,0.0
+Proofpoint,"CU-PP-ESS-PSAT-A,M2M-CU-PP-ESS-PSAT-A,PP-ESS-PSAT-A",1408,203961.84
+Proofpoint,"CU-PP-ESS-ADV-PLUS,M2M-CU-PP-ESS-ADV-PLUS,PP-ESS-ADV-PLUS,SWO-EG-CYBR-SOLP-ESS-ADV2,SwO-3P-CYBR-SOLP-ESS-ADV2",1109,1054496.1
+Proofpoint,"CMS-EG-CYBER-SOLP-SAAS-PPESSADV,CU-PP-ESS-ADV,M2M-CU-PP-ESS-ADV,PP-ESS-ADV",780,1050847.4
+Proofpoint,"CU-PP-ESS-PRO-PLUS,M2M-CU-PP-ESS-PRO-PLUS,PP-ESS-PRO-PLUS,SWO-EG-CYBR-SOLP-SAAS-PROFPLUS,SwO-3P-CYBR-SOLP-SAAS-PROFPLUS",765,508464.54
+Proofpoint,"CU-PP-ESS-BUS,M2M-CU-PP-ESS-BUS,PP-ESS-BUS",630,627789.69
+Proofpoint,"CU-PP-ESS-PRO,M2M-CU-PP-ESS-PRO,PP-ESS-PRO",427,434247.66
+Proofpoint,"CU-PP-ESS-BUS-PLUS,M2M-CU-PP-ESS-BUS-PLUS,PP-ESS-BUS-PLUS",305,171199.91
+Proofpoint,"CU-PP-ESS-BEG,M2M-CU-PP-ESS-BEG,PP-ESS-BEG",292,72418.59
+Proofpoint,"CWP-IH-CYBR-OTHR-SAAS-EMSECADV,CWP-IH-CYBR-OTHR-SAAS-EMSECESS,SWO-EG-CYBR-OTHR-SAAS-EMSECADV,SWO-EG-CYBR-OTHR-SAAS-EMSECESS",230,173904.6
+SentinelOne,"CUSERVOTHER300440PAR,CUSERVOTHER300450PAR,CUSERVOTHR300520EPSB,CWSENTINEL1-CONTROL,M2MSEROTHR300520EPSB,SENTINELONE-CONTROL,SwO-3P-CYBR-SOLP-SAAS-S1CNTROL,SwO_IH_CYBR_SIEM_SAAS_0520EPSB,UNMAPPED",12321,4430635.92
+SentinelOne,"CUSERVOTHRFFEPSECPRM,CU_S1_COMPLETE_BYOL,CWSENTINEL1-COMPLETE,SENTINELONE-COMPLETE,SwO-3P-CYBR-SOLP-SAAS-S1CMPLET,SwO-IH-CYBR-SIEM-SAAS-EPSECADV,UNMAPPED",7106,5178514.42
+SentinelOne,UNMAPPED,1744,0.0
+SentinelOne,SP-RGR-ND,462,37011.619999999995
+SentinelOne,CU-PM-RT90-ND,25,0.0
+SentinelOne,CU-PM-RT30-ND,24,0.0
+SentinelOne,CU-PM-RT1Y-ND,16,0.0
+SentinelOne,CU-PM-RT180-ND,8,0.0

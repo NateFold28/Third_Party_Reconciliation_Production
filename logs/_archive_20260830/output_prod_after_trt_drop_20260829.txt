@@ -1,0 +1,113 @@
+﻿  THIRD_PARTY_RECON_OUTPUT_PROD ...
+    OK (4.3s)
+  THIRD_PARTY_RECON_SUMMARY_PROD ...
+    OK (2.3s)
+
+============================================================================================================================================
+  THIRD_PARTY_RECON_SUMMARY_PROD - canonical flag distribution
+============================================================================================================================================
+  VENDOR      | MONTH   | DATA_LOAD_STATUS | USAGE_ROW_COUNT | TOTAL_ROWS | CLEAR_ROWS | CLEAR_PCT | VENDOR_NO_CW_ROWS | CW_NO_VENDOR_ROWS | VENDOR_INSUFF_CW_ROWS | UNMAPPED_PARTNER_ROWS | OTHER_ISSUE_ROWS
+  ------------+---------+------------------+-----------------+------------+------------+-----------+-------------------+-------------------+-----------------------+-----------------------+-----------------
+  Acronis     | 2026-01 | LOADED           | 2413            | 2909       | 2637       | 90.6      | 41                | 156               | 4                     | 5                     |                 
+  Acronis     | 2026-02 | LOADED           | 2387            | 2834       | 2568       | 90.6      | 21                | 156               | 3                     | 6                     |                 
+  Acronis     | 2026-03 | LOADED           | 2375            | 2788       | 2520       | 90.4      | 20                | 147               | 2                     | 5                     |                 
+  Acronis     | 2026-04 | LOADED           | 2322            | 2687       | 2478       | 92.2      | 25                | 121               | 4                     |                       |                 
+  Acronis     | 2026-05 | LOADED           | 2218            | 2618       | 2446       | 93.4      | 14                | 99                | 1                     |                       |                 
+  Acronis     | 2026-06 | LOADED           | 2168            | 2588       | 2404       | 92.9      | 6                 | 111               | 1                     |                       |                 
+  Acronis     | 2026-07 | LOADED           | 2140            | 2454       | 2049       | 83.5      | 32                | 308               |                       |                       |                 
+  Acronis     | 2026-08 | NOT_LOADED       |                 | 1954       |            |           |                   | 1954              |                       |                       |                 
+  Acronis     | 2026-09 | NOT_LOADED       |                 | 657        |            |           |                   | 657               |                       |                       |                 
+  Auvik       | 2026-01 | LOADED           | 822             | 496        | 312        | 62.9      | 67                | 87                | 25                    | 5                     |                 
+  Auvik       | 2026-02 | LOADED           | 807             | 467        | 300        | 64.2      | 67                | 64                | 32                    | 4                     |                 
+  Auvik       | 2026-03 | LOADED           | 767             | 450        | 293        | 65.1      | 62                | 61                | 31                    | 3                     |                 
+  Auvik       | 2026-04 | LOADED           | 753             | 440        | 290        | 65.9      | 60                | 61                | 27                    | 2                     |                 
+  Auvik       | 2026-05 | LOADED           | 739             | 425        | 289        | 68.0      | 56                | 55                | 23                    | 2                     |                 
+  Auvik       | 2026-06 | LOADED           | 720             | 418        | 279        | 66.7      | 59                | 57                | 23                    |                       |                 
+  Auvik       | 2026-07 | LOADED           | 708             | 417        | 270        | 64.7      | 55                | 61                | 29                    | 2                     |                 
+  Auvik       | 2026-08 | NOT_LOADED       |                 | 334        |            |           |                   | 334               |                       |                       |                 
+  Auvik       | 2026-09 | NOT_LOADED       |                 | 232        |            |           |                   | 232               |                       |                       |                 
+  Auvik       | 2026-10 | NOT_LOADED       |                 | 2          |            |           |                   | 2                 |                       |                       |                 
+  Auvik       | 2026-11 | NOT_LOADED       |                 | 1          |            |           |                   | 1                 |                       |                       |                 
+  Bitdefender | 2026-01 | LOADED           | 924             | 483        | 438        | 90.7      | 2                 | 38                | 4                     | 1                     |                 
+  Bitdefender | 2026-02 | LOADED           | 935             | 489        | 446        | 91.2      | 2                 | 37                | 3                     | 1                     |                 
+  Bitdefender | 2026-03 | LOADED           | 947             | 489        | 445        | 91.0      | 3                 | 36                | 4                     | 1                     |                 
+  Bitdefender | 2026-04 | LOADED           | 960             | 496        | 445        | 89.7      | 7                 | 38                | 5                     | 1                     |                 
+  Bitdefender | 2026-05 | LOADED           | 931             | 488        | 446        | 91.4      | 3                 | 36                | 2                     | 1                     |                 
+  Bitdefender | 2026-06 | LOADED           | 947             | 486        | 445        | 91.6      | 1                 | 32                | 7                     | 1                     |                 
+  Bitdefender | 2026-07 | NOT_LOADED       |                 | 473        |            |           |                   | 473               |                       |                       |                 
+  Bitdefender | 2026-08 | NOT_LOADED       |                 | 462        |            |           |                   | 462               |                       |                       |                 
+  Bitdefender | 2026-09 | NOT_LOADED       |                 | 166        |            |           |                   | 166               |                       |                       |                 
+  Bitdefender | 2026-10 | NOT_LOADED       |                 | 2          |            |           |                   | 2                 |                       |                       |                 
+  Bitdefender | 2026-11 | NOT_LOADED       |                 | 1          |            |           |                   | 1                 |                       |                       |                 
+  Bitdefender | 2026-12 | NOT_LOADED       |                 | 1          |            |           |                   | 1                 |                       |                       |                 
+  Bitdefender | 2027-01 | NOT_LOADED       |                 | 1          |            |           |                   | 1                 |                       |                       |                 
+  Bitdefender | 2027-02 | NOT_LOADED       |                 | 1          |            |           |                   | 1                 |                       |                       |                 
+  Bitdefender | 2027-03 | NOT_LOADED       |                 | 1          |            |           |                   | 1                 |                       |                       |                 
+  Bitdefender | 2027-04 | NOT_LOADED       |                 | 1          |            |           |                   | 1                 |                       |                       |                 
+  Bitdefender | 2027-05 | NOT_LOADED       |                 | 1          |            |           |                   | 1                 |                       |                       |                 
+  Bitdefender | 2027-06 | NOT_LOADED       |                 | 1          |            |           |                   | 1                 |                       |                       |                 
+  ESET        | 2026-01 | LOADED           | 433             | 404        | 334        | 82.7      | 22                | 40                | 8                     |                       |                 
+  ESET        | 2026-02 | LOADED           | 430             | 396        | 327        | 82.6      | 24                | 38                | 7                     |                       |                 
+  ESET        | 2026-03 | LOADED           | 424             | 398        | 322        | 80.9      | 28                | 41                | 7                     |                       |                 
+  ESET        | 2026-04 | LOADED           | 424             | 391        | 325        | 83.1      | 26                | 33                | 7                     |                       |                 
+  ESET        | 2026-05 | LOADED           | 416             | 385        | 303        | 78.7      | 27                | 47                | 8                     |                       |                 
+  ESET        | 2026-06 | LOADED           | 303             | 297        | 194        | 65.3      | 18                | 75                | 10                    |                       |                 
+  ESET        | 2026-07 | LOADED           | 251             | 261        | 176        | 67.4      | 33                | 41                | 11                    |                       |                 
+  Exium       | 2026-01 | LOADED           | 97              | 93         | 67         | 72.0      | 10                | 7                 | 3                     | 6                     |                 
+  Exium       | 2026-02 | LOADED           | 97              | 93         | 67         | 72.0      | 10                | 7                 | 3                     | 6                     |                 
+  Exium       | 2026-03 | LOADED           | 99              | 99         | 70         | 70.7      | 3                 | 10                |                       | 6                     |                 
+  Exium       | 2026-04 | LOADED           | 88              | 84         | 68         | 81.0      | 2                 | 6                 |                       | 1                     |                 
+  Exium       | 2026-05 | LOADED           | 91              | 86         | 73         | 84.9      | 3                 | 4                 |                       | 1                     |                 
+  Exium       | 2026-06 | LOADED           | 92              | 86         | 74         | 86.0      | 3                 | 3                 |                       | 1                     |                 
+  Exium       | 2026-07 | LOADED           | 91              | 85         | 73         | 85.9      | 3                 | 3                 |                       | 1                     |                 
+  Exium       | 2026-08 | NOT_LOADED       |                 | 71         |            |           |                   | 71                |                       |                       |                 
+  KeepIT      | 2026-01 | LOADED           | 1072            | 1319       | 888        | 67.3      | 66                | 139               |                       | 22                    |                 
+  KeepIT      | 2026-02 | LOADED           | 819             | 899        | 476        | 52.9      | 35                | 103               | 1                     | 17                    |                 
+  KeepIT      | 2026-03 | LOADED           | 825             | 910        | 490        | 53.8      | 30                | 104               |                       | 14                    |                 
+  KeepIT      | 2026-04 | LOADED           | 689             | 930        | 464        | 49.9      | 29                | 101               |                       | 9                     |                 
+  KeepIT      | 2026-05 | LOADED           | 701             | 936        | 451        | 48.2      | 39                | 98                |                       | 9                     |                 
+  KeepIT      | 2026-06 | LOADED           | 709             | 968        | 448        | 46.3      | 55                | 112               | 3                     | 9                     |                 
+  KeepIT      | 2026-07 | LOADED           | 1034            | 1436       | 924        | 64.3      | 82                | 130               | 1                     | 14                    |                 
+  KeepIT      | 2026-08 | NOT_LOADED       |                 | 938        |            |           |                   | 794               |                       |                       |                 
+  Proofpoint  | 2026-01 | LOADED           | 7875            | 791        | 719        | 90.9      | 58                |                   | 10                    | 1                     |                 
+  Proofpoint  | 2026-02 | LOADED           | 8185            | 813        | 751        | 92.4      | 50                |                   | 8                     | 1                     |                 
+  Proofpoint  | 2026-03 | LOADED           | 8417            | 818        | 797        | 97.4      | 12                |                   | 4                     | 1                     |                 
+  Proofpoint  | 2026-04 | LOADED           | 8687            | 841        | 822        | 97.7      | 3                 |                   | 3                     | 1                     |                 
+  Proofpoint  | 2026-05 | LOADED           | 8973            | 863        | 845        | 97.9      | 4                 |                   | 5                     | 1                     |                 
+  Proofpoint  | 2026-06 | LOADED           | 9233            | 900        | 876        | 97.3      | 6                 |                   | 4                     | 1                     |                 
+  Proofpoint  | 2026-07 | LOADED           | 9494            | 919        | 894        | 97.3      | 3                 |                   | 4                     | 7                     |                 
+  SentinelOne | 2026-01 | LOADED           | 2907            | 2863       | 2484       | 86.8      | 55                | 20                |                       | 2                     |                 
+  SentinelOne | 2026-02 | LOADED           | 2959            | 2909       | 2487       | 85.5      | 57                | 27                | 1                     | 2                     |                 
+  SentinelOne | 2026-03 | LOADED           | 2955            | 2892       | 2456       | 84.9      | 61                | 29                |                       | 2                     |                 
+  SentinelOne | 2026-04 | LOADED           | 2979            | 2923       | 2467       | 84.4      | 52                | 23                | 1                     | 3                     |                 
+  SentinelOne | 2026-05 | LOADED           | 3025            | 2960       | 2493       | 84.2      | 43                | 28                |                       | 3                     |                 
+  SentinelOne | 2026-06 | LOADED           | 3028            | 2938       | 2469       | 84.0      | 48                | 19                |                       | 3                     |                 
+  SentinelOne | 2026-07 | LOADED           | 2999            | 2910       | 2423       | 83.3      | 63                | 31                |                       | 3                     |                 
+  SentinelOne | 2026-08 | NOT_LOADED       |                 | 1723       |            |           |                   | 1723              |                       |                       |                 
+  Webroot     | 2026-01 | LOADED           | 4529            | 2007       | 1156       | 57.6      | 116               | 55                | 367                   | 49                    |                 
+  Webroot     | 2026-02 | LOADED           | 4505            | 1981       | 1134       | 57.2      | 107               | 60                | 19                    | 49                    |                 
+  Webroot     | 2026-03 | LOADED           | 4484            | 1998       | 1131       | 56.6      | 97                | 56                | 19                    | 48                    |                 
+  Webroot     | 2026-04 | LOADED           | 4376            | 1946       | 1102       | 56.6      | 87                | 63                | 18                    | 45                    |                 
+  Webroot     | 2026-05 | LOADED           | 4319            | 1860       | 1075       | 57.8      | 71                | 54                | 15                    | 44                    |                 
+  Webroot     | 2026-06 | LOADED           | 4277            | 1816       | 1057       | 58.2      | 71                | 54                | 18                    | 42                    |                 
+  Webroot     | 2026-07 | LOADED           | 4257            | 1800       | 1025       | 56.9      | 96                | 51                | 9                     | 42                    |                 
+  Webroot     | 2026-08 | NOT_LOADED       |                 | 1376       |            |           |                   | 1087              |                       |                       |                 
+  Webroot     | 2026-09 | NOT_LOADED       |                 | 245        |            |           |                   | 245               |                       |                       |                 
+
+  85 vendor-month rows
+
+  THIRD_PARTY_RECON_OUTPUT_PROD: 83,870 rows across 9 vendors
+
+  Exception type distribution:
+    Clear                                                59,077 rows   $  47,895,382
+    CW Billing, No Vendor Billing                        11,684 rows   $  12,135,936
+    API Usage, Insufficient CW Billing                    6,360 rows   $   1,337,808
+    Vendor Billing, No CW Billing                         2,311 rows   $   1,103,783
+    Vendor SKU, No CW SKU                                 1,807 rows   $       1,097
+    CW SKU, No Vendor SKU                                   887 rows   $     332,775
+    Vendor Billing, Insufficient CW Billing                 804 rows   $     580,123
+    Unmapped Partner                                        506 rows   $     244,110
+    Disabled Partner SKU                                    352 rows   $      68,105
+    Marketplace Billing Delay                                82 rows   $      16,901
+
+  Done.

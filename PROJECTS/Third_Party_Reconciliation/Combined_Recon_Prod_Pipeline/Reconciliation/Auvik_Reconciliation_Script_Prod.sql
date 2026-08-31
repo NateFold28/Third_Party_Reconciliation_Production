@@ -296,7 +296,7 @@ auvik_marketplace_rows AS (
                 1::NUMBER AS marketplace_row_count,
                 m.transaction_source AS marketplace_transaction_sources
         FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD m
-        INNER JOIN cw_sku_map cw
+        LEFT JOIN cw_sku_map cw
             ON cw.cw_sku_key = UPPER(TRIM(m.product_sku))
         WHERE m.vendor = 'Auvik'
             AND m.sf_id ILIKE 'ACT-%'
@@ -522,6 +522,108 @@ detail_pre AS (
         ON cr.auvik_product_group = s.auvik_product_group
        AND cr.currency = 'USD'
        AND s.billing_month BETWEEN cr.valid_from AND cr.valid_to
+),
+
+-- =============================================================================
+-- Auvik API usage (direct-from-raw architecture, 2026-08-30)
+-- ---------------------------------------------------------------------------
+-- Replaces the retired legacy TRT_PROD bridge with a direct read off the raw
+-- daily-usage table:
+--   ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE
+-- Join keys (governed):
+--   * partner_id (usage) = cms_id from RECON_PARTNER_MAP (keyed by sf_id).
+--   * product_sku (usage) = TRT_MATCH_KEY from RECON_SKU_MAP (Auvik).
+--     For Auvik, TRT_MATCH_KEY = CW_SKU (post-2026-08-30 SKU-map rebuild:
+--     seed-derived rows carry the real product_sku as both CW_SKU and
+--     TRT_MATCH_KEY; 336 CW SKUs across 3 families now cover the 25/25
+--     Zuora-billed SKUs in June).
+-- Cycle window: Auvik invoice = day 21 of each month, so a billing_month M
+--   accumulates on_date rows in (M-1 + 20 days, M + 20 days].
+--   snapshot_date = DATEADD('day', 20, billing_month) (i.e. day 21).
+-- Grain: (sf_id, billing_month, sku_match_group) -- matches vendor_agg /
+--        detail_pre. sku_match_group is family-only (AUVIK_ESSENTIALS,
+--        AUVIK_PERFORMANCE, AUVIK_ASM); CMS/CW modifier collapsed here to
+--        match vendor-side rollup.
+-- =============================================================================
+auvik_trt_keys AS (
+    -- Distinct TRT product_sku values Auvik maps to, plus the sku_match_group
+    -- they roll up to. Uppercased for the join. CMS/CW modifier stripped so
+    -- that the API-side join grain matches the vendor_agg grain.
+    SELECT DISTINCT
+        UPPER(TRIM(trt_match_key)) AS product_sku_key,
+        REGEXP_REPLACE(sku_match_key, '^AUVIK_(CMS|CW)_', 'AUVIK_') AS sku_match_group
+    FROM RECON_SKU_MAP
+    WHERE vendor = 'Auvik'
+      AND trt_match_key IS NOT NULL
+      AND TRIM(trt_match_key) <> ''
+      AND sku_match_key IS NOT NULL
+      AND REGEXP_SUBSTR(sku_match_key, 'AUVIK_(CMS|CW)_', 1, 1, 'e', 1) IS NOT NULL
+),
+
+auvik_api_partners AS (
+    -- sf_ids that actually appear in the Auvik recon for a given
+    -- billing_month, joined to their cms_id via RECON_PARTNER_MAP.
+    SELECT DISTINCT
+        d.sf_id,
+        d.billing_month,
+        d.sku_match_group,
+        pm.cms_id
+    FROM detail_pre d
+    JOIN RECON_PARTNER_MAP pm
+      ON pm.sf_id = d.sf_id
+    WHERE d.sf_id IS NOT NULL
+      AND d.sku_match_group IS NOT NULL
+      AND pm.cms_id IS NOT NULL
+      AND TRIM(pm.cms_id) <> ''
+),
+
+auvik_api_daily AS (
+    -- One row per (sf_id, billing_month, sku_match_group, on_date). The
+    -- window predicate binds each on_date to exactly one billing_month.
+    -- day_quantity sums AGENT_CNT across all CHARGE_SKU variants that roll
+    -- up to the same PRODUCT_SKU (CW invoice-line splits).
+    SELECT
+        pa.sf_id,
+        pa.billing_month,
+        pa.sku_match_group,
+        DATEADD('day', 20, pa.billing_month)::DATE  AS snapshot_date,
+        u.on_date::DATE                              AS on_date,
+        SUM(COALESCE(u.agent_cnt, 0))                AS day_quantity
+    FROM auvik_api_partners pa
+    JOIN auvik_trt_keys k
+      ON k.sku_match_group = pa.sku_match_group
+    JOIN ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+      ON u.partner_id::VARCHAR = pa.cms_id
+     AND UPPER(TRIM(u.product_sku)) = k.product_sku_key
+     AND u.on_date::DATE >  DATEADD('day', 20, DATEADD('month', -1, pa.billing_month))::DATE
+     AND u.on_date::DATE <= DATEADD('day', 20, pa.billing_month)::DATE
+    GROUP BY 1, 2, 3, 4, 5
+),
+
+auvik_api_usage AS (
+    -- Roll up to recon grain. api_quantity = day-21 snapshot value (the
+    -- Auvik invoice snapshot day). avg_api_quantity = mean across the
+    -- window, used to smooth mid-cycle add/drop noise.
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        MAX(IFF(on_date = snapshot_date, day_quantity, NULL)) AS api_quantity,
+        AVG(day_quantity)                                     AS avg_api_quantity
+    FROM auvik_api_daily
+    GROUP BY 1, 2, 3
+),
+
+detail_with_api AS (
+    SELECT
+        d.*,
+        a.api_quantity::FLOAT     AS api_quantity,
+        a.avg_api_quantity::FLOAT AS avg_api_quantity
+    FROM detail_pre d
+    LEFT JOIN auvik_api_usage a
+        ON a.sf_id           = d.sf_id
+       AND a.billing_month   = d.billing_month
+       AND a.sku_match_group = d.sku_match_group
 )
 SELECT
     billing_month,
@@ -545,6 +647,8 @@ SELECT
         WHEN marketplace_quantity IS NOT NULL THEN 'MARKETPLACE_FALLBACK'
         ELSE 'NO_BILLING_SOURCE'
     END AS billing_source_mix,
+    api_quantity,
+    avg_api_quantity,
     vendor_raw_quantity,
     vendor_overage_quantity,
     vendor_quantity,
@@ -664,7 +768,7 @@ SELECT
         ELSE 'UNDER_CONTRACT'
     END AS vendor_vs_contract_flag,
     CASE WHEN contract_cost_rate IS NULL OR vendor_unit_price IS NULL THEN NULL ELSE (vendor_unit_price - contract_cost_rate) * vendor_quantity END AS vendor_vs_contract_dollar_impact
-FROM detail_pre;
+FROM detail_with_api;
 
 CREATE OR REPLACE TABLE AUVIK_RECON_SUMMARY AS
 SELECT

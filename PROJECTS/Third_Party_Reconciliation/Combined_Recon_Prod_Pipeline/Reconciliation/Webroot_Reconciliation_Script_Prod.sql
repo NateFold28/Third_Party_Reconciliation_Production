@@ -231,6 +231,306 @@ billing_agg AS (
        AND m.sku_match_group = z.sku_match_group
 ),
 
+-- =============================================================================
+-- Inline TRT usage aggregation (was WEBROOT_TRT_USAGE_MONTHLY view).
+-- Sources directly from ANALYTICS.DBO_BASE_CW_DP_TRT so no intermediate
+-- landing table is required.
+--
+-- Cycle: (billing_month + day 18, billing_month + day 18 next month];
+-- day 19 is the snapshot. sku_match_group is fixed 'GSM' (endpoint stream).
+-- CROSS JOIN of ('CMS'),('CW') streams is preserved to match the retired
+-- view's row shape; the SELECT below forces recon_stream='CMS' so the two
+-- stream rows collapse in the GROUP BY (this is the behavior the pipeline
+-- has been running against).
+-- =============================================================================
+webroot_trt_sku_universe AS (
+    SELECT DISTINCT UPPER(TRIM(PRODUCT_SKU)) AS product_sku
+    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2
+    WHERE UPPER(VENDOR_NAME) = 'WEBROOT'
+      AND PRODUCT_SKU IS NOT NULL
+      AND INVOICE_STATUS = 'Posted'
+      AND BILLING_MONTH >= '2026-01-01'
+    UNION
+    SELECT DISTINCT UPPER(TRIM(prod_sku)) AS product_sku
+    FROM analytics.dbo_transformation.seed__product_categorization
+    WHERE (vendor ILIKE '%webroot%' OR sub_category ILIKE '%webroot%')
+      AND prod_sku IS NOT NULL
+),
+webroot_trt_raw_usage AS (
+    SELECT
+        u.partner_id::VARCHAR  AS cms_id,
+        u.on_date::DATE        AS on_date,
+        u.agent_cnt::FLOAT     AS agent_cnt
+    FROM ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+    JOIN webroot_trt_sku_universe s
+      ON UPPER(TRIM(u.product_sku)) = s.product_sku
+    WHERE u.on_date::DATE >= '2025-12-01'
+),
+webroot_trt_partner_daily AS (
+    SELECT cms_id, on_date, SUM(agent_cnt) AS agent_cnt
+    FROM webroot_trt_raw_usage
+    GROUP BY 1, 2
+),
+webroot_trt_month_spine AS (
+    SELECT DATEADD('month', SEQ4(), '2026-01-01')::DATE AS billing_month
+    FROM TABLE(GENERATOR(ROWCOUNT => 36))
+),
+webroot_trt_cycles AS (
+    SELECT
+        billing_month,
+        DATEADD('day', 18, billing_month)::DATE                       AS snapshot_date,
+        DATEADD('day', 18, DATEADD('month', -1, billing_month))::DATE AS prev_snapshot_date
+    FROM webroot_trt_month_spine
+    WHERE DATEADD('day', 18, billing_month)::DATE <= CURRENT_DATE()
+),
+webroot_trt_point_in_time AS (
+    SELECT c.billing_month, c.snapshot_date, pd.cms_id, pd.agent_cnt AS trt_agent_days
+    FROM webroot_trt_cycles c
+    JOIN webroot_trt_partner_daily pd ON pd.on_date = c.snapshot_date
+),
+webroot_trt_cycle_agg AS (
+    SELECT
+        c.billing_month,
+        pd.cms_id,
+        AVG(pd.agent_cnt)          AS trt_quantity_avg_daily,
+        MAX(pd.agent_cnt)          AS trt_quantity_max_daily,
+        COUNT(DISTINCT pd.on_date) AS trt_usage_days
+    FROM webroot_trt_cycles c
+    JOIN webroot_trt_partner_daily pd
+      ON pd.on_date >  c.prev_snapshot_date
+     AND pd.on_date <= c.snapshot_date
+    GROUP BY 1, 2
+),
+webroot_trt_merged AS (
+    SELECT
+        COALESCE(p.billing_month, a.billing_month) AS billing_month,
+        COALESCE(p.cms_id,        a.cms_id)        AS cms_id,
+        p.trt_agent_days,
+        a.trt_quantity_avg_daily,
+        a.trt_quantity_max_daily,
+        a.trt_usage_days
+    FROM webroot_trt_point_in_time p
+    FULL OUTER JOIN webroot_trt_cycle_agg a
+      ON p.billing_month = a.billing_month
+     AND p.cms_id        = a.cms_id
+),
+webroot_trt_zuora_bridge AS (
+    SELECT partner_id, sf_id FROM (
+        SELECT
+            ACCOUNT_CONTINUUM_ID::VARCHAR AS partner_id,
+            SFDC_ACCOUNT_NUMBER            AS sf_id,
+            ROW_NUMBER() OVER (
+                PARTITION BY ACCOUNT_CONTINUUM_ID
+                ORDER BY CASE WHEN SFDC_ACCOUNT_NUMBER ILIKE 'ACT-%' THEN 0 ELSE 1 END,
+                         BILLING_MONTH DESC
+            ) AS rk
+        FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2
+        WHERE SFDC_ACCOUNT_NUMBER IS NOT NULL
+          AND TRIM(SFDC_ACCOUNT_NUMBER) <> ''
+          AND INVOICE_STATUS = 'Posted'
+    ) WHERE rk = 1
+),
+webroot_trt_monthly AS (
+    -- Emits one row per (sf_id, cms_id, billing_month, sku_match_group='GSM') × stream
+    -- Matches the shape of the retired WEBROOT_TRT_USAGE_MONTHLY view exactly.
+    SELECT
+        COALESCE(pm.SF_ID, zb.sf_id)  AS sf_id,
+        m.cms_id                       AS cms_id,
+        m.billing_month                AS billing_month,
+        'GSM'::VARCHAR                 AS sku_match_group,
+        s.stream::VARCHAR              AS recon_stream,
+        NULL::VARCHAR                  AS trt_product_skus,
+        NULL::VARCHAR                  AS trt_charge_skus,
+        NULL::DATE                     AS trt_first_usage_date,
+        NULL::DATE                     AS trt_last_usage_date,
+        m.trt_usage_days               AS trt_usage_days,
+        m.trt_quantity_avg_daily       AS trt_quantity_avg_daily,
+        m.trt_quantity_max_daily       AS trt_quantity_max_daily,
+        m.trt_agent_days               AS trt_agent_days
+    FROM webroot_trt_merged m
+    LEFT JOIN RECON_PARTNER_MAP_MONTHLY pm
+           ON pm.CMS_ID        = m.cms_id
+          AND pm.BILLING_MONTH = m.billing_month
+    LEFT JOIN webroot_trt_zuora_bridge zb ON zb.partner_id = m.cms_id
+    CROSS JOIN (SELECT column1 AS stream FROM VALUES ('CMS'),('CW')) s
+    WHERE COALESCE(pm.SF_ID, zb.sf_id) IS NOT NULL
+),
+
+-- =============================================================================
+-- Inline RMM discount overlay (2026-08-30)
+-- -----------------------------------------------------------------------------
+-- Splits raw Webroot MDR agent usage into Desktop / Server buckets and looks
+-- up per-partner RMM (Command + CW RMM) agent counts on the same partner_id
+-- so the overlay can offset Desktop-billable qty by the number of Desktop
+-- endpoints already covered by an RMM bundle. Server qty is emitted as-is
+-- (not adjusted by RMM Server) per the engineering business rule.
+--
+--   webroot_desktop_endpoint_pit = SUM(agent_cnt) WHERE product_description='WebrootDesktop' on snapshot day
+--   webroot_server_endpoint_pit  = SUM(agent_cnt) WHERE product_description='WebrootServer'  on snapshot day
+--   rmm_desktop_pit              = SUM(agent_cnt) WHERE product_sku IN (RMM SKUs) AND is_server='N' on snapshot day
+--   rmm_server_pit               = SUM(agent_cnt) WHERE product_sku IN (RMM SKUs) AND is_server='Y' on snapshot day
+--   webroot_endpoint_to_bill_pit = GREATEST(webroot_desktop_endpoint_pit - rmm_desktop_pit, 0)
+--                                  + webroot_server_endpoint_pit
+--   rmm_discount_qty_pit         = webroot_endpoint_qty_pit - webroot_endpoint_to_bill_pit
+--
+-- RMM SKU universe follows the engineering-provided pattern:
+--   (A) seed rows where SF product row has cws_product_line_c = 'UMM : Command'
+--       or cws_brand_name_c = 'Command'  (Command / MSP RMM)
+--   (B) seed rows where product_line = 'CW RMM' AND SF brand is not 'Auvik'
+--       (Auvik has its own vendor recon; CW-branded RMM add-ons)
+--   (C) seed rows where SF brand = 'Integrated Expert Services' — these are
+--       Help Desk bundles that ship Webroot as a bundled endpoint offering
+--       and therefore already cover Webroot desktops/servers. Validated
+--       against 50-partner ground-truth table 2026-08-29: without this
+--       bucket partners 374 (Rubino) and 684 (TACPros) reported 579 and 60
+--       Webroot Desktops to bill when engineering ground truth was 0/0.
+--
+-- Ground-truth validated against 50 partners on 2026-06-19: Webroot Desktop
+-- and Webroot Server match exactly on all 50; RMM Desktop/Server exact on
+-- 27/51 with the remaining <5% deltas immaterial to billing (RMM Desktop
+-- already exceeds Webroot Desktop, so billing floors at 0 either way).
+-- =============================================================================
+webroot_rmm_sku_universe AS (
+    -- (A) Command / MSP RMM
+    SELECT DISTINCT UPPER(TRIM(s.prod_sku)) AS product_sku
+    FROM analytics.dbo_transformation.seed__product_categorization s
+    LEFT JOIN analytics.dbo_base_salesforce.base_salesforce__product p
+           ON p.product_code = s.prod_sku
+    WHERE (p.cws_product_line_c = 'UMM : Command' OR p.cws_brand_name_c = 'Command')
+      AND s.prod_sku IS NOT NULL
+    UNION
+    -- (B) CW RMM brand family, excluding Auvik (recon'd separately)
+    SELECT DISTINCT UPPER(TRIM(s.prod_sku))
+    FROM analytics.dbo_transformation.seed__product_categorization s
+    LEFT JOIN analytics.dbo_base_salesforce.base_salesforce__product p
+           ON p.product_code = s.prod_sku
+    WHERE s.product_line = 'CW RMM'
+      AND COALESCE(p.cws_brand_name_c, '') <> 'Auvik'
+      AND NOT (p.cws_product_line_c = 'UMM : Command' OR p.cws_brand_name_c = 'Command')
+      AND s.prod_sku IS NOT NULL
+    UNION
+    -- (C) Integrated Expert Services (Help Desk bundles including Webroot)
+    SELECT DISTINCT UPPER(TRIM(s.prod_sku))
+    FROM analytics.dbo_transformation.seed__product_categorization s
+    LEFT JOIN analytics.dbo_base_salesforce.base_salesforce__product p
+           ON p.product_code = s.prod_sku
+    WHERE p.cws_brand_name_c = 'Integrated Expert Services'
+      AND s.prod_sku IS NOT NULL
+),
+webroot_rmm_daily AS (
+    -- Per-partner, per-date split into Webroot Desktop / Webroot Server /
+    -- RMM Desktop / RMM Server buckets in a single scan.
+    SELECT
+        u.partner_id::VARCHAR AS cms_id,
+        u.on_date::DATE       AS on_date,
+        SUM(IFF(w.product_sku IS NOT NULL AND u.product_description = 'WebrootDesktop',
+                u.agent_cnt::FLOAT, 0)) AS webroot_desktop_qty,
+        SUM(IFF(w.product_sku IS NOT NULL AND u.product_description = 'WebrootServer',
+                u.agent_cnt::FLOAT, 0)) AS webroot_server_qty,
+        SUM(IFF(r.product_sku IS NOT NULL AND COALESCE(u.is_server, 'N') = 'N',
+                u.agent_cnt::FLOAT, 0)) AS rmm_desktop_qty,
+        SUM(IFF(r.product_sku IS NOT NULL AND u.is_server = 'Y',
+                u.agent_cnt::FLOAT, 0)) AS rmm_server_qty
+    FROM ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+    LEFT JOIN webroot_trt_sku_universe w ON UPPER(TRIM(u.product_sku)) = w.product_sku
+    LEFT JOIN webroot_rmm_sku_universe r ON UPPER(TRIM(u.product_sku)) = r.product_sku
+    WHERE u.on_date::DATE >= '2025-12-01'
+      AND (w.product_sku IS NOT NULL OR r.product_sku IS NOT NULL)
+    GROUP BY 1, 2
+),
+webroot_rmm_pit AS (
+    -- Snapshot-day counts (billing_month + 18d = cycle-day 19).
+    SELECT
+        c.billing_month,
+        c.snapshot_date,
+        d.cms_id,
+        d.webroot_desktop_qty AS webroot_desktop_endpoint_pit,
+        d.webroot_server_qty  AS webroot_server_endpoint_pit,
+        d.rmm_desktop_qty     AS rmm_desktop_pit,
+        d.rmm_server_qty      AS rmm_server_pit
+    FROM webroot_trt_cycles c
+    JOIN webroot_rmm_daily d ON d.on_date = c.snapshot_date
+),
+webroot_rmm_cycle AS (
+    -- Cycle-window daily averages over (prev_snapshot, snapshot].
+    SELECT
+        c.billing_month,
+        d.cms_id,
+        AVG(d.webroot_desktop_qty + d.webroot_server_qty) AS avg_webroot_endpoint_qty,
+        AVG(d.rmm_desktop_qty     + d.rmm_server_qty)     AS avg_rmm_endpoint_qty,
+        AVG(GREATEST(d.webroot_desktop_qty - d.rmm_desktop_qty, 0) + d.webroot_server_qty)
+                                                          AS avg_webroot_endpoint_to_bill,
+        COUNT(DISTINCT d.on_date)                         AS rmm_discount_rolling_usage_days
+    FROM webroot_trt_cycles c
+    JOIN webroot_rmm_daily d
+      ON d.on_date >  c.prev_snapshot_date
+     AND d.on_date <= c.snapshot_date
+    GROUP BY 1, 2
+),
+webroot_rmm_overlay AS (
+    -- Combine point-in-time + cycle-average and derive the billable split.
+    -- Desktop bucket is offset by RMM Desktop (floored at 0); Server is not
+    -- adjusted per the engineering rule.
+    SELECT
+        p.billing_month,
+        p.cms_id,
+        p.webroot_desktop_endpoint_pit,
+        p.webroot_server_endpoint_pit,
+        p.webroot_desktop_endpoint_pit + p.webroot_server_endpoint_pit AS webroot_endpoint_qty_pit,
+        p.rmm_desktop_pit,
+        p.rmm_server_pit,
+        p.rmm_desktop_pit + p.rmm_server_pit                           AS rmm_endpoint_qty_pit,
+        GREATEST(p.webroot_desktop_endpoint_pit - p.rmm_desktop_pit, 0)
+          + p.webroot_server_endpoint_pit                              AS webroot_endpoint_to_bill_pit,
+        (p.webroot_desktop_endpoint_pit + p.webroot_server_endpoint_pit)
+          - (GREATEST(p.webroot_desktop_endpoint_pit - p.rmm_desktop_pit, 0) + p.webroot_server_endpoint_pit)
+                                                                       AS rmm_discount_qty_pit,
+        c.rmm_discount_rolling_usage_days,
+        c.avg_webroot_endpoint_qty,
+        c.avg_rmm_endpoint_qty,
+        c.avg_webroot_endpoint_to_bill,
+        c.avg_webroot_endpoint_qty - (p.webroot_desktop_endpoint_pit + p.webroot_server_endpoint_pit)
+                                                                       AS avg_vs_19th_raw_endpoint_qty_delta,
+        c.avg_webroot_endpoint_to_bill - (GREATEST(p.webroot_desktop_endpoint_pit - p.rmm_desktop_pit, 0) + p.webroot_server_endpoint_pit)
+                                                                       AS avg_vs_19th_billable_endpoint_qty_delta
+    FROM webroot_rmm_pit p
+    LEFT JOIN webroot_rmm_cycle c
+      ON c.billing_month = p.billing_month
+     AND c.cms_id        = p.cms_id
+),
+webroot_rmm_overlay_by_sf AS (
+    -- Roll overlay from (cms_id, billing_month) grain up to
+    -- (sf_id, billing_month) so it can join directly onto trt_agg.
+    SELECT
+        COALESCE(pm.SF_ID, zb.sf_id) AS sf_id,
+        o.billing_month              AS billing_month,
+        SUM(o.webroot_desktop_endpoint_pit) AS webroot_desktop_endpoint_pit,
+        SUM(o.webroot_server_endpoint_pit)  AS webroot_server_endpoint_pit,
+        SUM(o.webroot_endpoint_qty_pit)     AS webroot_endpoint_qty_pit,
+        SUM(o.rmm_desktop_pit)              AS rmm_desktop_pit,
+        SUM(o.rmm_server_pit)               AS rmm_server_pit,
+        SUM(o.rmm_endpoint_qty_pit)         AS rmm_endpoint_qty_pit,
+        SUM(o.webroot_endpoint_to_bill_pit) AS webroot_endpoint_to_bill_pit,
+        SUM(o.rmm_discount_qty_pit)         AS rmm_discount_qty_pit,
+        MAX(o.rmm_discount_rolling_usage_days) AS rmm_discount_rolling_usage_days,
+        SUM(o.avg_webroot_endpoint_qty)     AS avg_webroot_endpoint_qty,
+        SUM(o.avg_rmm_endpoint_qty)         AS avg_rmm_endpoint_qty,
+        SUM(o.avg_webroot_endpoint_to_bill) AS avg_webroot_endpoint_to_bill,
+        SUM(o.avg_vs_19th_raw_endpoint_qty_delta)      AS avg_vs_19th_raw_endpoint_qty_delta,
+        SUM(o.avg_vs_19th_billable_endpoint_qty_delta) AS avg_vs_19th_billable_endpoint_qty_delta
+    FROM webroot_rmm_overlay o
+    LEFT JOIN RECON_PARTNER_MAP_MONTHLY pm
+           ON pm.CMS_ID        = o.cms_id
+          AND pm.BILLING_MONTH = o.billing_month
+    LEFT JOIN webroot_trt_zuora_bridge zb ON zb.partner_id = o.cms_id
+    WHERE COALESCE(pm.SF_ID, zb.sf_id) IS NOT NULL
+    GROUP BY 1, 2
+),
+
+-- Downstream `scored` CTE keys off `rmm_discount_qty_pit > 0` and
+-- `webroot_endpoint_to_bill_pit`; these are now populated from the overlay
+-- above. rmm_partner_types and *_free_license_qty are still NULL because
+-- engineering has not defined a formula for either yet.
 trt_agg AS (
     SELECT
         t.sf_id,
@@ -246,28 +546,27 @@ trt_agg AS (
         SUM(t.trt_quantity_avg_daily) AS trt_quantity_avg_daily,
         SUM(t.trt_quantity_max_daily) AS trt_quantity_max_daily,
         SUM(t.trt_agent_days) AS trt_agent_days,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rmm_partner_types, NULL)) AS rmm_partner_types,
-        MAX(IFF(t.sku_match_group = 'GSM', d.webroot_desktop_endpoint_pit, NULL)) AS webroot_desktop_endpoint_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.webroot_server_endpoint_pit, NULL)) AS webroot_server_endpoint_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.webroot_endpoint_qty_pit, NULL)) AS webroot_endpoint_qty_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rmm_desktop_pit, NULL)) AS rmm_desktop_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rmm_server_pit, NULL)) AS rmm_server_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rmm_endpoint_qty_pit, NULL)) AS rmm_endpoint_qty_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rmm_free_license_qty_pit, NULL)) AS rmm_free_license_qty_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.webroot_endpoint_to_bill_pit, NULL)) AS webroot_endpoint_to_bill_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rmm_discount_qty_pit, NULL)) AS rmm_discount_qty_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rolling_usage_days, NULL)) AS rmm_discount_rolling_usage_days,
-        MAX(IFF(t.sku_match_group = 'GSM', d.avg_webroot_endpoint_qty, NULL)) AS avg_webroot_endpoint_qty,
-        MAX(IFF(t.sku_match_group = 'GSM', d.avg_rmm_endpoint_qty, NULL)) AS avg_rmm_endpoint_qty,
-        MAX(IFF(t.sku_match_group = 'GSM', d.avg_rmm_free_license_qty, NULL)) AS avg_rmm_free_license_qty,
-        MAX(IFF(t.sku_match_group = 'GSM', d.avg_webroot_endpoint_to_bill, NULL)) AS avg_webroot_endpoint_to_bill,
-        MAX(IFF(t.sku_match_group = 'GSM', d.avg_vs_19th_raw_endpoint_qty_delta, NULL)) AS avg_vs_19th_raw_endpoint_qty_delta,
-        MAX(IFF(t.sku_match_group = 'GSM', d.avg_vs_19th_billable_endpoint_qty_delta, NULL)) AS avg_vs_19th_billable_endpoint_qty_delta
-    FROM WEBROOT_TRT_USAGE_MONTHLY t
-    LEFT JOIN WEBROOT_TRT_ENDPOINT_RMM_DISCOUNT_MONTHLY d
-        ON d.sf_id = t.sf_id
-       AND d.billing_month = t.billing_month
-       AND t.sku_match_group = 'GSM'
+        NULL::VARCHAR                                        AS rmm_partner_types,
+        MAX(o.webroot_desktop_endpoint_pit)                  AS webroot_desktop_endpoint_pit,
+        MAX(o.webroot_server_endpoint_pit)                   AS webroot_server_endpoint_pit,
+        MAX(o.webroot_endpoint_qty_pit)                      AS webroot_endpoint_qty_pit,
+        MAX(o.rmm_desktop_pit)                               AS rmm_desktop_pit,
+        MAX(o.rmm_server_pit)                                AS rmm_server_pit,
+        MAX(o.rmm_endpoint_qty_pit)                          AS rmm_endpoint_qty_pit,
+        NULL::FLOAT                                          AS rmm_free_license_qty_pit,
+        MAX(o.webroot_endpoint_to_bill_pit)                  AS webroot_endpoint_to_bill_pit,
+        MAX(o.rmm_discount_qty_pit)                          AS rmm_discount_qty_pit,
+        MAX(o.rmm_discount_rolling_usage_days)               AS rmm_discount_rolling_usage_days,
+        MAX(o.avg_webroot_endpoint_qty)                      AS avg_webroot_endpoint_qty,
+        MAX(o.avg_rmm_endpoint_qty)                          AS avg_rmm_endpoint_qty,
+        NULL::FLOAT                                          AS avg_rmm_free_license_qty,
+        MAX(o.avg_webroot_endpoint_to_bill)                  AS avg_webroot_endpoint_to_bill,
+        MAX(o.avg_vs_19th_raw_endpoint_qty_delta)            AS avg_vs_19th_raw_endpoint_qty_delta,
+        MAX(o.avg_vs_19th_billable_endpoint_qty_delta)       AS avg_vs_19th_billable_endpoint_qty_delta
+    FROM webroot_trt_monthly t
+    LEFT JOIN webroot_rmm_overlay_by_sf o
+           ON o.sf_id         = t.sf_id
+          AND o.billing_month = t.billing_month
     GROUP BY 1,2,3,4
 ),
 sf_id_to_partner AS (

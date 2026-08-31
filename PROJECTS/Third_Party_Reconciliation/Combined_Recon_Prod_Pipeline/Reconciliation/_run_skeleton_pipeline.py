@@ -6,7 +6,7 @@ Architecture (the "one big table" you asked for):
     ingestion (9 py scripts)  ->  THIRD_PARTY_RECON_VENDOR_USAGE_PROD
     billing sources           ->  THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
                                   THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
-                                  THIRD_PARTY_RECON_SOURCE_TRT_PROD
+                                  (BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE live)
 
     9 vendor emit blocks      ->  INSERT INTO THIRD_PARTY_RECON_DETAIL_PROD
                                   (34 canonical columns, 12 canonical OUTCOME_FLAG values)
@@ -81,7 +81,7 @@ CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
         --     THEN 'Duplicated CW Invoice'
         WHEN OUTCOME_FLAG IN (
             'Clear', 'Unmapped Partner', 'Duplicated CW Invoice',
-            'Marketplace Billing Delay', 'Known Discount / Bundle',
+            'Marketplace Billing Delay',
             'Disabled Partner SKU',
             'API Usage, Insufficient CW Billing', 'Vendor SKU, No CW SKU',
             'CW SKU, No Vendor SKU', 'Vendor Billing, No CW Billing',
@@ -94,8 +94,7 @@ CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
                               'NEGLIGIBLE_DOLLAR_EXPOSURE','MARKETPLACE_ONLY_CLEAR',
                               'NO_ACTIVITY','OVERAGE_EXPECTED','MATERIAL_OVER_VENDOR',
                               'BILLING_DIFFERENTIAL_OVER','MARKETPLACE_OVERAGE',
-                              'BILLING_OVER_VENDOR','Overage',
-                              'Clear - Discounted / Bundled') THEN 'Clear'
+                              'BILLING_OVER_VENDOR','Overage') THEN 'Clear'
         WHEN OUTCOME_FLAG IN ('MARKETPLACE_TIMING','BILLING_TIMING_ADJACENT_MONTH')
             THEN 'Marketplace Billing Delay'
         WHEN STARTSWITH(OUTCOME_FLAG, 'CLEAR|') THEN 'Clear'
@@ -123,9 +122,6 @@ CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
         -- Duplicate-billing remains a side-signal only.
         -- WHEN OUTCOME_FLAG IN ('DUPLICATE_BILLING','Duplicate Billing')
         --     THEN 'Duplicated CW Invoice'
-        WHEN OUTCOME_FLAG IN ('RMM_DISCOUNTED','KNOWN_DISCOUNT_BUNDLE','MDR_BUNDLE',
-                              'CW_INCLUDED_ZERO_DOLLAR','INTENTIONAL_DISCOUNT')
-            THEN 'Known Discount / Bundle'
         WHEN OUTCOME_FLAG IN ('TRT_VENDOR_USAGE_NOT_BILLED',
                               'STRUCTURAL_VENDOR_ONLY_TRT_CONFIRMED',
                               'Missing CW Billing - API Confirmed',
@@ -209,6 +205,24 @@ def live_emit_block(vendor: str, live_table: str, target_table: str = DETAIL_TAB
         "Webroot": "SKU_MATCH_GROUP",
         "Auvik": "SKU_MATCH_GROUP",
     }.get(vendor, "NULL::VARCHAR")
+    api_quantity_expr = {
+        "Bitdefender": "API_QUANTITY",
+        "SentinelOne": "API_QUANTITY",
+        "Auvik": "API_QUANTITY",
+        "Acronis": "API_QUANTITY",
+        "Proofpoint": "API_QUANTITY",
+        "Exium": "API_QUANTITY",
+        "KeepIT": "API_QUANTITY",
+    }.get(vendor, "NULL::FLOAT")
+    avg_api_quantity_expr = {
+        "Bitdefender": "AVG_API_QUANTITY",
+        "SentinelOne": "AVG_API_QUANTITY",
+        "Auvik": "AVG_API_QUANTITY",
+        "Acronis": "AVG_API_QUANTITY",
+        "Proofpoint": "AVG_API_QUANTITY",
+        "Exium": "AVG_API_QUANTITY",
+        "KeepIT": "AVG_API_QUANTITY",
+    }.get(vendor, "NULL::FLOAT")
     vendor_unit_price_expr = "VENDOR_UNIT_PRICE"
     vendor_amount_expr = "VENDOR_AMOUNT"
     amount_delta_expr = "AMOUNT_DELTA"
@@ -244,8 +258,8 @@ SELECT
     {zuora_skus_expr}                                                          AS ZUORA_SKUS,
     {marketplace_skus_expr}                                                    AS MARKETPLACE_SKUS,
     BILLING_SOURCE_MIX                                                         AS BILLING_SOURCE_MIX,
-    NULL::FLOAT                                                                AS API_QUANTITY,
-    NULL::FLOAT                                                                AS AVG_API_QUANTITY,
+    {api_quantity_expr}::FLOAT                                                 AS API_QUANTITY,
+    {avg_api_quantity_expr}::FLOAT                                             AS AVG_API_QUANTITY,
     COALESCE(VENDOR_QUANTITY, 0)::FLOAT                                        AS VENDOR_QUANTITY,
     {vendor_unit_price_expr}::FLOAT                                            AS VENDOR_UNIT_PRICE,
     COALESCE({vendor_amount_expr}, 0)::FLOAT                                   AS VENDOR_AMOUNT,
@@ -303,135 +317,111 @@ def run_repo_sql_file(conn, relative_path: str, label: str) -> bool:
 # ---------------------------------------------------------------------------
 API_BACKFILL_SQL = f"""{USE}
 UPDATE {DETAIL_TABLE_STAGE} d
-SET API_QUANTITY     = t.trt_quantity,
-    AVG_API_QUANTITY = t.avg_api_quantity
-FROM THIRD_PARTY_RECON_SOURCE_TRT_PROD t
-WHERE d.VENDOR         = t.VENDOR
-  AND d.SF_ID          = t.SF_ID
-  AND d.BILLING_MONTH  = t.BILLING_MONTH
-  AND t.SF_ID IS NOT NULL
-    AND d.VENDOR IN ('SentinelOne', 'Bitdefender', 'Webroot', 'Auvik');
-"""
-
-PROOFPOINT_API_BACKFILL_SQL = f"""{USE}
-UPDATE {DETAIL_TABLE_STAGE} d
-SET API_QUANTITY     = p.trt_quantity,
-    AVG_API_QUANTITY = p.avg_api_quantity
+SET API_QUANTITY     = a.trt_quantity,
+    AVG_API_QUANTITY = a.avg_api_quantity
 FROM (
-    WITH proofpoint_detail AS (
+    WITH vendor_cycle AS (
+        SELECT 'Webroot'::VARCHAR AS vendor, 21::INT AS cycle_day
+    ),
+    webroot_sku_universe AS (
         SELECT DISTINCT
+            UPPER(TRIM(cw_sku)) AS cw_sku,
+            UPPER(TRIM(sku_match_key)) AS sku_match_group
+        FROM RECON_SKU_MAP
+        WHERE vendor = 'Webroot'
+          AND cw_sku IS NOT NULL
+          AND sku_match_key IN ('GSM', 'DNS', 'SAT')
+    ),
+    webroot_partner_bridge AS (
+        SELECT
+            'Webroot'::VARCHAR AS vendor,
+            z.sf_id,
+            z.billing_month::DATE AS billing_month,
+            z.cms_id
+        FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD z
+        WHERE z.vendor = 'Webroot'
+          AND z.sf_id IS NOT NULL
+          AND z.cms_id IS NOT NULL
+        QUALIFY ROW_NUMBER() OVER (
+            PARTITION BY z.sf_id, z.billing_month
+            ORDER BY z.invoice_number DESC NULLS LAST, z.cms_id
+        ) = 1
+    ),
+    vendor_detail AS (
+        SELECT DISTINCT
+            d.vendor,
             d.sf_id,
             d.billing_month,
-            d.vendor_product,
-            t.cms_id,
-            DATEADD('day', 20, d.billing_month)::DATE AS snapshot_date,
-            DATEADD('day', 20, DATEADD('month', -1, d.billing_month))::DATE AS prev_snapshot_date,
-            UPPER(TRIM(tok.value::VARCHAR)) AS cw_sku_token
+            d.sku_match_group,
+            b.cms_id,
+            DATEADD('day', vc.cycle_day - 1, d.billing_month)::DATE AS snapshot_date,
+            DATEADD('day', vc.cycle_day - 1, DATEADD('month', -1, d.billing_month))::DATE AS prev_snapshot_date,
+            su.cw_sku AS cw_sku_token
         FROM {DETAIL_TABLE_STAGE} d
-        JOIN THIRD_PARTY_RECON_SOURCE_TRT_PROD t
-          ON t.vendor = 'Proofpoint'
-         AND d.vendor = t.vendor
-         AND d.sf_id = t.sf_id
-         AND d.billing_month = t.billing_month
-        , LATERAL FLATTEN(input => SPLIT(COALESCE(d.cw_skus, ''), ',')) tok
-        WHERE d.vendor = 'Proofpoint'
-          AND t.cms_id IS NOT NULL
-          AND TRIM(tok.value::VARCHAR) <> ''
+        JOIN vendor_cycle vc
+          ON vc.vendor = d.vendor
+        JOIN webroot_partner_bridge b
+          ON b.vendor = d.vendor
+         AND b.sf_id = d.sf_id
+         AND b.billing_month = d.billing_month
+        JOIN webroot_sku_universe su
+          ON su.sku_match_group = UPPER(TRIM(d.sku_match_group))
+        WHERE d.vendor = 'Webroot'
+          AND d.sf_id IS NOT NULL
+          AND d.sku_match_group IS NOT NULL
     ),
-    proofpoint_daily AS (
+    vendor_daily AS (
         SELECT
+            p.vendor,
             p.sf_id,
             p.billing_month,
-            p.vendor_product,
+            p.sku_match_group,
+            p.snapshot_date,
             u.on_date::DATE AS on_date,
             SUM(COALESCE(u.agent_cnt, 0)) AS day_quantity
-        FROM proofpoint_detail p
+        FROM vendor_detail p
         JOIN ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
           ON u.partner_id::VARCHAR = p.cms_id
          AND UPPER(TRIM(u.product_sku)) = p.cw_sku_token
          AND u.on_date::DATE > p.prev_snapshot_date
          AND u.on_date::DATE <= p.snapshot_date
-        GROUP BY 1, 2, 3, 4
+         AND (
+             (
+                 UPPER(TRIM(u.product_description)) = 'DNS-SAT'
+                 AND UPPER(TRIM(p.sku_match_group)) IN ('DNS', 'SAT')
+             )
+             OR
+             (
+                 UPPER(TRIM(u.product_sku)) IN (
+                     'CMS-IH-CYBR-SOLP-SAAS-MDRSERVR',
+                     'CMS-IH-CYBR-SOLP-SAAS-MDRDSKTP'
+                 )
+                 AND COALESCE(TRIM(u.product_description), '') <> ''
+                 AND UPPER(TRIM(p.sku_match_group)) = 'GSM'
+             )
+         )
+        GROUP BY 1, 2, 3, 4, 5, 6
     )
     SELECT
+        vendor,
         sf_id,
         billing_month,
-        vendor_product,
-        MAX(IFF(on_date = DATEADD('day', 20, billing_month)::DATE, day_quantity, NULL)) AS trt_quantity,
+        sku_match_group,
+        MAX(IFF(on_date = snapshot_date, day_quantity, NULL)) AS trt_quantity,
         AVG(day_quantity) AS avg_api_quantity
-    FROM proofpoint_daily
-    GROUP BY 1, 2, 3
-) p
-WHERE d.vendor = 'Proofpoint'
-  AND d.sf_id = p.sf_id
-  AND d.billing_month = p.billing_month
-  AND d.vendor_product = p.vendor_product;
+    FROM vendor_daily
+    GROUP BY 1, 2, 3, 4
+) a
+WHERE d.vendor = a.vendor
+  AND d.sf_id = a.sf_id
+  AND d.billing_month = a.billing_month
+    AND UPPER(TRIM(d.sku_match_group)) = UPPER(TRIM(a.sku_match_group));
 """
 
-BITDEFENDER_MDR_BUNDLE_SQL = f"""{USE}
-UPDATE {DETAIL_TABLE_STAGE} d
-SET HAS_DISCOUNT = 'TRUE'
-FROM (
-    SELECT DISTINCT
-                sf_id,
-                billing_month::DATE AS billing_month
-        FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
-        WHERE vendor = 'Bitdefender'
-      AND (
-                UPPER(PRODUCT_NAME) LIKE '%MDR%'
-                OR UPPER(CHARGE_NAME) LIKE '%MDR%'
-                OR UPPER(PRODUCT_SKU) LIKE '%MDR%'
-      )
-            AND billing_month >= '2026-01-01'
-) e
-WHERE d.VENDOR = 'Bitdefender'
-  AND d.SF_ID = e.sf_id
-  AND d.BILLING_MONTH = e.billing_month;
-"""
+BITDEFENDER_MDR_BUNDLE_SQL = ""  # retired 2026-08-29: bundle overlay disabled.
 
-WEBROOT_RMM_DISCOUNT_SQL = f"""{USE}
-UPDATE {DETAIL_TABLE_STAGE} d
-SET HAS_DISCOUNT = 'TRUE'
-FROM (
-    WITH rmm_daily AS (
-        SELECT
-            u.partner_id::VARCHAR                  AS partner_id,
-            DATE_TRUNC('month', u.on_date)::DATE   AS billing_month_snapshot,
-            SUM(CASE WHEN u.is_server = 'N' THEN u.agent_cnt ELSE 0 END) AS rmm_desktop,
-            SUM(CASE WHEN u.is_server = 'Y' THEN u.agent_cnt ELSE 0 END) AS rmm_server
-        FROM ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
-        WHERE u.product_sku ILIKE 'CW-RMM%'
-          AND u.on_date >= '2025-12-01'
-          AND EXTRACT(DAY FROM u.on_date) = 19
-        GROUP BY 1, 2
-    ),
-    rmm_entitlement AS (
-        SELECT partner_id, billing_month_snapshot AS billing_month,
-               (rmm_desktop + rmm_server) * 1.10 AS free_gsm_entitlement
-        FROM rmm_daily
-        WHERE (rmm_desktop + rmm_server) > 0
-    )
-    SELECT z.sf_id AS sf_id, t.billing_month
-    FROM rmm_entitlement t
-    JOIN THIRD_PARTY_RECON_SOURCE_TRT_PROD wgsm
-      ON wgsm.VENDOR = 'Webroot'
-     AND wgsm.CMS_ID = t.partner_id
-     AND wgsm.BILLING_MONTH = t.billing_month
-    JOIN (
-                SELECT DISTINCT cms_id AS partner_id, sf_id
-                FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
-                WHERE sf_id ILIKE 'ACT-%'
-                    AND cms_id IS NOT NULL
-                QUALIFY ROW_NUMBER() OVER (PARTITION BY cms_id
-                                                                        ORDER BY billing_month DESC) = 1
-    ) z ON z.partner_id = t.partner_id
-    WHERE wgsm.trt_quantity <= t.free_gsm_entitlement
-    GROUP BY 1, 2
-) e
-WHERE d.VENDOR = 'Webroot'
-  AND d.SF_ID = e.sf_id
-  AND d.BILLING_MONTH = e.billing_month;
-"""
+WEBROOT_RMM_DISCOUNT_SQL = ""  # retired 2026-08-29: relied on THIRD_PARTY_RECON_SOURCE_TRT_PROD (dropped).
+
 
 INV_ID_BACKFILL_SQL = f"""{USE}
 UPDATE {DETAIL_TABLE_STAGE} d
@@ -528,6 +518,31 @@ def main() -> int:
         print("\n=== STEP 0: initialize staging detail table ===")
         run_sql(conn, INIT_SQL, f"init + truncate {DETAIL_TABLE_STAGE}")
 
+        # 2026-08-30 static-maps directive:
+        # RECON_PARTNER_MAP and RECON_SKU_MAP are manually maintained artifacts
+        # (source of truth = the seed workbook + curated overrides). They are
+        # rebuilt EXPLICITLY out-of-band via Maps\sql\02_unified_reference_maps.sql
+        # when the seed changes -- NOT every pipeline run. The prior STEP 0a
+        # rebuild-on-every-run silently broke the map when the dedup logic
+        # regressed (2026-08-30 Unmapped Partner spike). Removing 0a from the
+        # orchestrator makes the map version stable across pipeline runs so
+        # regressions cannot be caused by an accidental map change.
+        #
+        # To rebuild the map manually after a seed update:
+        #     .venv\Scripts\python.exe tools\rebuild_recon_reference_maps.py
+
+        print("\n=== STEP 0b: rebuild Bitdefender vendor usage from PRODUCT_MANAGEMENT__ROYALTIES ===")
+        # Native replacement for the deprecated Excel-based ingestion. Populates
+        # THIRD_PARTY_RECON_VENDOR_USAGE_PROD Bitdefender rows directly from
+        # ANALYTICS.DBO.PRODUCT_MANAGEMENT__ROYALTIES (Contract + Usage + prior-month
+        # Marketplace + CW MDR bundle split into ATS_EDR + GRAVITYZONE rows).
+        if not run_repo_sql_file(
+            conn,
+            r"Reconciliation\00_bitdefender_vendor_usage_rebuild.sql",
+            "rebuild THIRD_PARTY_RECON_VENDOR_USAGE_PROD Bitdefender rows (native royalties)",
+        ):
+            return 1
+
         print("\n=== STEP 1a: run live vendor SQL files (rebuild <VENDOR>_RECON_DETAIL) ===")
         sql_fail: dict[str, str] = {}
         live_vendors = [v for v, (m, _) in VENDOR_ROUTING.items() if m == "live"]
@@ -556,10 +571,11 @@ def main() -> int:
             print("  FAILED vendors:   " + ", ".join(emit_fail))
 
         print("\n=== STEP 2: overlays on the shared table (per-vendor) ===")
-        run_sql(conn, API_BACKFILL_SQL, "backfill API_QUANTITY / AVG_API_QUANTITY (S1/BD/Webroot/Auvik)")
-        run_sql(conn, PROOFPOINT_API_BACKFILL_SQL, "backfill API_QUANTITY / AVG_API_QUANTITY (Proofpoint product-scoped)")
-        run_sql(conn, BITDEFENDER_MDR_BUNDLE_SQL, "Bitdefender MDR bundle flag")
-        run_sql(conn, WEBROOT_RMM_DISCOUNT_SQL, "Webroot RMM discount flag")
+        run_sql(conn, API_BACKFILL_SQL, "backfill API_QUANTITY / AVG_API_QUANTITY (Webroot product-scoped cycle snapshots)")
+        # Proofpoint API_QUANTITY / AVG_API_QUANTITY is now sourced inline
+        # inside Proofpoint_Reconciliation_Script_Prod.sql (proofpoint_api_usage
+        # CTE, direct-from-raw architecture 2026-08-28). The old backfill step
+        # against THIRD_PARTY_RECON_SOURCE_TRT_PROD is retired.
         run_sql(conn, INV_ID_BACKFILL_SQL, "backfill INV_ID from Zuora billing source")
 
         print("\n=== STEP 2b: build vendor invoice vs raw usage control (invoice gate) ===")

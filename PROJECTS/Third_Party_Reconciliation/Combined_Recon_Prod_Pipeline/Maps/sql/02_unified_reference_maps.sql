@@ -4,15 +4,20 @@
 -- Builds:
 --   RECON_PARTNER_MAP   (VENDOR, PARTNER_NAME, PARENT_COMPANY, SF_ID, CMS_ID, ZUORA_NAME)
 --   RECON_SKU_MAP      (VENDOR, VENDOR_PRODUCT, VENDOR_SKU, CW_SKU, SKU_MATCH_KEY,
---                       MAPPING_NOTES, CONTRACT_COST_RATE, CW_RETAIL_RATE)
+--                       MAPPING_NOTES, CONTRACT_COST_RATE, VENDOR_UNIT_PRICE, CW_UNIT_PRICE,
+--                       PRICEBOOK_BILLING_TYPE, PRICEBOOK_TIERNUM,
+--                       PRICEBOOK_TIER_LOWER, PRICEBOOK_TIER_UPPER,
+--                       PRICEBOOK_VENDOR_UNIT_PRICE, PRICEBOOK_CW_UNIT_PRICE,
+--                       PRICEBOOK_PRODUCT_NAME, PRICEBOOK_FAMILY, PRICEBOOK_STATUS)
+--   V_RECON_PRICEBOOK_TIER_LOOKUP  (view for quantity-aware tier price lookup)
 --
 -- Sources unioned into RECON_PARTNER_MAP:
 --   THIRD_PARTY_RECON_PARTNER_MAP_PROD            (production partner map source of truth)
 --   RECON_MANUAL_SEED_PARTNER_MAP                 (manual curated additions)
 --
--- Sources unioned into RECON_SKU_MAP:
+-- Sources for RECON_SKU_MAP:
 --   THIRD_PARTY_RECON_SKU_MAP_PROD                (production SKU map source of truth)
---   RECON_MANUAL_SEED_SKU_MAP                     (manual curated additions)
+--   RECON_PRICEBOOK                               (base-tier price enrichment)
 --
 -- No vendor-specific V5 compatibility views are emitted by this script.
 -- Active reconciliation SQL consumes RECON_PARTNER_MAP and RECON_SKU_MAP directly.
@@ -239,6 +244,54 @@ WITH manual_partner_overrides AS (
         UNION ALL SELECT 'Founders IT Group'::VARCHAR, NULL::VARCHAR, 'ACT-00431740'::VARCHAR, '31329'::VARCHAR, 'Founders IT Group'::VARCHAR
         UNION ALL SELECT 'Meritech'::VARCHAR, NULL::VARCHAR, 'ACT-00245304'::VARCHAR, '15302'::VARCHAR, 'DEX Imaging (formerly North American)'::VARCHAR
         UNION ALL SELECT 'Merit Technologies - Customer Management'::VARCHAR, NULL::VARCHAR, 'ACT-00057478'::VARCHAR, '19653'::VARCHAR, 'Merit Technologies, LLC'::VARCHAR
+        UNION ALL SELECT 'Datacade'::VARCHAR, NULL::VARCHAR, 'ACT-00243093'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Uniag Cooperative'::VARCHAR, NULL::VARCHAR, 'ACT-00275259'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Uniag Coopérative'::VARCHAR, NULL::VARCHAR, 'ACT-00275259'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'We Are Stardust, LP'::VARCHAR, NULL::VARCHAR, 'ACT-00296631'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'InfoSphere Networks'::VARCHAR, NULL::VARCHAR, 'ACT-00317919'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'BMC Technologies'::VARCHAR, NULL::VARCHAR, 'ACT-00079649'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Beasley, Mitchell & Co'::VARCHAR, NULL::VARCHAR, 'ACT-00079649'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Amri Tech Consulting'::VARCHAR, NULL::VARCHAR, 'ACT-00444899'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Ntiva, Inc'::VARCHAR, NULL::VARCHAR, 'ACT-00172086'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Netlogic DC LLC'::VARCHAR, NULL::VARCHAR, 'ACT-00172086'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Cloud & More'::VARCHAR, NULL::VARCHAR, 'ACT-00253411'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Hutchison Technologies'::VARCHAR, NULL::VARCHAR, 'ACT-00103227'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Enertron, LLC'::VARCHAR, NULL::VARCHAR, 'ACT-00202675'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Xybertheon'::VARCHAR, NULL::VARCHAR, 'ACT-00301538'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Networked IT Solutions'::VARCHAR, NULL::VARCHAR, 'ACT-00455563'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Netsource One, Inc.'::VARCHAR, NULL::VARCHAR, 'ACT-00037128'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Sensei Enterprises, Inc'::VARCHAR, NULL::VARCHAR, 'ACT-00071722'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Alt Gr SA'::VARCHAR, NULL::VARCHAR, 'ACT-00136789'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Alt_Gr_SA'::VARCHAR, NULL::VARCHAR, 'ACT-00136789'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Telesys Communications Inc'::VARCHAR, NULL::VARCHAR, 'ACT-00199661'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Richline Technical Services, LLC'::VARCHAR, NULL::VARCHAR, 'ACT-00011178'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'TOTLCOM Inc.'::VARCHAR, NULL::VARCHAR, 'ACT-00044142'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Totlcom_Inc'::VARCHAR, NULL::VARCHAR, 'ACT-00044142'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'FSi Strategies, Inc.'::VARCHAR, NULL::VARCHAR, 'ACT-00200968'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Converged Communications'::VARCHAR, NULL::VARCHAR, 'ACT-00168597'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT '2W Technologies, INC.'::VARCHAR, NULL::VARCHAR, 'ACT-00033203'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Mason-Brown IT'::VARCHAR, NULL::VARCHAR, 'ACT-00246258'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Syzygy 3, Inc.'::VARCHAR, NULL::VARCHAR, 'ACT-00020863'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'PTS DATA CENTER SOLUTIONS, INC.'::VARCHAR, NULL::VARCHAR, 'ACT-00086234'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'IT Kauai, Inc.'::VARCHAR, NULL::VARCHAR, 'ACT-00033691'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'A2Z Computer Services, Inc.'::VARCHAR, NULL::VARCHAR, 'ACT-00195239'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'TMD Technology Services, Inc'::VARCHAR, NULL::VARCHAR, 'ACT-00035177'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Eagle Consulting Group, LLC'::VARCHAR, NULL::VARCHAR, 'ACT-00009498'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Sieve Networks, Inc'::VARCHAR, NULL::VARCHAR, 'ACT-00240125'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'eSOZO'::VARCHAR, NULL::VARCHAR, 'ACT-00092330'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'SNS - Secure Network Services'::VARCHAR, NULL::VARCHAR, 'ACT-00216891'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'SNS'::VARCHAR, NULL::VARCHAR, 'ACT-00216891'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Baetech Inc'::VARCHAR, NULL::VARCHAR, 'ACT-00203635'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Computer Systems Development Services Inc'::VARCHAR, NULL::VARCHAR, 'ACT-00063404'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Minnesota IT Partners Inc'::VARCHAR, NULL::VARCHAR, 'ACT-00218757'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'ASK'::VARCHAR, NULL::VARCHAR, 'ACT-00026424'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'A S K'::VARCHAR, NULL::VARCHAR, 'ACT-00026424'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'digitalphobia Ltd'::VARCHAR, NULL::VARCHAR, 'ACT-00216037'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'DigitalPhobia LTD'::VARCHAR, NULL::VARCHAR, 'ACT-00216037'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Robinett Consulting'::VARCHAR, NULL::VARCHAR, 'ACT-00120245'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Elijah Information Technology'::VARCHAR, NULL::VARCHAR, 'ACT-00118661'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'Jl Computers, Inc'::VARCHAR, NULL::VARCHAR, 'ACT-00045984'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
+        UNION ALL SELECT 'iDiscovery Solutions, Inc.'::VARCHAR, NULL::VARCHAR, 'ACT-00245864'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
     ) o
 ),
 manual_child_sfid_lock AS (
@@ -308,6 +361,13 @@ base_src AS (
     WHERE PARTNER_NAME IS NOT NULL
 ),
 src AS (
+    -- Union manual overrides ON TOP of the full seed. Previously the seed was
+    -- filtered by `NOT IN (pn_norm(manual_overrides))`, which removed ALL alias
+    -- spellings (e.g. dropping "Ntiva Inc" because the override list contains
+    -- "Ntiva, Inc" and both normalize to 'ntiva inc'). The QUALIFY at the end
+    -- partitions by UPPER(TRIM(PARTNER_NAME)) and orders by source_priority
+    -- (0 = override wins) so an override still shadows the exact spelling it
+    -- targets — other alias variants survive.
     SELECT
         b.PARTNER_NAME,
         b.PARENT_COMPANY,
@@ -316,10 +376,6 @@ src AS (
         b.ZUORA_NAME,
         1 AS source_priority
     FROM base_src b
-    WHERE TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(b.partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) NOT IN (
-        SELECT TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(m.partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
-        FROM manual_partner_overrides m
-    )
 
     UNION ALL
 
@@ -370,10 +426,23 @@ SELECT
     RAW_SF_ID,
     SF_ID_SOURCE,
     merge_effective_ts,
-    merge_effective_month
+    merge_effective_month,
+    -- 2026-08-30 alignment: expose the Proofpoint-style normalized key
+    -- (lowercase + punctuation stripped + whitespace collapsed) as a
+    -- persisted column so every vendor SQL can perform the same
+    -- normalized-name fallback join Proofpoint does. Keeps the singular
+    -- partner map as the source of truth — no sprawling side tables.
+    pn_norm AS PARTNER_NAME_NORMALIZED
 FROM resolved_candidates
 QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY pn_norm
+    -- Dedup at the EXACT lookup key vendor SQLs use (UPPER(TRIM(partner_name))).
+    -- Prior version partitioned by pn_norm (lowercase + punctuation stripped),
+    -- which collapsed alias rows like "Ntiva Inc" and "Ntiva, Inc" into one row
+    -- and stripped the missing spelling out of RECON_PARTNER_MAP_MONTHLY. That
+    -- caused ~950 legitimate rows to fall through to "Unmapped Partner" in the
+    -- 2026-08-30 pipeline run. UPPER(TRIM) preserves every distinct spelling
+    -- that appears in the seed while still de-duplicating exact repeats.
+    PARTITION BY UPPER(TRIM(PARTNER_NAME))
     ORDER BY source_priority ASC,
              has_cms_id DESC,
              has_zuora_name DESC,
@@ -402,12 +471,64 @@ SELECT
     p.RAW_SF_ID,
     p.SF_ID_SOURCE,
     p.merge_effective_ts,
-    p.merge_effective_month
+    p.merge_effective_month,
+    p.PARTNER_NAME_NORMALIZED
 FROM RECON_PARTNER_MAP p
 CROSS JOIN month_spine m;
 
 -- -----------------------------------------------------------------------------
+-- V_RECON_PARTNER_MAP_MONTHLY_NORM  (normalized-key alignment view, 2026-08-30)
+--
+-- Companion to RECON_PARTNER_MAP_MONTHLY that exposes exactly one row per
+-- (billing_month, PARTNER_NAME_NORMALIZED). Vendor recon SQL uses this as a
+-- second-pass LEFT JOIN when the exact-name join misses — recovering rows
+-- where vendor usage spells the partner differently from the seed but
+-- normalizes to the same canonical key (Proofpoint's mechanism (a)).
+--
+-- Winner-per-norm-key priority mirrors RECON_PARTNER_MAP dedup:
+--   1) rows with SF_ID present win over rows without
+--   2) rows with CMS_ID present break ties
+--   3) rows with ZUORA_NAME present break the next tie
+--   4) then alphabetical PARTNER_NAME / SF_ID for determinism
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW V_RECON_PARTNER_MAP_MONTHLY_NORM AS
+SELECT
+    billing_month,
+    PARTNER_NAME_NORMALIZED,
+    PARTNER_NAME,
+    PARENT_COMPANY,
+    SF_ID,
+    CMS_ID,
+    ZUORA_NAME,
+    RAW_SF_ID,
+    SF_ID_SOURCE
+FROM RECON_PARTNER_MAP_MONTHLY
+WHERE PARTNER_NAME_NORMALIZED IS NOT NULL
+  AND PARTNER_NAME_NORMALIZED <> ''
+QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY billing_month, PARTNER_NAME_NORMALIZED
+    ORDER BY
+        IFF(SF_ID IS NOT NULL, 0, 1),
+        IFF(CMS_ID IS NOT NULL, 0, 1),
+        IFF(ZUORA_NAME IS NOT NULL, 0, 1),
+        PARTNER_NAME,
+        SF_ID
+) = 1;
+
+-- -----------------------------------------------------------------------------
 -- 2) SKU map  (source of truth: THIRD_PARTY_RECON_SKU_MAP_PROD)
+--
+-- Enrichment: LEFT JOIN RECON_PRICEBOOK to backfill VENDOR_UNIT_PRICE and
+-- CW_UNIT_PRICE for seed rows that don't carry a price. RECON_PRICEBOOK is
+-- loaded from the CW SKU_Information_PowerBI.xlsx workbook via
+-- tools/load_pricebook_to_snowflake.py. The pricebook is refreshed manually
+-- (Excel lives in OneDrive). At map-build time we pick one "base tier" per
+-- (VENDOR, CW_SKU) with priority EVERGREEN > MONTHLY > ANNUAL > ONE-TIME and,
+-- inside the winning billing type, the row with the smallest LOWERBOUND.
+-- Seed values always win when present -- pricebook is fallback only.
+--
+-- Full tier-aware lookup (pick price by seat count) is available via the
+-- helper view V_RECON_PRICEBOOK_TIER_LOOKUP defined further down.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE TABLE RECON_SKU_MAP AS
 WITH sku_map_seed AS (
@@ -417,41 +538,149 @@ WITH sku_map_seed AS (
         VENDOR_SKU::VARCHAR         AS VENDOR_SKU,
         CW_SKU::VARCHAR             AS CW_SKU,
         SKU_MATCH_KEY::VARCHAR      AS SKU_MATCH_KEY,
+        TRT_MATCH_KEY::VARCHAR      AS TRT_MATCH_KEY,
         MAPPING_NOTES::VARCHAR      AS MAPPING_NOTES,
         CONTRACT_COST_RATE::FLOAT   AS CONTRACT_COST_RATE,
-        CW_RETAIL_RATE::FLOAT       AS CW_RETAIL_RATE
+        VENDOR_UNIT_PRICE::FLOAT    AS VENDOR_UNIT_PRICE,
+        CW_UNIT_PRICE::FLOAT        AS CW_UNIT_PRICE
     FROM THIRD_PARTY_RECON_SKU_MAP_PROD
+),
+pricebook_ranked AS (
+    -- Rank pricebook rows per (VENDOR, CW_SKU) so we can pick a single base tier.
+    SELECT
+        VENDOR,
+        UPPER(TRIM(CW_SKU))                AS CW_SKU_KEY,
+        BILLING_TYPE,
+        TIERNUM,
+        LOWERBOUND,
+        UPPERBOUND,
+        VENDOR_UNIT_PRICE,
+        CW_UNIT_PRICE,
+        PRODUCT_NAME,
+        FAMILY,
+        STATUS,
+        ROW_NUMBER() OVER (
+            PARTITION BY VENDOR, UPPER(TRIM(CW_SKU))
+            ORDER BY
+                CASE UPPER(COALESCE(BILLING_TYPE, ''))
+                    WHEN 'EVERGREEN' THEN 1
+                    WHEN 'MONTHLY'   THEN 2
+                    WHEN 'ANNUAL'    THEN 3
+                    WHEN 'ONE-TIME'  THEN 4
+                    ELSE 9
+                END,
+                COALESCE(LOWERBOUND, 0),
+                COALESCE(TIERNUM, 999)
+        ) AS rn
+    FROM RECON_PRICEBOOK
+    WHERE CW_SKU IS NOT NULL AND TRIM(CW_SKU) <> ''
+),
+pricebook_base AS (
+    SELECT
+        VENDOR,
+        CW_SKU_KEY,
+        BILLING_TYPE       AS PRICEBOOK_BILLING_TYPE,
+        TIERNUM            AS PRICEBOOK_TIERNUM,
+        LOWERBOUND         AS PRICEBOOK_TIER_LOWER,
+        UPPERBOUND         AS PRICEBOOK_TIER_UPPER,
+        VENDOR_UNIT_PRICE  AS PRICEBOOK_VENDOR_UNIT_PRICE,
+        CW_UNIT_PRICE      AS PRICEBOOK_CW_UNIT_PRICE,
+        PRODUCT_NAME       AS PRICEBOOK_PRODUCT_NAME,
+        FAMILY             AS PRICEBOOK_FAMILY,
+        STATUS             AS PRICEBOOK_STATUS
+    FROM pricebook_ranked
+    WHERE rn = 1
 )
 SELECT
-    VENDOR,
-    VENDOR_PRODUCT,
-    VENDOR_SKU,
+    s.VENDOR,
+    s.VENDOR_PRODUCT,
+    s.VENDOR_SKU,
     CASE
-        WHEN VENDOR = 'Acronis' THEN
+        WHEN s.VENDOR = 'Acronis' THEN
             CASE
                 -- Explicit bad values observed in production seed exports.
-                WHEN TRIM(COALESCE(CW_SKU, '')) = '' THEN 'UNMATCHED'
-                WHEN REGEXP_LIKE(TRIM(CW_SKU), '^[0-9]+(\.[0-9]+)?$') THEN 'UNMATCHED'
-                WHEN UPPER(TRIM(CW_SKU)) IN ('ST5AMSENS') THEN 'UNMATCHED'
-                WHEN UPPER(TRIM(COALESCE(SKU_MATCH_KEY, ''))) = 'SPEAMSENS'
-                     AND UPPER(TRIM(CW_SKU)) IN ('SPFAMSENS', 'SPGAMSENS') THEN 'UNMATCHED'
-                WHEN UPPER(TRIM(COALESCE(SKU_MATCH_KEY, ''))) = 'SRIAMSENS'
-                     AND UPPER(TRIM(CW_SKU)) = 'SP4BMSENS' THEN 'UNMATCHED'
-                WHEN UPPER(TRIM(COALESCE(SKU_MATCH_KEY, ''))) = 'SPGAMSENS'
-                     AND UPPER(TRIM(CW_SKU)) = 'SP4BMSENS' THEN 'UNMATCHED'
-                WHEN UPPER(TRIM(COALESCE(SKU_MATCH_KEY, ''))) = 'SPDAMSENS'
-                     AND UPPER(TRIM(CW_SKU)) = 'SPIAMSENS' THEN 'UNMATCHED'
-                ELSE CW_SKU
+                WHEN TRIM(COALESCE(s.CW_SKU, '')) = '' THEN 'UNMATCHED'
+                WHEN REGEXP_LIKE(TRIM(s.CW_SKU), '^[0-9]+(\.[0-9]+)?$') THEN 'UNMATCHED'
+                WHEN UPPER(TRIM(s.CW_SKU)) IN ('ST5AMSENS') THEN 'UNMATCHED'
+                WHEN UPPER(TRIM(COALESCE(s.SKU_MATCH_KEY, ''))) = 'SPEAMSENS'
+                     AND UPPER(TRIM(s.CW_SKU)) IN ('SPFAMSENS', 'SPGAMSENS') THEN 'UNMATCHED'
+                WHEN UPPER(TRIM(COALESCE(s.SKU_MATCH_KEY, ''))) = 'SRIAMSENS'
+                     AND UPPER(TRIM(s.CW_SKU)) = 'SP4BMSENS' THEN 'UNMATCHED'
+                WHEN UPPER(TRIM(COALESCE(s.SKU_MATCH_KEY, ''))) = 'SPGAMSENS'
+                     AND UPPER(TRIM(s.CW_SKU)) = 'SP4BMSENS' THEN 'UNMATCHED'
+                WHEN UPPER(TRIM(COALESCE(s.SKU_MATCH_KEY, ''))) = 'SPDAMSENS'
+                     AND UPPER(TRIM(s.CW_SKU)) = 'SPIAMSENS' THEN 'UNMATCHED'
+                ELSE s.CW_SKU
             END
-        ELSE CW_SKU
+        ELSE s.CW_SKU
     END AS CW_SKU,
-    SKU_MATCH_KEY,
-    MAPPING_NOTES,
-    CONTRACT_COST_RATE,
-    CW_RETAIL_RATE
-FROM sku_map_seed;
+    s.SKU_MATCH_KEY,
+    -- TRT_MATCH_KEY: the exact value that appears in
+    -- ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE
+    -- for this vendor product. Vendor recon scripts join TRT usage directly
+    -- on partner_id = RECON_PARTNER_MAP.cms_id AND <key column> = TRT_MATCH_KEY.
+    -- Populated for:
+    --   Proofpoint (= CW_SKU, matched against TRT.product_sku).
+    --   Acronis    (= CW_SKU || '-001', matched against TRT.charge_sku).
+    -- Other vendors added vendor-by-vendor as the wiring is proven out.
+    s.TRT_MATCH_KEY,
+    s.MAPPING_NOTES,
+    s.CONTRACT_COST_RATE,
+    -- Seed price wins when present; pricebook base-tier fills the gap.
+    COALESCE(s.VENDOR_UNIT_PRICE, pb.PRICEBOOK_VENDOR_UNIT_PRICE) AS VENDOR_UNIT_PRICE,
+    COALESCE(s.CW_UNIT_PRICE,     pb.PRICEBOOK_CW_UNIT_PRICE)     AS CW_UNIT_PRICE,
+    -- Pricebook enrichment columns (base tier for this SKU).
+    pb.PRICEBOOK_BILLING_TYPE,
+    pb.PRICEBOOK_TIERNUM,
+    pb.PRICEBOOK_TIER_LOWER,
+    pb.PRICEBOOK_TIER_UPPER,
+    pb.PRICEBOOK_VENDOR_UNIT_PRICE,
+    pb.PRICEBOOK_CW_UNIT_PRICE,
+    pb.PRICEBOOK_PRODUCT_NAME,
+    pb.PRICEBOOK_FAMILY,
+    pb.PRICEBOOK_STATUS
+FROM sku_map_seed s
+LEFT JOIN pricebook_base pb
+       ON pb.VENDOR = s.VENDOR
+      AND pb.CW_SKU_KEY = UPPER(TRIM(s.CW_SKU));
+
+-- -----------------------------------------------------------------------------
+-- 3) Tier-aware pricebook lookup view
+--
+-- Vendor recon scripts that want tier-correct pricing (e.g. Bitdefender,
+-- Webroot, Auvik where price varies by seat band) can join to this view with
+-- their observed vendor_quantity to pull the correct tier's unit price.
+--
+-- Usage:
+--   SELECT ... FROM VENDOR_USAGE u
+--   LEFT JOIN V_RECON_PRICEBOOK_TIER_LOOKUP pb
+--          ON pb.VENDOR = u.vendor
+--         AND pb.CW_SKU_KEY = UPPER(TRIM(u.cw_sku))
+--         AND pb.BILLING_TYPE = 'EVERGREEN'         -- or 'MONTHLY' etc.
+--         AND u.vendor_quantity BETWEEN pb.TIER_LOWER
+--                                  AND COALESCE(pb.TIER_UPPER, 1e18)
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW V_RECON_PRICEBOOK_TIER_LOOKUP AS
+SELECT
+    VENDOR,
+    UPPER(TRIM(CW_SKU))                          AS CW_SKU_KEY,
+    CW_SKU,
+    VENDOR_SKU,
+    PRODUCT_NAME,
+    STATUS,
+    UPPER(COALESCE(BILLING_TYPE, ''))            AS BILLING_TYPE,
+    TIERNUM,
+    LOWERBOUND                                   AS TIER_LOWER,
+    UPPERBOUND                                   AS TIER_UPPER,
+    VENDOR_UNIT_PRICE,
+    CW_UNIT_PRICE
+FROM RECON_PRICEBOOK
+WHERE CW_SKU IS NOT NULL AND TRIM(CW_SKU) <> '';
 
 -- -----------------------------------------------------------------------------
 -- NOTE: Vendor-specific _PARTNER_MAPPING_V5 and _SKU_MAP_V5 compat views have been
 -- removed. All 9 Reconciliation_Script_Prod.sql files now reference RECON_PARTNER_MAP
 -- and RECON_SKU_MAP directly. There are no per-vendor shim layers.
+
+SELECT 1;
+

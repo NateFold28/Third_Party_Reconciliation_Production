@@ -173,14 +173,10 @@ CASE
          )
     THEN 'Vendor SKU, No CW SKU'
 
-    -- ── 2. Clear (checked BEFORE Discount) ─────────────────────────────────
-    -- CW amount >= vendor amount is always "Clear" regardless of bundle flag.
-    -- The Known Discount / Bundle bucket only exists to EXPLAIN variance — if
-    -- amounts already reconcile there is nothing to explain. Both sides must
-    -- have real billing; zero-side cases are handled by the vendor-only /
-    -- CW-only buckets further down. This ordering matches manual recon's
-    -- treatment where any row with matching amounts is filed as Clear
-    -- (and Clear Internal only picks up unfavorable-variance-under-bundle rows).
+    -- ── 2. Clear ────────────────────────────────────────────────────────────
+    -- CW amount >= vendor amount is always "Clear". Both sides must have
+    -- real billing; zero-side cases are handled by vendor-only / CW-only
+    -- buckets further down.
     WHEN COALESCE(TOTAL_BILLING_AMOUNT, 0) >= COALESCE(VENDOR_AMOUNT, 0)
          AND COALESCE(VENDOR_AMOUNT, 0) > 0
     THEN 'Clear'
@@ -214,38 +210,6 @@ CASE
     --      AND COALESCE(ZUORA_AMOUNT, 0) > 0
     --      AND COALESCE(MARKETPLACE_AMOUNT, 0) > 0
     -- THEN 'Duplicated CW Invoice'
-
-    -- ── 4. Known Discount / Bundle (Amit "Clear Internal") ─────────────────
-    -- Intentional pricing — MDR bundle, RMM bundle discount, CW-included zero-dollar
-    -- line, etc. Only fires when amounts DON'T already reconcile (Clear caught those
-    -- above). This is the manual recon team's "Clear Internal" bucket.
-    --
-    -- Explicit bundle-SKU detection (added 2026-08-20c): when CW_SKUS contains
-    -- known bundle markers and vendor didn't bill separately, this is a bundled
-    -- entitlement (CW is charging the partner for a service included in the
-    -- RMM SuperBundle or 3-year promo bundle — vendor is paid via bundle
-    -- economics, not a separate line). Catches KeepIT ~$472K M365/Google/Azure
-    -- backup rides inside CW-RMM-SB / M2M-RMM-SB / *-3P-UMM / *-EG-UMM bundles.
-    WHEN VENDOR <> 'KeepIT'
-         AND (
-             COALESCE(HAS_DISCOUNT, 'FALSE') = 'TRUE'
-             OR OUTCOME_FLAG IN (
-                 'Known Discount / Bundle', 'Clear - Discounted / Bundled',
-                 'RMM_DISCOUNTED', 'KNOWN_DISCOUNT_BUNDLE', 'MDR_BUNDLE',
-                 'CW_INCLUDED_ZERO_DOLLAR', 'INTENTIONAL_DISCOUNT'
-             )
-             OR (COALESCE(VENDOR_AMOUNT, 0) = 0
-                 AND COALESCE(TOTAL_BILLING_AMOUNT, 0) > 0
-                 AND (
-                     UPPER(COALESCE(CW_SKUS, '')) LIKE '%RMM-SB-%'
-                  OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%-3Y-PROMO-%'
-                  OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%PROMO-BUNDLE%'
-                  OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%3P-UMM-BCDR-SAAS%'
-                  OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%EG-UMM-SOLP-SAAS%'
-                  OR UPPER(COALESCE(CW_SKUS, '')) LIKE '%EG-BDR-SOLP-SAAS%'
-                 ))
-         )
-    THEN 'Known Discount / Bundle'
 
     -- ── 5. Marketplace Billing Delay ──────────────────────────────────────
     -- Prior-period Marketplace invoice timing artifact; will self-resolve.
@@ -377,7 +341,6 @@ CASE EXCEPTION_TYPE
     WHEN 'Unmapped Partner'                             THEN 'Data team: update partner mapping'
     WHEN 'Duplicated CW Invoice'                        THEN 'Billing Ops: review duplicate overlap (informational flag)'
     WHEN 'Marketplace Billing Delay'                    THEN 'No action - prior-month invoice expected next cycle'
-    WHEN 'Known Discount / Bundle'                      THEN 'No action - intentional discount or bundle pricing'
     WHEN 'Vendor SKU, No CW SKU'                        THEN 'Product / Catalog: add a CW rebill SKU for this vendor product'
     WHEN 'CW SKU, No Vendor SKU'                        THEN 'Ops: verify whether this CW rebill SKU should still be active'
     WHEN 'API Usage, Insufficient CW Billing'           THEN 'Finance: close billing gap for API-confirmed usage'
@@ -481,7 +444,26 @@ WITH filtered AS (
         *,
         {CANONICAL_EXCEPTION_TYPE}                         AS EXCEPTION_TYPE,
         ABS(COALESCE(AMOUNT_DELTA, 0))                     AS EST_DOLLAR_IMPACT,
-        1::NUMBER                                          AS VENDOR_SOURCE_ROW_COUNT
+        1::NUMBER                                          AS VENDOR_SOURCE_ROW_COUNT,
+        -- Point-in-time vs. cycle-average API dollar comparison
+        -- (2026-08-28). VENDOR_UNIT_PRICE is the vendor-invoiced $/seat.
+        -- API_AMOUNT     = API_QUANTITY     × VENDOR_UNIT_PRICE, i.e. what
+        --                  the vendor invoice WOULD be if the vendor priced
+        --                  on the point-in-time seat snapshot (day 20 for
+        --                  Proofpoint, 21 for S1/BD, etc.).
+        -- AVG_API_AMOUNT = AVG_API_QUANTITY × VENDOR_UNIT_PRICE, i.e. what
+        --                  the vendor invoice WOULD be if the vendor priced
+        --                  on the cycle-average seat count instead.
+        -- Compare either to ZUORA_AMOUNT / VENDOR_AMOUNT to quantify the
+        -- pricing-methodology impact per row and per SKU.
+        (COALESCE(API_QUANTITY, 0)     * COALESCE(VENDOR_UNIT_PRICE, 0))::FLOAT
+            AS API_AMOUNT,
+        (COALESCE(AVG_API_QUANTITY, 0) * COALESCE(VENDOR_UNIT_PRICE, 0))::FLOAT
+            AS AVG_API_AMOUNT,
+        (
+            COALESCE(AVG_API_QUANTITY, 0) * COALESCE(VENDOR_UNIT_PRICE, 0)
+          - COALESCE(API_QUANTITY, 0)     * COALESCE(VENDOR_UNIT_PRICE, 0)
+        )::FLOAT                                            AS API_AVG_MINUS_POINT_AMOUNT
     FROM resolved
 )
 -- App-facing precomputed columns (2026-08-21 latency pass): these move the

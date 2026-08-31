@@ -320,18 +320,24 @@ joined_vendor AS (
         c.carr_row_count,
         NULL::NUMBER AS support_quantity,
         NULL::NUMBER AS support_row_count,
-        COALESCE(c.carr_quantity, 0)
-            + CASE
-                WHEN COALESCE(w.vendor_group_quantity, 0) > 0
-                    THEN COALESCE(z.zuora_quantity, zp.zuora_quantity, 0) * COALESCE(v.vendor_quantity, 0) / NULLIF(w.vendor_group_quantity, 0)
-                ELSE 0
-              END AS total_billing_quantity,
-        COALESCE(c.carr_amount, 0)
-            + CASE
-                WHEN COALESCE(w.vendor_group_quantity, 0) > 0
-                    THEN COALESCE(z.zuora_amount, zp.zuora_amount, 0) * COALESCE(v.vendor_quantity, 0) / NULLIF(w.vendor_group_quantity, 0)
-                ELSE 0
-              END AS total_billing_amount,
+        CASE
+            WHEN COALESCE(z.zuora_quantity, zp.zuora_quantity, 0) > 0
+                THEN CASE
+                    WHEN COALESCE(w.vendor_group_quantity, 0) > 0
+                        THEN COALESCE(z.zuora_quantity, zp.zuora_quantity, 0) * COALESCE(v.vendor_quantity, 0) / NULLIF(w.vendor_group_quantity, 0)
+                    ELSE 0
+                END
+            ELSE COALESCE(c.carr_quantity, 0)
+        END AS total_billing_quantity,
+        CASE
+            WHEN COALESCE(z.zuora_amount, zp.zuora_amount, 0) > 0
+                THEN CASE
+                    WHEN COALESCE(w.vendor_group_quantity, 0) > 0
+                        THEN COALESCE(z.zuora_amount, zp.zuora_amount, 0) * COALESCE(v.vendor_quantity, 0) / NULLIF(w.vendor_group_quantity, 0)
+                    ELSE 0
+                END
+            ELSE COALESCE(c.carr_amount, 0)
+        END AS total_billing_amount,
         v.vendor_source_row_count,
         v.vendor_partner_guid_count,
         v.vendor_unmapped_partner_rows
@@ -512,6 +518,77 @@ scored AS (
     FROM joined
     WHERE COALESCE(vendor_quantity, 0) > 0
        OR COALESCE(total_billing_quantity, 0) > 0
+),
+
+keepit_api_sku_tokens AS (
+    SELECT DISTINCT
+        UPPER(TRIM(sku_match_group)) AS sku_match_group_key,
+        UPPER(TRIM(cw_sku_token)) AS cw_sku_token
+    FROM keepit_sku_map_tokens
+    WHERE sku_match_group IS NOT NULL
+      AND cw_sku_token IS NOT NULL
+      AND TRIM(cw_sku_token) <> ''
+      AND sku_match_group NOT ILIKE 'KEEPIT_CW_ONLY_%'
+),
+
+keepit_api_partners AS (
+    SELECT DISTINCT
+        s.sf_id,
+        s.billing_month,
+        s.sku_match_group,
+        UPPER(TRIM(s.sku_match_group)) AS sku_match_group_key,
+        pm.cms_id
+    FROM scored s
+    JOIN RECON_PARTNER_MAP pm
+      ON pm.sf_id = s.sf_id
+    WHERE s.sf_id IS NOT NULL
+      AND s.sku_match_group IS NOT NULL
+      AND s.sku_match_group NOT ILIKE 'KEEPIT_CW_ONLY_%'
+      AND pm.cms_id IS NOT NULL
+      AND TRIM(pm.cms_id) <> ''
+),
+
+keepit_api_daily AS (
+    SELECT
+        pa.sf_id,
+        pa.billing_month,
+        pa.sku_match_group,
+        DATEADD('day', 20, pa.billing_month)::DATE AS snapshot_date,
+        u.on_date::DATE AS on_date,
+        SUM(COALESCE(u.agent_cnt, 0)) AS day_quantity
+    FROM keepit_api_partners pa
+    JOIN keepit_api_sku_tokens st
+      ON st.sku_match_group_key = pa.sku_match_group_key
+    JOIN ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+      ON u.partner_id::VARCHAR = pa.cms_id
+     AND UPPER(TRIM(COALESCE(u.product_sku, ''))) = st.cw_sku_token
+     AND UPPER(TRIM(COALESCE(u.product_sku, ''))) <> 'CW-3YPROMO-RETENTION'
+     AND u.on_date::DATE > DATEADD('day', 20, DATEADD('month', -1, pa.billing_month))::DATE
+     AND u.on_date::DATE <= DATEADD('day', 20, pa.billing_month)::DATE
+    GROUP BY 1, 2, 3, 4, 5
+),
+
+keepit_api_rollup AS (
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        MAX(IFF(on_date = snapshot_date, day_quantity, NULL)) AS api_quantity,
+        AVG(day_quantity) AS avg_api_quantity
+    FROM keepit_api_daily
+    GROUP BY 1, 2, 3
+),
+
+scored_with_api AS (
+    SELECT
+        s.*, 
+        a.api_quantity,
+        a.avg_api_quantity
+    FROM scored s
+    LEFT JOIN keepit_api_rollup a
+      ON a.sf_id = s.sf_id
+     AND a.billing_month = s.billing_month
+     AND a.sku_match_group = s.sku_match_group
 )
 SELECT
     'KeepIT' AS VENDOR,
@@ -528,6 +605,8 @@ SELECT
     zuora_charge_names,
     carr_skus,
     billing_source_mix,
+    api_quantity,
+    avg_api_quantity,
     vendor_quantity,
     vendor_unit_price,
     vendor_amount,
@@ -591,7 +670,7 @@ SELECT
     NULL::NUMBER AS vendor_vs_contract_pct,
     NULL::VARCHAR AS vendor_vs_contract_flag,
     NULL::NUMBER AS vendor_vs_contract_dollar_impact
-FROM scored;
+FROM scored_with_api;
 
 CREATE OR REPLACE TABLE KEEPIT_RECON_SUMMARY AS
 SELECT

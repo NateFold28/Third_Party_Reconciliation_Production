@@ -21,7 +21,10 @@ from TEMPLATES.Python.connection import get_snowflake_connection  # noqa: E402
 INGESTION_SCRIPTS = [
     r"Ingestion\Acronis_Vendor_Usage_Ingestion_Prod.py",
     r"Ingestion\Auvik_Vendor_Usage_Ingestion_Prod.py",
-    r"Ingestion\Bitdefender_Vendor_Usage_Ingestion_Prod.py",
+    # Bitdefender ingestion retired 2026-08-30. Vendor usage is now built
+    # natively in _run_skeleton_pipeline.py STEP 0b from
+    # ANALYTICS.DBO.PRODUCT_MANAGEMENT__ROYALTIES (see
+    # Reconciliation/00_bitdefender_vendor_usage_rebuild.sql).
     r"Ingestion\ESET_Vendor_Usage_Ingestion_Prod.py",
     r"Ingestion\Exium_Vendor_Usage_Ingestion_Prod.py",
     r"Ingestion\KeepIT_Vendor_Usage_Ingestion_Prod.py",
@@ -39,7 +42,6 @@ INGESTION_EXTRA_ARGS: dict[str, list[str]] = {
 INGESTION_VENDOR_BY_SCRIPT: dict[str, str] = {
     "Acronis_Vendor_Usage_Ingestion_Prod.py": "Acronis",
     "Auvik_Vendor_Usage_Ingestion_Prod.py": "Auvik",
-    "Bitdefender_Vendor_Usage_Ingestion_Prod.py": "Bitdefender",
     "ESET_Vendor_Usage_Ingestion_Prod.py": "ESET",
     "Exium_Vendor_Usage_Ingestion_Prod.py": "Exium",
     "KeepIT_Vendor_Usage_Ingestion_Prod.py": "KeepIT",

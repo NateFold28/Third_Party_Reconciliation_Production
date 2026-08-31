@@ -1,0 +1,180 @@
+vendor,cw_sku,sku_match_key,mapping_notes
+Acronis,APP-SA-SCVAMSENS,SCVAMSENS,Zuora PRODUCT_SKU maps to vendor code SCVAMSENS
+Acronis,SCVAMSENS,SCVAMSENS,Zuora PRODUCT_SKU maps to vendor code SCVAMSENS
+Acronis,UNMATCHED,SPDAMSENS,Zuora PRODUCT_SKU maps to vendor code SPDAMSENS
+Acronis,UNMATCHED,SPDCMSENS,Zuora PRODUCT_SKU maps to vendor code SPDCMSENS
+Acronis,UNMATCHED,SPEAMSENS,Zuora PRODUCT_SKU maps to vendor code SPEAMSENS
+Acronis,UNMATCHED,SPEAMSENS,Zuora PRODUCT_SKU maps to vendor code SPEAMSENS
+Acronis,UNMATCHED,SPGAMSENS,Zuora PRODUCT_SKU maps to vendor code SPGAMSENS
+Acronis,UNMATCHED,SPIAMSENS,Zuora PRODUCT_SKU maps to vendor code SPIAMSENS
+Acronis,APP-BC-SQ6AMSENS,SQ6AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ6AMSENS
+Acronis,M2M-APP-BC-SQ6AMSENS,SQ6AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ6AMSENS
+Acronis,SQ6AMSENS,SQ6AMSENS,Zuora PRODUCT_SKU maps to vendor code SQ6AMSENS
+Acronis,UNMATCHED,SRI5MSENS,Zuora PRODUCT_SKU maps to vendor code SRI5MSENS
+Acronis,UNMATCHED,SRIAMSENS,Zuora PRODUCT_SKU maps to vendor code SRIAMSENS
+Acronis,UNMATCHED,SRJAMSENS,Zuora PRODUCT_SKU maps to vendor code SRJAMSENS
+Acronis,APP-BC-SVVAMSENS,SVVAMSENS,Zuora PRODUCT_SKU maps to vendor code SVVAMSENS
+Acronis,BC-SVVAMSENS,SVVAMSENS,Zuora PRODUCT_SKU maps to vendor code SVVAMSENS
+Acronis,M2M-APP-BC-SVVAMSENS,SVVAMSENS,Zuora PRODUCT_SKU maps to vendor code SVVAMSENS
+Acronis,SVVAMSENS,SVVAMSENS,Zuora PRODUCT_SKU maps to vendor code SVVAMSENS
+Bitdefender,BTS-AUD-M01-TADL17106A,ATS,Pattern-matched from royalties product_description.
+Bitdefender,BTS-CAD-M01-TADL17106A,ATS,Pattern-matched from royalties product_description.
+Bitdefender,BTS-UKD-M01-TADL17106A,ATS,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M01-TADL17106A,ATS,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M02-TADL17106A,ATS,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M03-TADL17106A,ATS,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M04-TADL17106A,ATS,Pattern-matched from royalties product_description.
+Bitdefender,CU-BITDF-ADV-THREAT,ATS,Advanced Threat Security standalone.
+Bitdefender,DL17106A00A-EN-D,ATS,Pattern-matched from royalties product_description.
+Bitdefender,DL17106A00B-EN-D,ATS,Pattern-matched from royalties product_description.
+Bitdefender,DL17106A00C-EN-D,ATS,Pattern-matched from royalties product_description.
+Bitdefender,SwO-3P-CYBR-SOLP-SAAS-ADVTHRET,ATS,Pattern-matched from royalties product_description.
+Bitdefender,BTS-AUD-M01-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,BTS-CAD-M01-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,BTS-UKD-M01-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,BTS-UKD-M02-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M01-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M02-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M03-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M04-TADL17107A,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,CU-BITDF-ATS-AND-EDR,ATS_EDR,ATS & EDR usage overage.
+Bitdefender,DL17107A00A-EN-D,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,DL17107A00B-EN-D,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,DL17107A00C-EN-D,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,DL17107A00D-EN-D,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,DL17107A00E-EN-D,ATS_EDR,Pattern-matched from royalties product_description.
+Bitdefender,SwO-3P-CYBR-SOLP-BDATSEDR,ATS_EDR,SwO ATS & EDR.
+Bitdefender,DL17106A00A-EN-D,BD_ATS,Bitdefender ATS 1-99 ep
+Bitdefender,DL17106A00D-EN-D,BD_ATS,Bitdefender ATS 1000-4999 ep
+Bitdefender,SwO-3P-CYBR-SOLP-SAAS-ADVTHRET,BD_ATS,Bitdefender ATS SwO
+Bitdefender,DL17107A00A-EN-D,BD_ATS_EDR,Bitdefender ATS & EDR 1-99 ep
+Bitdefender,DL17107A00D-EN-D,BD_ATS_EDR,Bitdefender ATS & EDR 1000-4999 ep
+Bitdefender,SwO-3P-CYBR-SOLP-BDATSEDR,BD_ATS_EDR,Bitdefender ATS & EDR SwO
+Bitdefender,CU-BITDFEDRMSPSECURE,BD_EDR_MSP,Bitdefender EDR MSP Secure (CU)
+Bitdefender,CW-BITDFEDRMSPSECURE,BD_EDR_MSP,Bitdefender EDR MSP Secure (MP)
+Bitdefender,AL1795A00A-EN-D,BD_ENCRYPTION,Bitdefender Cloud Encryption 1-99
+Bitdefender,CU-BITDF-CLD-ENCRYP,BD_ENCRYPTION,Bitdefender Cloud Encryption (CU)
+Bitdefender,3PARTYONPREMBTCDSCCW,BD_GRAVITYZONE,Bitdefender Cloud Sec GravityZone -> GravityZone (MP)
+Bitdefender,CU-BITDF-GRAVITYZONE,BD_GRAVITYZONE,Bitdefender Cloud Sec GravityZone -> GravityZone (Usage)
+Bitdefender,CUBITDFEDSEC-4-MOBIL,BD_MOBILE,Bitdefender Security for Mobile (CU)
+Bitdefender,DL17108A00A-EN-D,BD_PATCH,Bitdefender PM 1-99 ep
+Bitdefender,DL17108A00D-EN-D,BD_PATCH,Bitdefender PM 1000-4999 ep
+Bitdefender,SwO-3P-CYBR-SOLP-SAAS-PATCHMGT,BD_PATCH,Bitdefender PM SwO
+Bitdefender,2765PHMSN012AAZZ,BD_PHASR,Bitdefender PHASR
+Bitdefender,2765SEESN012AAZZ0,BD_SECURE_EXTRA,Bitdefender Secure Extra
+Bitdefender,2765SEPSN012AAZZ,BD_SECURE_PLUS,Bitdefender Secure Plus
+Bitdefender,AL1775A00A-EN-D,BD_VE_VS,Bitdefender Security for VE VS 1-99
+Bitdefender,CMS-SEC-SAAS-SEC-CYB-XDRIDEN,BD_XDR_ID,Bitdefender XDR Identity
+Bitdefender,2765EMMSN012ALZZ,EMAIL,Pattern-matched from royalties product_description.
+Bitdefender,2765EMMSN012BLZZ,EMAIL,Pattern-matched from royalties product_description.
+Bitdefender,2765EMMSN012CLZZ,EMAIL,Pattern-matched from royalties product_description.
+Bitdefender,CU-BITDF-GZ-EMAILSEC,EMAIL,Email Security.
+Bitdefender,3PARTYONPREMBTCDENCP,ENCRYPTION,Cloud Encryption contract.
+Bitdefender,AL1795A00A-EN,ENCRYPTION,Pattern-matched from royalties product_description.
+Bitdefender,AL1795A00B-EN,ENCRYPTION,Pattern-matched from royalties product_description.
+Bitdefender,AL1795A00C-EN500-749,ENCRYPTION,Pattern-matched from royalties product_description.
+Bitdefender,AL1795A00D-EN,ENCRYPTION,Pattern-matched from royalties product_description.
+Bitdefender,BTS-UKD-M03-TBBTCDENCP,ENCRYPTION,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M01-TBBTCDENCP,ENCRYPTION,Pattern-matched from royalties product_description.
+Bitdefender,CU-BITDF-CLD-ENCRYP,ENCRYPTION,Cloud Encryption.
+Bitdefender,3PARTYONPREMBTCDSCCW,GRAVITYZONE,Contract GravityZone.
+Bitdefender,3PARTYONPREMCLDSECGZ,GRAVITYZONE,1YR Cloud Security variant.
+Bitdefender,BTS-AUD-M01-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-AUD-M02-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-AUD-M03-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-AUD-M04-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-AUD-M06-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-CAD-M01-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-CAD-M04-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-CAD-M06-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-EUD-M01-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-UKD-M01-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-UKD-M02-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-UKD-M03-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-UKD-M04-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M01-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M02-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M03-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M04-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M05-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M06-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M07-TBBTCDSCCW,GRAVITYZONE,Pattern-matched from royalties product_description.
+Bitdefender,CU-BITDF-GRAVITYZONE,GRAVITYZONE,GravityZone usage overage.
+Bitdefender,SwO-3P-CYBR-SOLP-SAAS-GRAVZONE,GRAVITYZONE,SwO GravityZone.
+Bitdefender,CW-EPSEC-BITDEFENDER,MDR_BITDEFENDER,MDR bundle.
+Bitdefender,M2MEPSEC-BITDEFENDER,MDR_BITDEFENDER,M2M MDR bundle.
+Bitdefender,MDR-BITDF,MDR_BITDEFENDER,SA MDR bundle.
+Bitdefender,CUBITDFEDSEC-4-MOBIL,MOBILE,Mobile Security.
+Bitdefender,CU-BITDFEDRMSPSECURE,MSP_SECURE,MSP Secure EDR.
+Bitdefender,CW-BITDFEDRMSPSECURE,MSP_SECURE,CW MSP Secure EDR.
+Bitdefender,TA-BITDEFENDER-EDR-MSP-SECURE,MSP_SECURE,TA MSP Secure EDR.
+Bitdefender,2765SEESN012AAZZ0,MSP_SECURE_EXTRA,Secure Extra.
+Bitdefender,2765SEPSN012AAZZ,MSP_SECURE_PLUS,Secure Plus.
+Bitdefender,BTS-USD-M01-TADL17108A,PATCH,Pattern-matched from royalties product_description.
+Bitdefender,BTS-USD-M02-TADL17108A,PATCH,Pattern-matched from royalties product_description.
+Bitdefender,CU-BITDF-PATCH-MNGT,PATCH,Patch Management.
+Bitdefender,DL17108A00A-EN-D,PATCH,Pattern-matched from royalties product_description.
+Bitdefender,DL17108A00B-EN-D,PATCH,Pattern-matched from royalties product_description.
+Bitdefender,DL17108A00C-EN-D,PATCH,Pattern-matched from royalties product_description.
+Bitdefender,DL17108A00D-EN-D,PATCH,Pattern-matched from royalties product_description.
+Bitdefender,2765PHMSN012AAZZ,PHASR,PHASR.
+Bitdefender,3PARTYONPREMBTCDSCLT,TSP_AUTOMATE,TSP CW Automate.
+Bitdefender,AL1775A00A-EN-D,VS,Virtualized Security.
+Bitdefender,CMS-SEC-SAAS-SEC-CYB-XDRIDEN,XDR,XDR Identity.
+ESET,EESX,ENDPOINT_ANTIVIRUS,AV Business Ed for Mac OS
+ESET,RMM-EAVB,ENDPOINT_ANTIVIRUS,NOD32 AV Business Edition
+ESET,RMM-EAVBM,ENDPOINT_ANTIVIRUS,NOD32 AV Business Ed Mac
+ESET,3PARTYONPREMESETENDP,ENDPOINT_SECURITY,Endpoint Security
+ESET,MSP2FDE1,FULL_DISK_ENCRYPTION,Full Disk Encryption
+ESET,MSP2-EI,INSPECT_EDR,ESET Inspect
+ESET,MSP2-PMP,MAIL_SECURITY,Protect Mail Plus
+ESET,EEPA-GE-N3-E,PROTECT_ENTRY_ONPREM,Protect Entry On-Prem G/E/N
+SentinelOne,SP-RSO-ND-T1-C,REMOTEOPS,S1 RemoteOps Forensics (SP-FOR-ND-T1-SA at $0.30) = CW RemoteOps (SP-RSO-ND-T1-C at $0.60 retail). Same product. Reconciles Forensics vendor qty against CW RSO billing.
+SentinelOne,SP-RSO-ND-T1-C,REMOTEOPS,S1 RemoteOps
+Webroot,3P-SAAS30021010FFDNS,DNS,OpenText Core DNS Protection | CW product=Webroot DNS
+Webroot,WSADNSP,DNS,OpenText Core DNS Protection | CW product=Webroot GSM integrated Webroot SecureAnywhere DNS
+Webroot,WSADNSP-STAND-ALONE,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS
+Webroot,WSADNSPSTANDAL-00001,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 1-99 EPs
+Webroot,WSADNSPSTANDAL-00100,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 100-249 EPs
+Webroot,WSADNSPSTANDAL-00250,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 250-499 EPs
+Webroot,WSADNSPSTANDAL-00500,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 500-749 EPs
+Webroot,WSADNSPSTANDAL-02500,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS - 2500-4999 EPs
+Webroot,WSADNSPSTANDALONEIIT,DNS,OpenText Core DNS Protection | CW product=Webroot SecureAnywhere DNS IIT
+Webroot,3P-SAAS30020015PARNT,GSM,OpenText Core Endpoint Protection | CW product=Security Webroot Endpoint Protection
+Webroot,3P-SAAS3002315EPPRMM,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection-(MDR) non-RMM-11-01-2015
+Webroot,3PARTYONPREMWRSECBEP,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere BEP
+Webroot,3RDPARTYSAASIITBUEPP,GSM,OpenText Core Endpoint Protection | CW product=Webroot Internal IT BEP or GSM
+Webroot,CMS-EG-CYBR-SOLP-SAAS-MDRDSKTP,GSM,OpenText Core Endpoint Protection | CW product=CMS EVG Webroot Endpoint Protection-(MDR) Desktop
+Webroot,CMS-EG-CYBR-SOLP-SAAS-MDRSERVR,GSM,OpenText Core Endpoint Protection | CW product=CMS EVG Webroot Endpoint Protection-(MDR) Server
+Webroot,CMS-IH-CYBR-SOLP-SAAS-MDRDSKTP,GSM,OpenText Core Endpoint Protection | CW product=CMS Webroot Endpoint Protection-(MDR) Desktop
+Webroot,CMS-IH-CYBR-SOLP-SAAS-MDRSERVR,GSM,OpenText Core Endpoint Protection | CW product=CMS Webroot Endpoint Protection-(MDR) Server
+Webroot,CU-WEBROOT-EPP-RMM,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection- for CW RMM
+Webroot,CW-RMM-WR-EEP-OVERAG,GSM,OpenText Core Endpoint Protection | CW product=Webroot Endpoint Protection-(MDR)- Overage for CW RMM
+Webroot,SEWRSBEP00,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere Business Endpoint
+Webroot,SEWRSGSM,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key Channel Distribution
+Webroot,SEWRSGSM10,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 1-99  EPs
+Webroot,SEWRSGSM100,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 100-249  EPs
+Webroot,SEWRSGSM1000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 1000-2499  EPs
+Webroot,SEWRSGSM10000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 10000-19999 Eps
+Webroot,SEWRSGSM250,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 250-499  EPs
+Webroot,SEWRSGSM2500,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 2500-4999  EPs
+Webroot,SEWRSGSM500,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 500-749  EPs
+Webroot,SEWRSGSM5000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 5000-9999  EPs
+Webroot,SEWRSGSM750,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 750-999  EPs
+Webroot,SEWSABEP,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere Business End Point
+Webroot,WRSECGSM10,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 10-99
+Webroot,WRSECGSM100,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 100-249
+Webroot,WRSECGSM1000,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 1000+
+Webroot,WRSECGSM250,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 250-499
+Webroot,WRSECGSM500,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 500-749
+Webroot,WRSECGSM750,GSM,OpenText Core Endpoint Protection | CW product=Webroot SecureAnywhere GSM Key 750-999
+Webroot,3P-SAAS30022019FFSAT,SAT,OpenText Core Security Awareness Training | CW product=ConnectWise Webroot SAT-01-01-2015
+Webroot,SEWRSSAT10,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 1-99
+Webroot,SEWRSSAT100,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 100-249
+Webroot,SEWRSSAT1000,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 1000-2499
+Webroot,SEWRSSAT250,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 250-499
+Webroot,SEWRSSAT2500,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 2500-4999
+Webroot,SEWRSSAT500,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 500-749
+Webroot,SEWRSSAT750,SAT,OpenText Core Security Awareness Training | CW product=Webroot SecureAnywhere SecAwarenessTrain 750-999
+Webroot,WSADNSP,WR_DNS,Webroot SecureAnywhere DNS Protection
+Webroot,WSADNSPSTANDAL-00001,WR_DNS,Webroot SecureAnywhere DNS (standalone)

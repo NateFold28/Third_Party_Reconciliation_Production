@@ -1,0 +1,33 @@
+﻿from TEMPLATES.Python.connection import fetch_dataframe
+
+q = '''
+SELECT BILLING_MONTH::DATE AS BILLING_MONTH, TENANT_NAME, SF_ID, CMS_ID, BILLING_TYPE, VENDOR_SKU, CW_SKU
+FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.ACRONIS_COMBINED_MAPPING_SEED
+WHERE BILLING_MONTH='2026-06-01'::DATE
+  AND (
+    TENANT_NAME ILIKE '%SecureTech%'
+    OR TENANT_NAME ILIKE '%Bulletproof%'
+    OR TENANT_NAME ILIKE '%System Go%'
+    OR TENANT_NAME ILIKE '%Rx Technology%'
+    OR TENANT_NAME ILIKE '%Serit Ostereng IT%'
+    OR TENANT_NAME ILIKE '%Origami Technology Group%'
+  )
+ORDER BY TENANT_NAME, SF_ID, VENDOR_SKU, CW_SKU
+'''
+print('=== june_seed ===')
+print(fetch_dataframe(q).to_string(index=False, max_colwidth=120))
+
+q2 = '''
+SELECT BILLING_MONTH::DATE AS BILLING_MONTH, TENANT_NAME, SF_ID, CMS_ID, BILLING_TYPE, COUNT(*) AS ROWS
+FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.ACRONIS_COMBINED_MAPPING_SEED
+WHERE BILLING_MONTH BETWEEN '2026-04-01'::DATE AND '2026-07-01'::DATE
+  AND (
+    TENANT_NAME ILIKE '%SecureTech%'
+    OR TENANT_NAME ILIKE '%Bulletproof%'
+    OR TENANT_NAME ILIKE '%System Go%'
+  )
+GROUP BY 1,2,3,4,5
+ORDER BY TENANT_NAME, BILLING_MONTH, SF_ID
+'''
+print('\n=== apr_to_jul_seed_counts ===')
+print(fetch_dataframe(q2).to_string(index=False, max_colwidth=120))

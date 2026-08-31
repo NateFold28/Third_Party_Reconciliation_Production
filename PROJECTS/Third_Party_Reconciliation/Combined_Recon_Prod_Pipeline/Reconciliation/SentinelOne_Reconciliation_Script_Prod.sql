@@ -69,9 +69,10 @@ sku_map AS (
             ELSE SKU_MATCH_KEY
         END                         AS sku_match_group,
         MAPPING_NOTES              AS mapping_source,
-        CW_RETAIL_RATE             AS vendor_invoice_unit_price,
+        VENDOR_UNIT_PRICE          AS vendor_invoice_unit_price,
         VENDOR_SKU                 AS vendor_invoice_sku,
-        'RECON_SKU_MAP'            AS vendor_invoice_rate_source
+        'RECON_SKU_MAP'            AS vendor_invoice_rate_source,
+        TRT_MATCH_KEY              AS trt_match_key
     FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'SentinelOne')
     WHERE SKU_MATCH_KEY IS NOT NULL
 ),
@@ -750,6 +751,97 @@ detail_pre AS (
     FROM product_joined pj
     LEFT JOIN sku_group_invoice_rate sgir
         ON sgir.sku_match_group = pj.sku_match_group
+),
+
+-- =============================================================================
+-- SentinelOne API usage (direct-from-raw architecture, 2026-08-28)
+-- ---------------------------------------------------------------------------
+-- Replaces the stale THIRD_PARTY_RECON_SOURCE_TRT_PROD bridge with a direct
+-- read from the raw daily-usage table:
+--   ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE
+-- Join keys (governed):
+--   * partner_id (usage) = cms_id from RECON_PARTNER_MAP (keyed by sf_id).
+--   * product_sku (usage) = TRT_MATCH_KEY from RECON_SKU_MAP (SentinelOne).
+--     For SentinelOne, TRT_MATCH_KEY = CW_SKU (verified 2026-08-28: 17 CW_SKUs
+--     have direct 1:1 coverage in raw TRT for a 120-day window).
+-- Cycle window: SentinelOne API snapshot = day 20 of each month, so a
+--   billing_month M accumulates on_date rows in (M-1 + 20 days, M + 20 days].
+-- Grain: (sf_id, billing_month, sku_match_group).
+-- =============================================================================
+s1_trt_keys AS (
+    -- All raw-TRT product_sku values SentinelOne maps to, plus the
+    -- sku_match_group they roll up to. Distinct so join fan-out matches
+    -- the recon grain. Uppercased for the join.
+    SELECT DISTINCT
+        UPPER(TRIM(sm.trt_match_key)) AS product_sku_key,
+        sm.sku_match_group
+    FROM sku_map sm
+    WHERE sm.trt_match_key IS NOT NULL
+      AND TRIM(sm.trt_match_key) <> ''
+      AND sm.sku_match_group IS NOT NULL
+),
+
+s1_api_partners AS (
+    -- sf_ids that actually appear in the SentinelOne recon for a given
+    -- billing_month, joined to their cms_id via RECON_PARTNER_MAP.
+    SELECT DISTINCT
+        d.sf_id,
+        d.billing_month,
+        d.sku_match_group,
+        pm.cms_id
+    FROM detail_pre d
+    JOIN RECON_PARTNER_MAP pm
+      ON pm.sf_id = d.sf_id
+    WHERE d.sf_id IS NOT NULL
+      AND d.sku_match_group IS NOT NULL
+      AND pm.cms_id IS NOT NULL
+      AND TRIM(pm.cms_id) <> ''
+),
+
+s1_api_daily AS (
+    -- One row per (sf_id, billing_month, sku_match_group, on_date). The
+    -- window predicate binds each on_date to exactly one billing_month.
+    SELECT
+        pa.sf_id,
+        pa.billing_month,
+        pa.sku_match_group,
+        DATEADD('day', 20, pa.billing_month)::DATE            AS snapshot_date,
+        u.on_date::DATE                                        AS on_date,
+        SUM(COALESCE(u.agent_cnt, 0))                          AS day_quantity
+    FROM s1_api_partners pa
+    JOIN s1_trt_keys k
+      ON k.sku_match_group = pa.sku_match_group
+    JOIN ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+      ON u.partner_id::VARCHAR = pa.cms_id
+     AND UPPER(TRIM(u.product_sku)) = k.product_sku_key
+     AND u.on_date::DATE >  DATEADD('day', 20, DATEADD('month', -1, pa.billing_month))::DATE
+     AND u.on_date::DATE <= DATEADD('day', 20, pa.billing_month)::DATE
+    GROUP BY 1, 2, 3, 4, 5
+),
+
+s1_api_rollup AS (
+    -- Roll up to recon grain. api_quantity = day-20 snapshot value.
+    -- avg_api_quantity = mean across the full cycle window.
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        MAX(IFF(on_date = snapshot_date, day_quantity, NULL)) AS api_quantity,
+        AVG(day_quantity)                                     AS avg_api_quantity
+    FROM s1_api_daily
+    GROUP BY 1, 2, 3
+),
+
+detail_pre_with_api AS (
+    SELECT
+        d.*,
+        a.api_quantity,
+        a.avg_api_quantity
+    FROM detail_pre d
+    LEFT JOIN s1_api_rollup a
+      ON a.sf_id = d.sf_id
+     AND a.billing_month = d.billing_month
+     AND a.sku_match_group = d.sku_match_group
 )
 
 SELECT
@@ -765,6 +857,8 @@ SELECT
     zuora_skus,
     marketplace_skus,
     billing_source_mix,
+    api_quantity,
+    avg_api_quantity,
     ARRAY_TO_STRING(zuora_invoice_numbers, ' | ') AS zuora_inv,
     ARRAY_TO_STRING(marketplace_transaction_ids, ' | ') AS mp_inv,
     vendor_quantity,
@@ -878,7 +972,7 @@ SELECT
             THEN ROUND((total_billing_amount - vendor_amount) / NULLIF(total_billing_amount, 0) * 100, 1)
         ELSE NULL
     END AS s1_license_margin_pct
-FROM detail_pre;
+FROM detail_pre_with_api;
 
 -- =============================================================================
 -- ADD-ON AUDIT DETAIL

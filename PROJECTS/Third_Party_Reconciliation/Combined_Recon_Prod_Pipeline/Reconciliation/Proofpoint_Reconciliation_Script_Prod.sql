@@ -96,6 +96,7 @@ pp_skus AS (
         vendor_product,
         vendor_sku AS vendor_sku_invoices,
         cw_sku,
+        trt_match_key,
         sku_match_key AS sku_match_group,
         'SIMPLIFIED_SKU_MAP' AS mapping_source
     FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Proofpoint')
@@ -246,6 +247,88 @@ proofpoint_int AS (
             WITHIN GROUP (ORDER BY mapping_source) AS sku_mapping_sources
     FROM sku_candidates
     GROUP BY ALL
+),
+
+-- =============================================================================
+-- Proofpoint API usage (direct-from-raw architecture, 2026-08-28)
+-- ---------------------------------------------------------------------------
+-- Replaces the stale THIRD_PARTY_RECON_SOURCE_TRT_PROD snapshot / the
+-- pipeline-level PROOFPOINT_API_BACKFILL_SQL step. API_QUANTITY and
+-- AVG_API_QUANTITY are computed inline off the raw daily-usage table:
+--   ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE
+-- Join keys (governed):
+--   * partner_id (usage) = cms_id from RECON_PARTNER_MAP (keyed by sf_id).
+--   * product_sku (usage) = TRT_MATCH_KEY from RECON_SKU_MAP (Proofpoint).
+-- Cycle window:
+--   Proofpoint API snapshot = day 20 of each month, so a billing_month M
+--   accumulates on_date rows in (M-1 + 20 days, M + 20 days].
+-- Grain: (sf_id, billing_month, sku_match_group) -- matches vendor_group_base
+--        which is how vendor_agg rolls up to the recon detail row.
+-- Metrics:
+--   * api_quantity      = seats reported by TRT on the snapshot day (day 20).
+--   * avg_api_quantity  = average day_quantity across the full cycle window.
+-- =============================================================================
+pp_trt_keys AS (
+    -- All distinct TRT product_sku values Proofpoint maps to, plus the
+    -- sku_match_group they roll up to. Distinct so the join fan-out matches
+    -- the recon grain. Both sides normalized to UPPER(TRIM(...)) for the join.
+    SELECT DISTINCT
+        UPPER(TRIM(trt_match_key)) AS product_sku_key,
+        UPPER(TRIM(sku_match_group)) AS sku_match_group_key
+    FROM pp_skus
+    WHERE trt_match_key IS NOT NULL
+      AND TRIM(trt_match_key) <> ''
+),
+
+proofpoint_api_partners AS (
+    -- Restrict to sf_ids that actually appear in the Proofpoint recon for a
+    -- given billing_month, joined to their cms_id via RECON_PARTNER_MAP.
+    SELECT DISTINCT
+        i.sf_id,
+        i.billing_month,
+        i.sku_match_group,
+        UPPER(TRIM(i.sku_match_group)) AS sku_match_group_key,
+        pm.cms_id
+    FROM proofpoint_int i
+    JOIN RECON_PARTNER_MAP pm
+      ON pm.sf_id = i.sf_id
+    WHERE pm.cms_id IS NOT NULL
+      AND TRIM(pm.cms_id) <> ''
+),
+
+proofpoint_api_daily AS (
+    -- One row per (sf_id, billing_month, sku_match_group, on_date). The
+    -- window predicate binds each on_date to exactly one billing_month.
+    SELECT
+        pa.sf_id,
+        pa.billing_month,
+        pa.sku_match_group,
+        DATEADD('day', 20, pa.billing_month)::DATE            AS snapshot_date,
+        u.on_date::DATE                                        AS on_date,
+        SUM(COALESCE(u.agent_cnt, 0))                          AS day_quantity
+    FROM proofpoint_api_partners pa
+    JOIN pp_trt_keys k
+      ON k.sku_match_group_key = pa.sku_match_group_key
+    JOIN ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+      ON u.partner_id::VARCHAR = pa.cms_id
+     AND UPPER(TRIM(u.product_sku)) = k.product_sku_key
+     AND u.on_date::DATE >  DATEADD('day', 20, DATEADD('month', -1, pa.billing_month))::DATE
+     AND u.on_date::DATE <= DATEADD('day', 20, pa.billing_month)::DATE
+    GROUP BY 1, 2, 3, 4, 5
+),
+
+proofpoint_api_usage AS (
+    -- Roll up to recon grain. api_quantity = day-20 snapshot value (the
+    -- vendor-invoice snapshot day). avg_api_quantity = mean across the
+    -- window, used to smooth the mid-cycle add/drop noise.
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        MAX(IFF(on_date = snapshot_date, day_quantity, NULL))  AS api_quantity,
+        AVG(day_quantity)                                       AS avg_api_quantity
+    FROM proofpoint_api_daily
+    GROUP BY 1, 2, 3
 ),
 
 vendor_group_base AS (
@@ -745,7 +828,11 @@ scored_with_mapping_evidence AS (
         COALESCE(h.prior_matched_history_month_count, 0) AS prior_matched_history_month_count,
         COALESCE(h.later_matched_history_month_count, 0) AS later_matched_history_month_count,
         h.last_prior_matched_month,
-        h.next_later_matched_month
+        h.next_later_matched_month,
+        -- Inline TRT API rollup (see proofpoint_api_usage CTE above).
+        -- Grain: (sf_id, billing_month, sku_match_group).
+        au.api_quantity::FLOAT      AS api_quantity,
+        au.avg_api_quantity::FLOAT  AS avg_api_quantity
     FROM scored s
     LEFT JOIN sku_merge_candidates m
         ON m.billing_month = s.billing_month
@@ -755,6 +842,10 @@ scored_with_mapping_evidence AS (
         ON h.billing_month = s.billing_month
        AND h.sf_id = s.sf_id
        AND h.sku_match_group = s.sku_match_group
+    LEFT JOIN proofpoint_api_usage au
+        ON au.sf_id          = s.sf_id
+       AND au.billing_month  = s.billing_month
+       AND au.sku_match_group = s.sku_match_group
 ),
 
 -- =============================================================================
@@ -773,6 +864,8 @@ SELECT
     zuora_skus,
     marketplace_skus,
     source_presence_flag AS billing_source_mix,
+    api_quantity,
+    avg_api_quantity,
     vendor_quantity,
     vendor_unit_price,
     vendor_amount,

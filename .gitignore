@@ -1,0 +1,40 @@
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# VS Code (workspace-scoped)
+.vscode/
+.copilot/
+
+# Env files (secrets)
+.env
+.env.local
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Snowflake / connection scratch
+*.sf-cache/
+
+# Data / snapshots that shouldn't be tracked in git
+cowork_output/
+PROJECTS/Third_Party_Reconciliation/Combined_Recon_Prod_Pipeline/output/
+PROJECTS/Third_Party_Reconciliation/outputs/
+PROJECTS/Third_Party_Reconciliation/Combined_Recon_Prod_Pipeline/logs/
+
+# Local IDE artifacts
+.idea/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/

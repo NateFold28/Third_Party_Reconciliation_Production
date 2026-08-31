@@ -346,6 +346,49 @@ scored AS (
         END AS base_outcome_flag
     FROM joined
     WHERE COALESCE(vendor_quantity, 0) > 0 OR COALESCE(total_billing_quantity, 0) > 0
+),
+
+-- Bitdefender API usage: direct-from-live wire (2026-08-30). Reads CW-side
+-- per-partner cycle-day-21 snapshot from ANALYTICS.DBO_BASE_CW_DP_TRT.
+-- BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE for all product_sku values that
+-- appear in RECON_SKU_MAP for Bitdefender.  API_QUANTITY = cycle-day-21
+-- snapshot total agents; AVG_API_QUANTITY = daily average across the month
+-- (matches the Auvik / Proofpoint / SentinelOne / KeepIT / Exium pattern).
+bitdefender_api_daily AS (
+    SELECT
+        u.partner_id,
+        u.on_date::DATE AS on_date,
+        DATE_TRUNC('MONTH', u.on_date)::DATE AS billing_month,
+        SUM(COALESCE(u.agent_cnt, 0)) AS day_quantity
+    FROM ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+    WHERE u.on_date::DATE >= '2026-01-01'
+      AND u.product_sku IN (
+          SELECT DISTINCT cw_sku FROM RECON_SKU_MAP
+          WHERE vendor = 'Bitdefender' AND cw_sku IS NOT NULL
+      )
+    GROUP BY 1, 2, 3
+),
+bitdefender_api_partner_bridge AS (
+    -- Map CS-billing partner_id -> sf_id via RECON_PARTNER_MAP.cms_id.
+    -- Deterministic pick: prefer richest row (zuora_name present, sf_id populated).
+    SELECT cms_id AS partner_id, sf_id
+    FROM RECON_PARTNER_MAP
+    WHERE cms_id IS NOT NULL AND sf_id IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY cms_id
+        ORDER BY IFF(zuora_name IS NOT NULL, 0, 1), sf_id
+    ) = 1
+),
+bitdefender_api_rollup AS (
+    SELECT
+        pb.sf_id,
+        d.billing_month,
+        MAX(IFF(DAY(d.on_date) = 21, d.day_quantity, NULL))::FLOAT AS api_quantity,
+        AVG(d.day_quantity)::FLOAT                                  AS avg_api_quantity
+    FROM bitdefender_api_daily d
+    JOIN bitdefender_api_partner_bridge pb
+      ON pb.partner_id = d.partner_id
+    GROUP BY pb.sf_id, d.billing_month
 )
 
 SELECT
@@ -357,6 +400,8 @@ SELECT
     s.zuora_skus,
     s.marketplace_skus,
     s.billing_source_mix,
+    api.api_quantity,
+    api.avg_api_quantity,
     s.vendor_quantity,
     s.vendor_unit_price,
     s.vendor_amount,
@@ -463,7 +508,10 @@ SELECT
     NULL::NUMBER AS vendor_vs_contract_pct,
     NULL::VARCHAR AS vendor_vs_contract_flag,
     NULL::NUMBER AS vendor_vs_contract_dollar_impact
-FROM scored s;
+FROM scored s
+LEFT JOIN bitdefender_api_rollup api
+    ON api.sf_id = s.sf_id
+ AND api.billing_month = s.billing_month;
 
 -- =============================================================================
 -- SUMMARY (matches AUVIK_RECON_SUMMARY / PROOFPOINT_RECON_SUMMARY 29-column schema)

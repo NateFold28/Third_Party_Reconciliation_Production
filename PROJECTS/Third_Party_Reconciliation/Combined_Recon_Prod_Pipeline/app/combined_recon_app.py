@@ -26,6 +26,7 @@ from functools import cached_property
 from typing import Any, Callable
 
 import pandas as pd
+import numpy as np
 import streamlit as st
 
 try:
@@ -68,7 +69,12 @@ FRESHNESS_TTL_SECONDS = int(os.getenv("THIRD_PARTY_RECON_DASHBOARD_FRESHNESS_TTL
 #      API_QUANTITY and AVG_API_QUANTITY now populate for Proofpoint rows.
 # v26: ESET is quantity-first and now carries contract-cost overlay dollars.
 # v27: adds vendor invoice vs raw vendor usage SKU-level intra-vendor control.
-SLICE_SCHEMA_VERSION = "v27"
+# v28: replaces diagnostic status columns with health, clear-rate, parity, and margin metrics.
+# v29: 2026-08-28 adds API_AMOUNT / AVG_API_AMOUNT / API_AVG_MINUS_POINT_AMOUNT
+#      to OUTPUT_PROD (API seat count x VENDOR_UNIT_PRICE for point-in-time vs
+#      cycle-average) and renders a per-SKU API-$ variance table in the
+#      vendor deep-dive tab beneath the invoice-vs-raw-usage panel.
+SLICE_SCHEMA_VERSION = "v29"
 
 # Reconciliation check keys shown on every vendor row.
 CHECKS = [
@@ -80,10 +86,10 @@ CHECKS = [
 
 # Glossary shown under the Vendor Reconciliation Status matrix.
 COLUMN_GLOSSARY: list[tuple[str, str]] = [
-    ("Account Match", "Validated mapping of vendor account ID to ConnectWise Salesforce ID."),
-    ("Seat Count", "Vendor-reported seat count matches CW billed quantity for the same account/product."),
-    ("SKU Match", "Vendor-billed SKU maps to the CW-billed SKU (revenue booked on the correct product)."),
-    ("Negative Margin Accounts", "Accounts where the vendor-billed amount exceeds the CW-invoiced amount \u2014 CW is losing margin on the resale."),
+    ("Vendor Health", "Overall red/yellow/green status using margin, seat parity, and reconciliation clear rate for the current filter."),
+    ("Reconciliation Clear Rate", "Clear rows divided by total reconciliation rows in the selected view."),
+    ("Seat Parity", "CW billed seats divided by vendor-reported seats, plus the net CW-minus-vendor seat difference."),
+    ("Margin", "Gross margin percentage and dollars: CW billed revenue minus vendor cost."),
 ]
 
 # Plain-English glossary of the 12 canonical OUTCOME_FLAG / EXCEPTION_TYPE values.
@@ -131,6 +137,7 @@ EXCEPTION_TYPE_GLOSSARY: list[tuple[str, str]] = [
     ("Other Issue", "Catch-all for rows that do not fit any defined category. Review manually."),
 ]
 CHIP_LABELS = {"g": "Match", "y": "Review", "r": "Exception"}
+HEALTH_LABELS = {"g": "Healthy", "y": "Review", "r": "Unhealthy"}
 RANK = {"g": 0, "y": 1, "r": 2}
 
 st.set_page_config(page_title="3rd-Party Recon Suite", layout="wide")
@@ -505,6 +512,13 @@ table.recon tr:hover td {background:rgba(56,189,248,0.08);}
 table.recon td.c, table.recon th.c {text-align:center;}
 table.recon td.num, table.recon th.num {text-align:right; font-variant-numeric:tabular-nums;}
 .cellcap {display:block; font-size:0.72rem; color:var(--cw-text-2); margin-top:3px; font-weight:400; line-height:1.35;}
+.metricpair {display:block; font-variant-numeric:tabular-nums; line-height:1.25; white-space:normal;}
+.metricpair .metric-main {
+    display:block; color:var(--cw-text-0); font-size:1rem; font-weight:700;
+}
+.metricpair .metric-sub {
+    display:block; color:var(--cw-text-2); font-size:0.72rem; font-weight:400; margin-top:2px;
+}
 
 /* Vendor deep-dive rows */
 .det {
@@ -738,7 +752,7 @@ def _normalize_detail(df: pd.DataFrame) -> pd.DataFrame:
     numeric_zero = [
         "VENDOR_QUANTITY", "VENDOR_UNIT_PRICE", "VENDOR_AMOUNT",
         "ZUORA_QUANTITY", "ZUORA_UNIT_PRICE", "ZUORA_AMOUNT",
-        "MARKETPLACE_QUANTITY", "MARKETPLACE_AMOUNT",
+        "MARKETPLACE_QUANTITY", "MARKETPLACE_UNIT_PRICE", "MARKETPLACE_AMOUNT",
         "TOTAL_BILLING_QUANTITY", "TOTAL_BILLING_UNIT_PRICE", "TOTAL_BILLING_AMOUNT",
         "QTY_DELTA", "ABS_QTY_DELTA", "AMOUNT_DELTA", "ABS_AMOUNT_DELTA",
         "MARKETPLACE_TIMING_QUANTITY", "VENDOR_SOURCE_ROW_COUNT",
@@ -749,6 +763,11 @@ def _normalize_detail(df: pd.DataFrame) -> pd.DataFrame:
         "MDR_BUNDLE_AMOUNT", "MDR_BUNDLE_QUANTITY",
         "STANDALONE_LICENSE_AMOUNT", "GROSS_MARGIN_PCT", "S1_LICENSE_MARGIN_PCT",
         "EST_DOLLAR_IMPACT",
+        # Point-in-time vs. cycle-average API $ (OUTPUT_PROD 2026-08-28).
+        # API_AMOUNT     = API_QUANTITY     * VENDOR_UNIT_PRICE
+        # AVG_API_AMOUNT = AVG_API_QUANTITY * VENDOR_UNIT_PRICE
+        # API_AVG_MINUS_POINT_AMOUNT = AVG_API_AMOUNT - API_AMOUNT
+        "API_AMOUNT", "AVG_API_AMOUNT", "API_AVG_MINUS_POINT_AMOUNT",
     ]
     text_empty = [
         "VENDOR", "SF_ID", "VENDOR_PARTNER_NAME", "VENDOR_PRODUCT",
@@ -774,16 +793,20 @@ def _normalize_detail(df: pd.DataFrame) -> pd.DataFrame:
         "IS_LEAKAGE", "IS_FINANCE_QUEUE", "IS_OPS_QUEUE",
         "IS_TIMING_QUEUE", "IS_CLEAR",
     ]
+    # Fast path: pipeline v23 emits every required column, so on the common
+    # cache-miss we can skip the ~100 MB defensive copy entirely.
+    missing_numeric = [c for c in numeric_zero if c not in df.columns]
+    missing_text = [c for c in text_empty if c not in df.columns]
+    missing_bool = [c for c in bool_false if c not in df.columns]
+    if not (missing_numeric or missing_text or missing_bool):
+        return df
     out = df.copy()
-    for col in numeric_zero:
-        if col not in out.columns:
-            out[col] = 0.0
-    for col in text_empty:
-        if col not in out.columns:
-            out[col] = ""
-    for col in bool_false:
-        if col not in out.columns:
-            out[col] = False
+    for col in missing_numeric:
+        out[col] = 0.0
+    for col in missing_text:
+        out[col] = ""
+    for col in missing_bool:
+        out[col] = False
     return out
 
 
@@ -796,10 +819,12 @@ def _normalize_summary(df: pd.DataFrame) -> pd.DataFrame:
         "TOTAL_VENDOR_AMOUNT", "TOTAL_BILLING_AMOUNT",
         "TOTAL_ROWS", "PERFECT_MATCH_ROWS",
     ]
+    missing = [c for c in numeric_zero if c not in df.columns]
+    if not missing:
+        return df
     out = df.copy()
-    for col in numeric_zero:
-        if col not in out.columns:
-            out[col] = 0.0
+    for col in missing:
+        out[col] = 0.0
     return out
 
 
@@ -936,12 +961,21 @@ def _load_combined_vendor_impl(
     if not summary.empty and "BILLING_MONTH" in summary.columns:
         seat_col = "TOTAL_VENDOR_SEATS" if "TOTAL_VENDOR_SEATS" in summary.columns else None
         amt_col = "TOTAL_VENDOR_AMOUNT" if "TOTAL_VENDOR_AMOUNT" in summary.columns else None
-        if seat_col or amt_col:
+        billing_seat_col = "TOTAL_BILLING_SEATS" if "TOTAL_BILLING_SEATS" in summary.columns else None
+        billing_amt_col = "TOTAL_BILLING_AMOUNT" if "TOTAL_BILLING_AMOUNT" in summary.columns else None
+        total_rows_col = "TOTAL_ROWS" if "TOTAL_ROWS" in summary.columns else None
+        if seat_col or amt_col or billing_seat_col or billing_amt_col or total_rows_col:
             mask = pd.Series(False, index=summary.index)
             if seat_col:
                 mask = mask | (pd.to_numeric(summary[seat_col], errors="coerce").fillna(0) > 0)
             if amt_col:
                 mask = mask | (pd.to_numeric(summary[amt_col], errors="coerce").fillna(0) > 0)
+            if billing_seat_col:
+                mask = mask | (pd.to_numeric(summary[billing_seat_col], errors="coerce").fillna(0) > 0)
+            if billing_amt_col:
+                mask = mask | (pd.to_numeric(summary[billing_amt_col], errors="coerce").fillna(0) > 0)
+            if total_rows_col:
+                mask = mask | (pd.to_numeric(summary[total_rows_col], errors="coerce").fillna(0) > 0)
             loaded = set(pd.to_datetime(summary.loc[mask, "BILLING_MONTH"]).unique())
             for key, df in (("summary", summary), ("detail", detail), ("coverage", coverage)):
                 if df.empty or "BILLING_MONTH" not in df.columns:
@@ -953,18 +987,24 @@ def _load_combined_vendor_impl(
                 else:
                     coverage = df.loc[df["BILLING_MONTH"].isin(loaded)].reset_index(drop=True)
 
-    # Vendor-file-presence cap: restrict all frames to months where we have
-    # at least one row that came from an actual vendor usage file
-    # (VENDOR_SOURCE_ROW_COUNT > 0).  This is the canonical "vendor usage
-    # is the limiting factor" guard -- if no vendor file data exists for a
-    # month, there is nothing to reconcile against, so those months are
-    # excluded regardless of what the CW billing side shows.
-    if not detail.empty and "VENDOR_SOURCE_ROW_COUNT" in detail.columns and "BILLING_MONTH" in detail.columns:
-        _src_active = pd.to_numeric(detail["VENDOR_SOURCE_ROW_COUNT"], errors="coerce").fillna(0) > 0
-        _vendor_file_months = set(pd.to_datetime(detail.loc[_src_active, "BILLING_MONTH"]).unique())
-        if _vendor_file_months:
+    # Vendor-file-presence cap: restrict all frames to months where the
+    # SUMMARY_PROD row shows DATA_LOAD_STATUS='LOADED' (or USAGE_ROW_COUNT>0
+    # as a fallback if the status column is absent). VENDOR_SOURCE_ROW_COUNT
+    # in DETAIL/OUTPUT_PROD is a literal `1` for every row (see
+    # build_third_party_recon_output_prod.py line 447) so it cannot be used
+    # to distinguish loaded from unloaded months. SUMMARY_PROD carries the
+    # actual load signal from THIRD_PARTY_RECON_VENDOR_USAGE_PROD counts.
+    if not summary.empty and "BILLING_MONTH" in summary.columns:
+        _load_mask = None
+        if "DATA_LOAD_STATUS" in summary.columns:
+            _load_mask = summary["DATA_LOAD_STATUS"].astype(str).str.upper().eq("LOADED")
+        elif "USAGE_ROW_COUNT" in summary.columns:
+            _load_mask = pd.to_numeric(summary["USAGE_ROW_COUNT"], errors="coerce").fillna(0) > 0
+        if _load_mask is not None and _load_mask.any():
+            _vendor_file_months = set(pd.to_datetime(summary.loc[_load_mask, "BILLING_MONTH"]).unique())
             summary = summary[pd.to_datetime(summary["BILLING_MONTH"]).isin(_vendor_file_months)].reset_index(drop=True)
-            detail = detail[pd.to_datetime(detail["BILLING_MONTH"]).isin(_vendor_file_months)].reset_index(drop=True)
+            if not detail.empty and "BILLING_MONTH" in detail.columns:
+                detail = detail[pd.to_datetime(detail["BILLING_MONTH"]).isin(_vendor_file_months)].reset_index(drop=True)
             if not coverage.empty and "BILLING_MONTH" in coverage.columns:
                 coverage = coverage[pd.to_datetime(coverage["BILLING_MONTH"]).isin(_vendor_file_months)].reset_index(drop=True)
 
@@ -1780,6 +1820,91 @@ def check_status(
     return "g", ""
 
 
+def vendor_health_status(
+    clear_rate: float | None,
+    seat_parity: float | None,
+    margin_pct: float | None,
+    margin_amount: float | None,
+) -> tuple[str, str]:
+    """Overall vendor health from the three business-facing controls.
+
+    Rules:
+    - Healthy: margin > 0%, seat parity within 100% +/-10%, clear rate >= 90%.
+    - Review: margin > 0% and either seat parity is within +/-20% or clear rate is 70-90%.
+    - Unhealthy: margin < 0%, seat parity outside +/-30%, or clear rate < 70%.
+    """
+    cr = float(clear_rate) if clear_rate is not None and not pd.isna(clear_rate) else None
+    sp = float(seat_parity) if seat_parity is not None and not pd.isna(seat_parity) else None
+    mp = float(margin_pct) if margin_pct is not None and not pd.isna(margin_pct) else None
+    ma = float(margin_amount) if margin_amount is not None and not pd.isna(margin_amount) else None
+
+    reasons: list[str] = []
+    if ma is not None and ma < 0:
+        reasons.append("negative margin dollars")
+    if mp is not None and mp < 0:
+        reasons.append("negative margin percent")
+    if sp is None:
+        reasons.append("seat parity unavailable")
+    elif abs(sp - 1.0) > 0.30:
+        reasons.append("seat parity outside +/-30%")
+    if cr is None:
+        reasons.append("clear rate unavailable")
+    elif cr < 0.70:
+        reasons.append("clear rate below 70%")
+
+    if reasons:
+        return "r", "; ".join(reasons)
+
+    margin_positive = bool((mp is not None and mp > 0) and (ma is not None and ma > 0))
+    seat_gap = abs((sp or 0.0) - 1.0)
+    if margin_positive and seat_gap <= 0.10 and cr is not None and cr >= 0.90:
+        return "g", "margin positive, seat parity within +/-10%, clear rate >= 90%"
+    if margin_positive and (seat_gap <= 0.20 or (cr is not None and 0.70 <= cr < 0.90)):
+        return "y", "margin positive; clear rate or seat parity needs review"
+    return "y", "outside healthy thresholds"
+
+
+def clear_rate_value(matched_rows: float | int | None, total_rows: float | int | None) -> float | None:
+    total = float(total_rows or 0)
+    if total <= 0:
+        return None
+    return float(matched_rows or 0) / total
+
+
+def seat_parity_value(billing_seats: float | int | None, vendor_seats: float | int | None) -> float | None:
+    vendor = float(vendor_seats or 0)
+    if vendor <= 0:
+        return None
+    return float(billing_seats or 0) / vendor
+
+
+def clear_rate_pair(matched_rows: float | int | None, total_rows: float | int | None) -> str:
+    rate = clear_rate_value(matched_rows, total_rows)
+    if rate is None:
+        primary = "-"
+    else:
+        primary = f"{rate * 100:.1f}%"
+    secondary = f"{fmt_num(matched_rows or 0)} of {fmt_num(total_rows or 0)} rows"
+    return f'<span class="metric-main">{primary}</span><span class="metric-sub">{secondary}</span>'
+
+
+def seat_parity_pair(billing_seats: float | int | None, vendor_seats: float | int | None) -> str:
+    parity = seat_parity_value(billing_seats, vendor_seats)
+    delta = float(billing_seats or 0) - float(vendor_seats or 0)
+    if parity is None:
+        primary = "-"
+    else:
+        primary = f"{parity * 100:.1f}%"
+    secondary = f"{delta:+,.0f} seats"
+    return f'<span class="metric-main">{primary}</span><span class="metric-sub">{secondary}</span>'
+
+
+def margin_pair(margin_pct: float | None, margin_amount: float | int | None) -> str:
+    pct = "-" if margin_pct is None or pd.isna(margin_pct) else f"{float(margin_pct) * 100:.1f}%"
+    secondary = fmt_short_money(margin_amount or 0)
+    return f'<span class="metric-main">{pct}</span><span class="metric-sub">{secondary}</span>'
+
+
 def vendor_check_matrix(
     detail: pd.DataFrame,
     vendor_seats: float | None = None,
@@ -1886,13 +2011,23 @@ class VendorSlice:
         self.name: str = vendor["name"]
         self.category: str = vendor["category"]
 
-        if not detail_all.empty and "VENDOR_SOURCE_ROW_COUNT" in detail_all.columns and "BILLING_MONTH" in detail_all.columns:
-            vendor_loaded_mask = pd.to_numeric(detail_all["VENDOR_SOURCE_ROW_COUNT"], errors="coerce").fillna(0) > 0
-            vendor_loaded_months = set(pd.to_datetime(detail_all.loc[vendor_loaded_mask, "BILLING_MONTH"]).unique())
-            if vendor_loaded_months:
-                if not summary_all.empty and "BILLING_MONTH" in summary_all.columns:
-                    summary_all = summary_all[pd.to_datetime(summary_all["BILLING_MONTH"]).isin(vendor_loaded_months)].reset_index(drop=True)
-                detail_all = detail_all[pd.to_datetime(detail_all["BILLING_MONTH"]).isin(vendor_loaded_months)].reset_index(drop=True)
+        # Belt-and-suspenders re-trim to summary DATA_LOAD_STATUS='LOADED'
+        # months. VENDOR_SOURCE_ROW_COUNT in OUTPUT_PROD is a constant `1`
+        # (see build_third_party_recon_output_prod.py line 447) so it cannot
+        # be used to distinguish loaded months; SUMMARY_PROD.DATA_LOAD_STATUS
+        # is the canonical vendor-file-presence signal (falls back to
+        # USAGE_ROW_COUNT > 0 if the column is missing).
+        if not summary_all.empty and "BILLING_MONTH" in summary_all.columns:
+            _vs_mask = None
+            if "DATA_LOAD_STATUS" in summary_all.columns:
+                _vs_mask = summary_all["DATA_LOAD_STATUS"].astype(str).str.upper().eq("LOADED")
+            elif "USAGE_ROW_COUNT" in summary_all.columns:
+                _vs_mask = pd.to_numeric(summary_all["USAGE_ROW_COUNT"], errors="coerce").fillna(0) > 0
+            if _vs_mask is not None and _vs_mask.any():
+                vendor_loaded_months = set(pd.to_datetime(summary_all.loc[_vs_mask, "BILLING_MONTH"]).unique())
+                summary_all = summary_all[pd.to_datetime(summary_all["BILLING_MONTH"]).isin(vendor_loaded_months)].reset_index(drop=True)
+                if not detail_all.empty and "BILLING_MONTH" in detail_all.columns:
+                    detail_all = detail_all[pd.to_datetime(detail_all["BILLING_MONTH"]).isin(vendor_loaded_months)].reset_index(drop=True)
                 if not coverage_all.empty and "BILLING_MONTH" in coverage_all.columns:
                     coverage_all = coverage_all[pd.to_datetime(coverage_all["BILLING_MONTH"]).isin(vendor_loaded_months)].reset_index(drop=True)
 
@@ -1942,6 +2077,15 @@ class VendorSlice:
                 self.matched_rows = int((self.detail["EXCEPTION_TYPE"] == "Clear").sum())
             else:
                 self.matched_rows = int((self.detail["OUTCOME_FLAG"] == "Clear").sum())
+        self.clear_rate = clear_rate_value(self.matched_rows, self.total_rows)
+        self.seat_parity = seat_parity_value(self.billing_seats, self.vendor_seats)
+        self.seat_delta = self.billing_seats - self.vendor_seats
+        self.health_status, self.health_reason = vendor_health_status(
+            self.clear_rate,
+            self.seat_parity,
+            self.gross_margin_pct,
+            self.gross_margin,
+        )
 
         c = self.coverage
         if not c.empty and "RAW_ROWS_AFTER_SCOPE" in c.columns and "MAPPED_ROWS" in c.columns:
@@ -2215,19 +2359,42 @@ if not active_vendors:
 # will render "no data" states in each tab rather than stopping.
 first_vendor = active_vendors[0]
 
-# Portfolio-level months are the union of loaded months across every active
-# vendor (each vendor was already trimmed to its loaded months above).
+# Portfolio-level months are the INTERSECTION-anchored union of loaded months
+# across every active vendor. Each vendor was already trimmed to its own
+# loaded months in `_load_combined_vendor`, so their per-vendor max-loaded
+# month is the last month with real usage. To prevent "trailing edge" months
+# from appearing when only some vendors have loaded that month (e.g. Aug
+# 2026 has Bitdefender usage but not Acronis/Auvik/SentinelOne/etc.), we
+# cap the portfolio max month at the SMALLEST per-vendor max-loaded month.
 _month_union: set = set()
+_per_vendor_max_month: list = []
 for v in active_vendors:
     _s = v["data"]["summary"]
     if _s is not None and not _s.empty and "BILLING_MONTH" in _s.columns:
-        _month_union |= set(pd.to_datetime(_s["BILLING_MONTH"]).unique())
+        _v_months = pd.to_datetime(_s["BILLING_MONTH"]).dropna()
+        if not _v_months.empty:
+            _month_union |= set(_v_months.unique())
+            _per_vendor_max_month.append(_v_months.max())
 months_available = sorted(_month_union)
+if _per_vendor_max_month:
+    _portfolio_max_month = min(_per_vendor_max_month)
+    months_available = [m for m in months_available if pd.to_datetime(m) <= _portfolio_max_month]
 # Cap at the current calendar month — future-dated contract/royalty rows in
 # Zuora or Bitdefender quarterly billings can produce months that haven't
 # happened yet, which bleeds month-number highlights into the pill row.
 _current_month_cap = pd.Timestamp.today().normalize().to_period("M").to_timestamp()
 months_available = [m for m in months_available if pd.to_datetime(m) <= _current_month_cap]
+# Filter each vendor's frames down to the capped month window so downstream
+# aggregations (clear rate, leakage totals) don't include months hidden
+# from the picker.
+if months_available:
+    _capped_set = set(pd.to_datetime(m) for m in months_available)
+    for v in active_vendors:
+        _d = v["data"]
+        for _key in ("summary", "detail", "coverage"):
+            _df = _d.get(_key)
+            if _df is not None and not _df.empty and "BILLING_MONTH" in _df.columns:
+                _d[_key] = _df[pd.to_datetime(_df["BILLING_MONTH"]).isin(_capped_set)].reset_index(drop=True)
 if not months_available:
     st.info(
         "No billing months found yet. The pipeline tables exist but contain no data — "
@@ -2660,24 +2827,29 @@ def portfolio_totals(slices_map: dict) -> dict:
 # ---- Tab 1: Monthly Vendor Reconciliation ---------------------------------
 
 def render_status_matrix() -> None:
-    header = '<tr><th style="width:16%">Vendor</th>'
-    for _, label in CHECKS:
-        header += f'<th class="c" style="width:21%">{label}</th>'
-    header += '</tr>'
+    header = (
+        '<tr><th style="width:16%">Vendor</th>'
+        '<th class="c" style="width:21%">Vendor Health</th>'
+        '<th class="c" style="width:21%">Reconciliation Clear Rate</th>'
+        '<th class="c" style="width:21%">Seat Parity</th>'
+        '<th class="c" style="width:21%">Margin</th></tr>'
+    )
 
     rows_html = []
     ordered = sorted(
         slices.values(),
-        key=lambda s: (-RANK[s.worst], -(s.billing_amount)),
+        key=lambda s: (-RANK[s.health_status], -(s.billing_amount)),
     )
     for s in ordered:
-        row = f'<tr><td><b>{s.name}</b></td>'
-        for key, _ in CHECKS:
-            status, cap = s.matrix[key]
-            # Make descriptions more concise and impactful
-            short_cap = cap[:60] + "..." if len(cap) > 60 else cap
-            row += f'<td class="c">{chip_html(status)}<span class="cellcap">{short_cap}</span></td>'
-        row += f'</tr>'
+        row = (
+            f'<tr><td><b>{html.escape(s.name)}</b></td>'
+            f'<td class="c">{chip_html(s.health_status, HEALTH_LABELS[s.health_status])}'
+            f'<span class="cellcap">{html.escape(s.health_reason)}</span></td>'
+            f'<td class="c"><span class="metricpair">{clear_rate_pair(s.matched_rows, s.total_rows)}</span></td>'
+            f'<td class="c"><span class="metricpair">{seat_parity_pair(s.billing_seats, s.vendor_seats)}</span></td>'
+            f'<td class="c"><span class="metricpair">{margin_pair(s.gross_margin_pct, s.gross_margin)}</span></td>'
+            f'</tr>'
+        )
         rows_html.append(row)
 
     st.markdown(
@@ -2813,7 +2985,11 @@ def render_exception_detail(
         "API_QUANTITY", "AVG_API_QUANTITY",
         "QTY_DELTA", "ABS_QTY_DELTA",
         "VENDOR_UNIT_PRICE", "TOTAL_BILLING_UNIT_PRICE",
-        "VENDOR_AMOUNT", "TOTAL_BILLING_AMOUNT", "AMOUNT_DELTA",
+        "VENDOR_AMOUNT",
+        # API_AMOUNT / AVG_API_AMOUNT = API-seat $ hypotheticals at
+        # vendor unit price (point-in-time vs cycle-average).
+        "API_AMOUNT", "AVG_API_AMOUNT",
+        "TOTAL_BILLING_AMOUNT", "AMOUNT_DELTA",
         "VENDOR_INVOICE_SKU", "VENDOR_INVOICE_RATE_SOURCE",
         "DUPLICATE_BILLING",
         "INVESTIGATION_REASON", "OUTCOME_FLAG",
@@ -2852,6 +3028,16 @@ def render_exception_detail(
             "VENDOR_UNIT_PRICE": st.column_config.NumberColumn("Vendor $/seat", format="$%.4f"),
             "TOTAL_BILLING_UNIT_PRICE": st.column_config.NumberColumn("CW Billed $/seat", format="$%.4f"),
             "VENDOR_AMOUNT": st.column_config.NumberColumn("Vendor Amount", format="$%.2f"),
+            "API_AMOUNT": st.column_config.NumberColumn(
+                "API $ (pt-in-time)",
+                format="$%.2f",
+                help="API_QUANTITY x VENDOR_UNIT_PRICE — what the vendor invoice would be if priced strictly on the point-in-time API seat snapshot (day-20 for Proofpoint, 21 for S1/BD, 19 for Webroot).",
+            ),
+            "AVG_API_AMOUNT": st.column_config.NumberColumn(
+                "API $ (cycle avg)",
+                format="$%.2f",
+                help="AVG_API_QUANTITY x VENDOR_UNIT_PRICE — what the vendor invoice would be if priced on the cycle-average API seat count instead of the point-in-time snapshot.",
+            ),
             "TOTAL_BILLING_AMOUNT": st.column_config.NumberColumn("CW Billing Amount", format="$%.2f"),
             "AMOUNT_DELTA": st.column_config.NumberColumn("Amount Delta", format="$%.2f"),
             "VENDOR_INVOICE_SKU": st.column_config.TextColumn("Vendor Invoice SKU"),
@@ -3154,27 +3340,29 @@ def _monthly_recon_rows(vendor_key: str, months_key: str, freshness_: str) -> pd
     out_rows = []
     for _, row in monthly.iterrows():
         month = pd.to_datetime(row["BILLING_MONTH"])
-        month_detail = detail_all[detail_all["BILLING_MONTH"] == month]
         vs = float(row.get("TOTAL_VENDOR_SEATS") or 0)
         bs = float(row.get("TOTAL_BILLING_SEATS") or 0)
-        month_cov = coverage_all[coverage_all["BILLING_MONTH"] == month] if not coverage_all.empty else coverage_all
-        month_row_cov = None
-        if not month_cov.empty:
-            raw_r = float(month_cov["RAW_ROWS_AFTER_SCOPE"].fillna(0).sum())
-            mapped_r = float(month_cov["MAPPED_ROWS"].fillna(0).sum())
-            month_row_cov = (mapped_r / raw_r) if raw_r else None
-        matrix = vendor_check_matrix(
-            month_detail,
-            vendor_seats=vs,
-            billing_seats=bs,
-            partner_row_coverage=month_row_cov,
-        )
         rev = float(row.get("TOTAL_BILLING_AMOUNT") or 0)
         cost = float(row.get("TOTAL_VENDOR_AMOUNT") or 0)
+        total_rows = float(row.get("TOTAL_ROWS") or 0)
+        matched_rows = float(row.get("PERFECT_MATCH_ROWS") or 0)
+        clear_rate = clear_rate_value(matched_rows, total_rows)
+        seat_parity = seat_parity_value(bs, vs)
+        margin_amount = rev - cost
+        margin_pct = margin_amount / rev if rev else 0.0
+        health_status, health_reason = vendor_health_status(
+            clear_rate,
+            seat_parity,
+            margin_pct,
+            margin_amount,
+        )
         out_rows.append({
             "BILLING_MONTH": month,
             "VS": vs, "BS": bs, "REV": rev, "COST": cost,
-            "STATUSES": tuple(matrix[k][0] for k, _ in CHECKS),
+            "TOTAL_ROWS": total_rows, "MATCHED_ROWS": matched_rows,
+            "HEALTH_STATUS": health_status, "HEALTH_REASON": health_reason,
+            "CLEAR_RATE": clear_rate, "SEAT_PARITY": seat_parity,
+            "MARGIN_AMOUNT": margin_amount, "MARGIN_PCT": margin_pct,
         })
     return pd.DataFrame(out_rows)
 
@@ -3185,10 +3373,9 @@ def render_monthly_recon_table(vendor_key: str) -> None:
         st.markdown('<div class="note">No monthly summary rows in the selected period.</div>', unsafe_allow_html=True)
         return
 
-    header = '<tr><th>Month</th>'
-    for _, label in CHECKS:
-        header += f'<th class="c">{label}</th>'
-    header += (
+    header = (
+        '<tr><th>Month</th>'
+        '<th class="c">Vendor Health</th>'
         '<th class="num">Vendor seats</th><th class="num">CW Billed</th>'
         '<th class="num">CW vs. Vendor</th><th class="num">CW revenue</th>'
         '<th class="num">Vendor cost</th><th class="num">Margin $</th>'
@@ -3201,9 +3388,9 @@ def render_monthly_recon_table(vendor_key: str) -> None:
         gm = rev - cost
         gm_pct = gm / rev if rev else 0
         cells = f'<tr><td><b>{month_label(r.BILLING_MONTH)}</b></td>'
-        for s in r.STATUSES:
-            cells += f'<td class="c">{chip_html(s)}</td>'
         cells += (
+            f'<td class="c">{chip_html(r.HEALTH_STATUS, HEALTH_LABELS[r.HEALTH_STATUS])}'
+            f'<span class="cellcap">{html.escape(r.HEALTH_REASON)}</span></td>'
             f'<td class="num">{fmt_num(vs)}</td>'
             f'<td class="num">{fmt_num(bs)}</td>'
             f'<td class="num">{cw_vs_vendor_pct:+.1f}%</td>'
@@ -3221,9 +3408,20 @@ def render_monthly_recon_table(vendor_key: str) -> None:
     ytd_gm = ytd_rev - ytd_cost
     ytd_gm_pct = ytd_gm / ytd_rev if ytd_rev else 0
     ytd_cw_vs_vendor_pct = ((ytd_bs - ytd_vs) / ytd_vs * 100) if ytd_vs else 0.0
+    ytd_rows = float(monthly["TOTAL_ROWS"].sum())
+    ytd_matched = float(monthly["MATCHED_ROWS"].sum())
+    ytd_clear_rate = clear_rate_value(ytd_matched, ytd_rows)
+    ytd_seat_parity = seat_parity_value(ytd_bs, ytd_vs)
+    ytd_health, ytd_health_reason = vendor_health_status(
+        ytd_clear_rate,
+        ytd_seat_parity,
+        ytd_gm_pct,
+        ytd_gm,
+    )
     body.append(
         '<tr style="font-weight:700;background:var(--cw-bg-3);color:var(--cw-text-0)"><td>YTD</td>'
-        f'<td class="c" colspan="{len(CHECKS)}">-</td>'
+        f'<td class="c">{chip_html(ytd_health, HEALTH_LABELS[ytd_health])}'
+        f'<span class="cellcap">{html.escape(ytd_health_reason)}</span></td>'
         f'<td class="num">{fmt_num(ytd_vs)}</td>'
         f'<td class="num">{fmt_num(ytd_bs)}</td>'
         f'<td class="num">{ytd_cw_vs_vendor_pct:+.1f}%</td>'
@@ -3291,9 +3489,11 @@ def _load_vendor_invoice_usage_intra(
     """Load the precomputed vendor-internal invoice-vs-usage control.
 
     The table is vendor/month/SKU grain upstream. The app keeps the Snowflake
-    query narrow, then rolls the selected months up to SKU for display.
-    Months without parsed invoice lines remain included so invoice-side fields
-    stay NULL and clearly signal invoice absence for that period.
+    query narrow, gates the display to months where raw vendor usage exists,
+    then rolls the selected months up to SKU for display. Months without parsed
+    invoice lines remain included only when usage exists, so invoice-side fields
+    stay NULL and clearly signal invoice absence for that period without showing
+    future invoice-only months as false variances.
     """
     vendor_sql = str(vendor_name).replace("'", "''")
     if months_key:
@@ -3303,7 +3503,7 @@ def _load_vendor_invoice_usage_intra(
             if pd.notna(ts):
                 month_values.append(f"'{ts:%Y-%m-%d}'")
         month_sql = (
-            f" AND BILLING_MONTH IN ({','.join(month_values)})"
+            f" AND t.BILLING_MONTH IN ({','.join(month_values)})"
             if month_values
             else ""
         )
@@ -3312,20 +3512,31 @@ def _load_vendor_invoice_usage_intra(
 
     df = upper_cols(_try_query(
         f"""
+        WITH usage_months AS (
+            SELECT DISTINCT BILLING_MONTH
+            FROM {SCHEMA}.THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD
+            WHERE VENDOR = '{vendor_sql}'
+              AND (
+                    COALESCE(VENDOR_RAW_USAGE_SEATS, 0) <> 0
+                 OR COALESCE(VENDOR_RAW_USAGE_AMOUNT, 0) <> 0
+              )
+        )
         SELECT
-            VENDOR,
-            BILLING_MONTH,
-            SKU,
-            VENDOR_INVOICE_SKU,
-            VENDOR_USAGE_SKU,
-            VENDOR_INVOICE_SEATS,
-            VENDOR_RAW_USAGE_SEATS,
-            VENDOR_INVOICE_AMOUNT,
-            VENDOR_RAW_USAGE_AMOUNT,
-            DELTA_SEATS,
-            DELTA_AMOUNT,
-            SOURCE_STATUS
+            t.VENDOR,
+            t.BILLING_MONTH,
+            t.SKU,
+            t.VENDOR_INVOICE_SKU,
+            t.VENDOR_USAGE_SKU,
+            t.VENDOR_INVOICE_SEATS,
+            t.VENDOR_RAW_USAGE_SEATS,
+            t.VENDOR_INVOICE_AMOUNT,
+            t.VENDOR_RAW_USAGE_AMOUNT,
+            t.DELTA_SEATS,
+            t.DELTA_AMOUNT,
+            t.SOURCE_STATUS
                 FROM {SCHEMA}.THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD t
+                INNER JOIN usage_months u
+                    ON u.BILLING_MONTH = t.BILLING_MONTH
                 WHERE t.VENDOR = '{vendor_sql}'{month_sql}
         ORDER BY BILLING_MONTH, ABS(DELTA_AMOUNT) DESC, ABS(DELTA_SEATS) DESC, SKU
         """,
@@ -3343,10 +3554,6 @@ def _sum_preserve_null(series: pd.Series) -> float:
 
 def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
     st.markdown("### Vendor Invoice vs. Vendor Raw Usage Files")
-    st.caption(
-        "Selected-period SKU rollup (one row per invoice/usage SKU combination). "
-        "Delta = raw vendor usage minus parsed vendor invoice; invoice-side metric NULLs still mean no parsed invoice row exists for that vendor/month/SKU yet."
-    )
 
     raw = _load_vendor_invoice_usage_intra(
         vendor_name,
@@ -3468,6 +3675,574 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
         use_container_width=True,
         hide_index=True,
         height=360,
+    )
+
+    render_vendor_api_amount_comparison(vendor_name)
+
+
+def render_vendor_api_amount_comparison(vendor_name: str) -> None:
+    """Per-SKU comparison of point-in-time vs cycle-average API-priced $.
+
+    Purpose: quantify the dollar variance between billing the vendor invoice
+    on the point-in-time API snapshot (e.g. Proofpoint day-20) vs. the
+    cycle-average API seat count across the vendor's monthly cycle
+    (day-20 of prior month through day-20 of current month).
+
+    Columns:
+      * SKU (VENDOR_PRODUCT rollup)
+      * API Seats (point-in-time)    = SUM(API_QUANTITY)
+      * API Seats (cycle avg)         = SUM(AVG_API_QUANTITY)
+      * CW Billed $ @ API pt-in-time  = SUM(API_QUANTITY x VENDOR_UNIT_PRICE)
+      * CW Billed $ @ API cycle avg   = SUM(AVG_API_QUANTITY x VENDOR_UNIT_PRICE)
+      * Variance $                    = avg - point
+      * Variance %                    = variance / point
+
+    Only rows with an actual API feed populated are counted, so the
+    table renders as "no data" for vendors without an API integration.
+    """
+    st.markdown("### API Point-in-Time vs. Cycle-Average $ Comparison")
+
+    vendor_sql = str(vendor_name).replace("'", "''")
+    month_sql = ""
+    if selected_month_ts_list:
+        month_values = []
+        for month in selected_month_ts_list:
+            ts = pd.to_datetime(month, errors="coerce")
+            if pd.notna(ts):
+                month_values.append(f"'{ts:%Y-%m-%d}'")
+        if month_values:
+            month_sql = f" AND BILLING_MONTH IN ({','.join(month_values)})"
+
+    df = upper_cols(_try_query(
+        f"""
+        SELECT
+            COALESCE(NULLIF(TRIM(VENDOR_PRODUCT), ''), '(unmapped)') AS SKU,
+            SUM(API_QUANTITY)     AS API_SEATS_POINT,
+            SUM(AVG_API_QUANTITY) AS API_SEATS_AVG,
+            SUM(API_AMOUNT)       AS API_AMT_POINT,
+            SUM(AVG_API_AMOUNT)   AS API_AMT_AVG,
+            COUNT_IF(API_QUANTITY IS NOT NULL)     AS ROWS_WITH_POINT,
+            COUNT_IF(AVG_API_QUANTITY IS NOT NULL) AS ROWS_WITH_AVG
+        FROM {SCHEMA}.THIRD_PARTY_RECON_OUTPUT_PROD
+        WHERE VENDOR = '{vendor_sql}'
+          AND (API_QUANTITY IS NOT NULL OR AVG_API_QUANTITY IS NOT NULL){month_sql}
+        GROUP BY 1
+        ORDER BY API_AMT_POINT DESC NULLS LAST
+        """,
+        freshness,
+    ))
+
+    if df.empty:
+        st.markdown(
+            '<div class="note">No API-feed rows are available for this vendor '
+            'in the selected period. API amount comparison is only populated for '
+            'vendors with a live API integration.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    df["API_AMT_POINT"] = pd.to_numeric(df["API_AMT_POINT"], errors="coerce").fillna(0.0)
+    df["API_AMT_AVG"] = pd.to_numeric(df["API_AMT_AVG"], errors="coerce").fillna(0.0)
+    df["API_SEATS_POINT"] = pd.to_numeric(df["API_SEATS_POINT"], errors="coerce").fillna(0.0)
+    df["API_SEATS_AVG"] = pd.to_numeric(df["API_SEATS_AVG"], errors="coerce").fillna(0.0)
+    # Variance sign convention: point-in-time minus cycle-average.
+    #   Positive => the current point-in-time billing method captures more
+    #               revenue than a cycle-average method would (current wins).
+    #   Negative => the cycle-average method would capture more (avg wins).
+    df["VARIANCE_DOLLARS"] = df["API_AMT_POINT"] - df["API_AMT_AVG"]
+    df["VARIANCE_PCT"] = df.apply(
+        lambda r: (r["VARIANCE_DOLLARS"] / r["API_AMT_AVG"] * 100.0)
+        if r["API_AMT_AVG"] else 0.0,
+        axis=1,
+    )
+
+    total_row = {
+        "SKU": "TOTAL",
+        "API_SEATS_POINT": df["API_SEATS_POINT"].sum(),
+        "API_SEATS_AVG": df["API_SEATS_AVG"].sum(),
+        "API_AMT_POINT": df["API_AMT_POINT"].sum(),
+        "API_AMT_AVG": df["API_AMT_AVG"].sum(),
+    }
+    total_row["VARIANCE_DOLLARS"] = total_row["API_AMT_POINT"] - total_row["API_AMT_AVG"]
+    total_row["VARIANCE_PCT"] = (
+        (total_row["VARIANCE_DOLLARS"] / total_row["API_AMT_AVG"] * 100.0)
+        if total_row["API_AMT_AVG"] else 0.0
+    )
+    display = pd.concat([df, pd.DataFrame([total_row])], ignore_index=True)
+
+    display["CW Billed $ @ API pt-in-time"] = display["API_AMT_POINT"].map(
+        lambda v: "" if pd.isna(v) else fmt_money(float(v))
+    )
+    display["CW Billed $ @ API cycle avg"] = display["API_AMT_AVG"].map(
+        lambda v: "" if pd.isna(v) else fmt_money(float(v))
+    )
+    display["Variance $"] = display["VARIANCE_DOLLARS"].map(
+        lambda v: "" if pd.isna(v) else fmt_money(float(v))
+    )
+    display["Variance %"] = display["VARIANCE_PCT"].map(
+        lambda v: "" if pd.isna(v) else f"{float(v):+.1f}%"
+    )
+    display["API Seats (pt-in-time)"] = display["API_SEATS_POINT"].map(
+        lambda v: "" if pd.isna(v) else fmt_num(float(v))
+    )
+    display["API Seats (cycle avg)"] = display["API_SEATS_AVG"].map(
+        lambda v: "" if pd.isna(v) else fmt_num(float(v))
+    )
+
+    st.dataframe(
+        display[
+            [
+                "SKU",
+                "API Seats (pt-in-time)",
+                "API Seats (cycle avg)",
+                "CW Billed $ @ API pt-in-time",
+                "CW Billed $ @ API cycle avg",
+                "Variance $",
+                "Variance %",
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True,
+        height=340,
+    )
+
+
+# ---------------------------------------------------------------------------
+# SKU-level rate variance tables (row-level, not averaged)
+# ---------------------------------------------------------------------------
+# Two tables shown above the Profitability by SKU table on the vendor
+# deep-dive tab. Grain is billing_month x partner x SKU -- exactly the grain
+# already produced by THIRD_PARTY_RECON_OUTPUT_PROD, so every row we render
+# comes straight from the pipeline aggregate with no re-aggregation.
+#
+# Vendor-side variance:
+#   actual   = OUTPUT_PROD.VENDOR_UNIT_PRICE   (straight from vendor usage file)
+#   expected = SKU_MAP_PROD.VENDOR_UNIT_PRICE  (contracted per-seat vendor rate)
+#   Rows shown only when actual differs from expected. Positive delta = vendor
+#   invoiced above the mapped rate.
+#
+# CW-side variance:
+#   actual   = ZUORA_UNIT_PRICE if the Zuora line exists on this row,
+#              else MARKETPLACE_UNIT_PRICE (falls back to marketplace when the
+#              partner is billed exclusively through the CSP/marketplace flow)
+#   expected = SKU_MAP_PROD.CW_UNIT_PRICE     (retail per-seat CW rate)
+#   Rows shown only when the actual billed rate differs from retail.
+#
+# Both tables render the full set of variance rows with an in-app CSV
+# download button, sorted descending by absolute $ impact.
+# ---------------------------------------------------------------------------
+
+# Float-noise tolerance: rates come from the vendor usage file as clean
+# decimals (e.g. 2.05). Anything smaller than half a hundredth of a cent
+# is treated as equality to prevent binary-float artifacts from creating
+# spurious variance rows.
+RATE_MATCH_TOLERANCE = 5e-5
+
+
+@st.cache_data(ttl=DATA_TTL_SECONDS, show_spinner=False)
+def _load_sku_map_rates(freshness_: str) -> pd.DataFrame:
+    """Reference rates from THIRD_PARTY_RECON_SKU_MAP_PROD.
+
+    The map carries multiple rows per (vendor, product) (also keyed by vendor
+    SKU + CW SKU) but VENDOR_UNIT_PRICE, CW_UNIT_PRICE, and CONTRACT_COST_RATE
+    are constant for a given (vendor, product) pair. We collapse by MIN so we
+    get the exact literal source value (not a floating-point average of
+    duplicates).
+
+    We also surface CONTRACT_COST_RATE so vendors whose SKU map does not
+    publish VENDOR_UNIT_PRICE directly (Auvik / Bitdefender / ESET / Webroot)
+    can still be compared against a governed reference. The invoice-derived
+    VENDOR_UNIT_PRICE lands on OUTPUT_PROD through the ingestion pipeline
+    (invoice_rate_backfill.fill_missing_prices_dynamic: exact-month invoice
+    rate, else carry-forward from the most recent prior month), so this table
+    treats CONTRACT_COST_RATE as the ``should be`` fallback when the map
+    lacks a per-SKU vendor unit price.
+    """
+    df = upper_cols(_try_query(
+        f"""
+        SELECT VENDOR, VENDOR_PRODUCT, VENDOR_UNIT_PRICE, CW_UNIT_PRICE, CONTRACT_COST_RATE
+        FROM {SCHEMA}.THIRD_PARTY_RECON_SKU_MAP_PROD
+        WHERE VENDOR_PRODUCT IS NOT NULL
+        """,
+        freshness_,
+    ))
+    if df.empty:
+        return df
+    for col in ("VENDOR_UNIT_PRICE", "CW_UNIT_PRICE", "CONTRACT_COST_RATE"):
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return (
+        df.groupby(["VENDOR", "VENDOR_PRODUCT"], dropna=False)
+        .agg(
+            VENDOR_UNIT_PRICE=("VENDOR_UNIT_PRICE", "min"),
+            CW_UNIT_PRICE=("CW_UNIT_PRICE", "min"),
+            CONTRACT_COST_RATE=("CONTRACT_COST_RATE", "min"),
+        )
+        .reset_index()
+    )
+
+
+def _sku_reference_rates(vendor_name: str) -> pd.DataFrame:
+    """Return the per-SKU reference-rate frame for a single vendor."""
+    all_rates = _load_sku_map_rates(freshness)
+    if all_rates.empty:
+        return all_rates
+    return all_rates[all_rates["VENDOR"].astype(str) == str(vendor_name)].reset_index(drop=True)
+
+
+def _render_variance_table(
+    frame: pd.DataFrame,
+    reference_col: str,
+    actual_col: str,
+    reference_label: str,
+    actual_label: str,
+    quantity_col: str,
+    quantity_label: str,
+    direction: str,
+    slice_name: str,
+    period_label: str,
+    download_stem: str,
+    header: str,
+    caption: str,
+    extra_cols: list[tuple[str, str]] | None = None,
+) -> None:
+    """Row-level variance renderer -- full table + CSV download.
+
+    ``frame`` must be at billing_month x partner x SKU grain and carry:
+      * ``BILLING_MONTH``, ``PARTNER``, ``SKU``
+      * ``quantity_col`` -- seat count (numeric)
+      * ``actual_col``   -- actual unit price paid/billed at that row
+      * ``reference_col`` -- expected unit price from the SKU map
+
+    ``direction``:
+      * ``"vendor_over"`` -- keep rows where actual > reference (vendor charged
+        above map), sort by extra cost $ desc.
+      * ``"cw_under"``    -- keep rows where actual < reference (CW billed below
+        retail), sort by revenue shortfall $ desc.
+      * ``"any"``         -- keep any row where actual != reference, sort by
+        abs($ impact) desc.
+
+    ``extra_cols`` -- optional extra display columns to surface between the
+    quantity and the $-impact columns. List of (source_col, header_label).
+    """
+    st.markdown(f"### {header}")
+
+    if frame.empty:
+        st.markdown(
+            '<div class="note">No matching rows for this vendor in the selected period.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    work = frame.copy()
+    ref_vals = pd.to_numeric(work[reference_col], errors="coerce")
+    actual_vals = pd.to_numeric(work[actual_col], errors="coerce")
+    qty_vals = pd.to_numeric(work[quantity_col], errors="coerce").fillna(0.0)
+
+    mask_actionable = ref_vals.notna() & actual_vals.notna() & (qty_vals > 0)
+    if not mask_actionable.any():
+        st.markdown(
+            '<div class="note">No rows with both a mapped reference rate and non-zero seats.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    work = work.loc[mask_actionable].copy()
+    ref_vals = ref_vals.loc[mask_actionable]
+    actual_vals = actual_vals.loc[mask_actionable]
+    qty_vals = qty_vals.loc[mask_actionable]
+
+    delta_per_seat = actual_vals - ref_vals
+
+    if direction == "vendor_over":
+        keep = delta_per_seat > RATE_MATCH_TOLERANCE
+        dollar_impact = delta_per_seat * qty_vals
+        impact_label = "Extra cost $"
+        summary_word = "extra cost"
+    elif direction == "cw_under":
+        keep = delta_per_seat < -RATE_MATCH_TOLERANCE
+        dollar_impact = (-delta_per_seat) * qty_vals
+        impact_label = "Revenue shortfall $"
+        summary_word = "revenue shortfall"
+    elif direction == "any":
+        keep = delta_per_seat.abs() > RATE_MATCH_TOLERANCE
+        dollar_impact = delta_per_seat.abs() * qty_vals
+        impact_label = "$ Impact"
+        summary_word = "impact"
+    else:
+        raise ValueError(f"unknown direction: {direction}")
+
+    if not keep.any():
+        st.markdown(
+            f'<div class="note">{caption}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f'<div class="note">{slice_name} billed every row at the mapped rate for {period_label}. '
+            "No variance rows to review.</div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    work = work.loc[keep].copy()
+    delta_per_seat = delta_per_seat.loc[keep]
+    dollar_impact = dollar_impact.loc[keep]
+    ref_vals = ref_vals.loc[keep]
+
+    work["DELTA_PER_SEAT"] = delta_per_seat.values
+    work["DOLLAR_IMPACT"] = dollar_impact.values
+    ref_safe = ref_vals.where(ref_vals != 0)
+    work["DELTA_PCT"] = (delta_per_seat / ref_safe).values
+
+    work = work.sort_values(
+        ["DOLLAR_IMPACT", quantity_col], ascending=[False, False]
+    ).reset_index(drop=True)
+
+    total_impact = float(work["DOLLAR_IMPACT"].sum())
+    total_qty = float(pd.to_numeric(work[quantity_col], errors="coerce").fillna(0.0).sum())
+    total_partners = int(work["PARTNER"].astype(str).nunique())
+    total_rows = int(len(work))
+
+    st.markdown(f'<div class="note">{caption}</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="note">'
+        f"{fmt_num(total_rows)} variance rows across {fmt_num(total_partners)} partners &middot; "
+        f"{fmt_num(int(total_qty))} seats &middot; "
+        f"{fmt_short_money(total_impact)} total {summary_word}"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    display = work.copy()
+    if pd.api.types.is_datetime64_any_dtype(display["BILLING_MONTH"]):
+        display["Month"] = pd.to_datetime(display["BILLING_MONTH"]).dt.strftime("%b %Y")
+    else:
+        display["Month"] = display["BILLING_MONTH"].astype(str)
+    display["Partner"] = display["PARTNER"].astype(str)
+    display[reference_label] = display[reference_col].map(
+        lambda v: "-" if pd.isna(v) else f"${float(v):.4f}"
+    )
+    display[actual_label] = display[actual_col].map(
+        lambda v: "-" if pd.isna(v) else f"${float(v):.4f}"
+    )
+    display["Delta $/seat"] = display["DELTA_PER_SEAT"].map(
+        lambda v: "-" if pd.isna(v) else f"${float(v):.4f}"
+    )
+    display["Delta %"] = display["DELTA_PCT"].map(
+        lambda v: "-" if pd.isna(v) else f"{float(v) * 100:+.2f}%"
+    )
+    display[quantity_label] = pd.to_numeric(display[quantity_col], errors="coerce").fillna(0).map(
+        lambda v: fmt_num(int(v))
+    )
+    display[impact_label] = display["DOLLAR_IMPACT"].map(
+        lambda v: "-" if pd.isna(v) else fmt_short_money(float(v))
+    )
+
+    extras: list[str] = []
+    if extra_cols:
+        for src_col, hdr in extra_cols:
+            if src_col in display.columns:
+                display[hdr] = display[src_col].astype(str).replace({"nan": "-", "": "-"})
+                extras.append(hdr)
+
+    show_cols = [
+        "Month",
+        "Partner",
+        "SKU",
+        reference_label,
+        actual_label,
+        "Delta $/seat",
+        "Delta %",
+        quantity_label,
+        *extras,
+        impact_label,
+    ]
+
+    # Show all rows; use a comfortable fixed height so the internal scrollbar
+    # handles long lists cleanly.
+    visible_rows = min(total_rows, 25)
+    df_height = 38 + 35 * max(visible_rows, 1)
+    st.dataframe(
+        display[show_cols],
+        use_container_width=True,
+        hide_index=True,
+        height=df_height,
+    )
+
+    # ---- CSV download (full variance frame, unformatted numerics) ----
+    csv_frame = work.copy()
+    if pd.api.types.is_datetime64_any_dtype(csv_frame["BILLING_MONTH"]):
+        csv_frame["BILLING_MONTH"] = pd.to_datetime(csv_frame["BILLING_MONTH"]).dt.strftime("%Y-%m-%d")
+    csv_cols_order = [
+        "BILLING_MONTH",
+        "PARTNER",
+        "SKU",
+        reference_col,
+        actual_col,
+        "DELTA_PER_SEAT",
+        "DELTA_PCT",
+        quantity_col,
+    ]
+    if extra_cols:
+        csv_cols_order.extend(src for src, _ in extra_cols if src in csv_frame.columns)
+    csv_cols_order.append("DOLLAR_IMPACT")
+    csv_frame = csv_frame[[c for c in csv_cols_order if c in csv_frame.columns]]
+    safe_period = re.sub(r"[^A-Za-z0-9_-]+", "_", period_label).strip("_")
+    safe_vendor = re.sub(r"[^A-Za-z0-9_-]+", "_", slice_name).strip("_")
+    st.download_button(
+        label=f"Download {slice_name} {download_stem} as CSV",
+        data=csv_frame.to_csv(index=False).encode("utf-8"),
+        file_name=f"{safe_vendor.lower()}_{download_stem}_{safe_period.lower() or 'all'}.csv",
+        mime="text/csv",
+        key=f"dl_{safe_vendor.lower()}_{download_stem}",
+        help=f"Full row-level variance frame for {slice_name}.",
+    )
+
+
+def render_vendor_invoice_vs_contract_rate(slice_: VendorSlice) -> None:
+    """Vendor-side rate variance.
+
+    Grain: billing_month x partner x SKU (as stored in OUTPUT_PROD).
+    Actual   = VENDOR_UNIT_PRICE from OUTPUT_PROD. For vendors that publish
+               $/seat directly on the raw usage feed (Acronis / Proofpoint /
+               KeepIT / SentinelOne / Exium) this is the vendor-invoiced
+               rate. For vendors whose raw usage file has no unit price
+               (Auvik / Bitdefender / ESET / Webroot) the ingestion pipeline
+               populates it dynamically from THIRD_PARTY_RECON_VENDOR_INVOICES
+               using the invoice for that billing month, falling back to the
+               most recent prior month if the current month is not yet in.
+    Expected = VENDOR_UNIT_PRICE from THIRD_PARTY_RECON_SKU_MAP_PROD when
+               present, otherwise CONTRACT_COST_RATE. Only rows where actual
+               exceeds the reference (vendor billed above the mapped rate)
+               are shown, sorted by extra cost $.
+    """
+    detail = slice_.detail
+    if detail.empty or "VENDOR_PRODUCT" not in detail.columns:
+        return
+    ref = _sku_reference_rates(slice_.name)
+    if ref.empty:
+        return
+    # Prefer per-SKU VENDOR_UNIT_PRICE from the map; fall back to the governed
+    # CONTRACT_COST_RATE so vendors without a map-published unit price still
+    # get a reference against the invoice-derived actual.
+    ref = ref.copy()
+    ref_vup = ref["VENDOR_UNIT_PRICE"] if "VENDOR_UNIT_PRICE" in ref.columns else pd.Series([pd.NA] * len(ref))
+    ref_ccr = ref["CONTRACT_COST_RATE"] if "CONTRACT_COST_RATE" in ref.columns else pd.Series([pd.NA] * len(ref))
+    ref["MAP_REFERENCE_RATE"] = pd.to_numeric(ref_vup, errors="coerce").combine_first(
+        pd.to_numeric(ref_ccr, errors="coerce")
+    )
+    if not ref["MAP_REFERENCE_RATE"].notna().any():
+        return
+
+    d = detail[[
+        "BILLING_MONTH", "VENDOR_PARTNER_NAME", "VENDOR_PRODUCT",
+        "VENDOR_QUANTITY", "VENDOR_UNIT_PRICE", "VENDOR_AMOUNT",
+    ]].copy()
+    d["PARTNER"] = d["VENDOR_PARTNER_NAME"].fillna("(unknown)").astype(str)
+    d["SKU"] = d["VENDOR_PRODUCT"].fillna("(unmapped)").astype(str)
+
+    ref_slim = ref[["VENDOR_PRODUCT", "MAP_REFERENCE_RATE"]].rename(
+        columns={"VENDOR_PRODUCT": "SKU"}
+    )
+    merged = d.merge(ref_slim, on="SKU", how="left")
+
+    _render_variance_table(
+        frame=merged,
+        reference_col="MAP_REFERENCE_RATE",
+        actual_col="VENDOR_UNIT_PRICE",
+        reference_label="Contract $/seat",
+        actual_label="Vendor invoiced $/seat",
+        quantity_col="VENDOR_QUANTITY",
+        quantity_label="Vendor seats",
+        direction="vendor_over",
+        slice_name=slice_.name,
+        period_label=period_label,
+        download_stem="vendor_rate_variance",
+        header=f"{slice_.name} vendor invoice vs contracted rate",
+        caption=(
+            "Row-level check: vendor unit price on OUTPUT_PROD (invoice-derived "
+            "where the raw usage file omits it, with carry-forward from the most "
+            "recent prior invoice month) vs the mapped rate from "
+            "THIRD_PARTY_RECON_SKU_MAP_PROD (VENDOR_UNIT_PRICE when published, "
+            "else CONTRACT_COST_RATE). Only rows where the vendor invoiced above "
+            "the mapped rate are shown."
+        ),
+    )
+
+
+def render_cw_retail_vs_billed_rate(slice_: VendorSlice) -> None:
+    """CW-side rate variance.
+
+    Grain: billing_month x partner x SKU (as stored in OUTPUT_PROD).
+    Actual   = ZUORA_UNIT_PRICE when the Zuora line exists on the row,
+               otherwise MARKETPLACE_UNIT_PRICE (falls back to marketplace
+               when the partner is billed exclusively via the CSP flow).
+    Expected = CW_UNIT_PRICE from THIRD_PARTY_RECON_SKU_MAP_PROD (retail).
+    Only rows where actual < expected (CW billed below retail) are shown,
+    sorted by revenue shortfall $.
+    """
+    detail = slice_.detail
+    if detail.empty or "VENDOR_PRODUCT" not in detail.columns:
+        return
+    ref = _sku_reference_rates(slice_.name)
+    if ref.empty or "CW_UNIT_PRICE" not in ref.columns:
+        return
+    if not ref["CW_UNIT_PRICE"].notna().any():
+        return
+
+    cols = [
+        "BILLING_MONTH", "VENDOR_PARTNER_NAME", "VENDOR_PRODUCT",
+        "ZUORA_QUANTITY", "ZUORA_UNIT_PRICE",
+        "MARKETPLACE_QUANTITY", "MARKETPLACE_UNIT_PRICE",
+    ]
+    missing = [c for c in cols if c not in detail.columns]
+    if missing:
+        return
+    d = detail[cols].copy()
+    d["PARTNER"] = d["VENDOR_PARTNER_NAME"].fillna("(unknown)").astype(str)
+    d["SKU"] = d["VENDOR_PRODUCT"].fillna("(unmapped)").astype(str)
+
+    zqty = pd.to_numeric(d["ZUORA_QUANTITY"], errors="coerce").fillna(0.0)
+    zprc = pd.to_numeric(d["ZUORA_UNIT_PRICE"], errors="coerce").fillna(0.0)
+    mqty = pd.to_numeric(d["MARKETPLACE_QUANTITY"], errors="coerce").fillna(0.0)
+    mprc = pd.to_numeric(d["MARKETPLACE_UNIT_PRICE"], errors="coerce").fillna(0.0)
+
+    use_zuora = (zqty > 0) & (zprc > 0)
+    d["ACTUAL_BILLED_QTY"] = np.where(use_zuora, zqty, mqty)
+    d["ACTUAL_BILLED_UNIT_PRICE"] = np.where(use_zuora, zprc, mprc)
+    d["BILLING_SOURCE"] = np.where(
+        use_zuora, "Zuora",
+        np.where((mqty > 0) & (mprc > 0), "Marketplace", "-"),
+    )
+
+    ref_slim = ref[["VENDOR_PRODUCT", "CW_UNIT_PRICE"]].rename(
+        columns={
+            "VENDOR_PRODUCT": "SKU",
+            "CW_UNIT_PRICE": "MAP_CW_UNIT_PRICE",
+        }
+    )
+    merged = d.merge(ref_slim, on="SKU", how="left")
+
+    _render_variance_table(
+        frame=merged,
+        reference_col="MAP_CW_UNIT_PRICE",
+        actual_col="ACTUAL_BILLED_UNIT_PRICE",
+        reference_label="CW retail $/seat",
+        actual_label="CW billed $/seat",
+        quantity_col="ACTUAL_BILLED_QTY",
+        quantity_label="CW billed seats",
+        direction="cw_under",
+        slice_name=slice_.name,
+        period_label=period_label,
+        download_stem="cw_rate_variance",
+        header=f"{slice_.name} CW billing vs retail rate",
+        caption=(
+            "Row-level check: Zuora unit price (or Marketplace unit price when "
+            "Zuora is absent) vs the mapped retail rate from "
+            "THIRD_PARTY_RECON_SKU_MAP_PROD. Only rows where CW billed the "
+            "partner below retail are shown."
+        ),
+        extra_cols=[("BILLING_SOURCE", "Source")],
     )
 
 
@@ -4105,6 +4880,17 @@ with tab_vendor:
             st.dataframe(below_display_df, use_container_width=True, hide_index=True)
 
         render_vendor_rate_audit(active_slice)
+
+    # ------------------------------------------------------------------
+    # Margin erosion tables (billing_month x partner x SKU grain)
+    #   1. Vendor-side  - vendor invoiced above contracted rate
+    #   2. CW-side      - CW billed partner below retail (Zuora + Marketplace)
+    # Rendered above Profitability by SKU so the analyst can decompose
+    # margin movement into "vendor over-billing" and "CW under-billing"
+    # before drilling into per-SKU mix + margin.
+    # ------------------------------------------------------------------
+    render_vendor_invoice_vs_contract_rate(active_slice)
+    render_cw_retail_vs_billed_rate(active_slice)
 
     # ------------------------------------------------------------------
     # Profitability by SKU — per-vendor mix + rate view
