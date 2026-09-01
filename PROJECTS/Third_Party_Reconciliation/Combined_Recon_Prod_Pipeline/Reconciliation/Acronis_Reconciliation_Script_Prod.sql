@@ -2,7 +2,8 @@
 -- STEP 2: ACRONIS FINAL RECONCILIATION  (Proofpoint-style, vendor-SKU grain)
 -- =============================================================================
 -- 2026-08-03 REBUILD to the Proofpoint / Auvik pattern.
---   Vendor side = ACRONIS_USAGE   (vendor consumption; AMOUNT = qty * observed USD price)
+--   Vendor side = THIRD_PARTY_RECON_VENDOR_USAGE_PROD filtered to Acronis
+--                 (vendor consumption; AMOUNT = qty * observed USD price)
 --   CW side     = THIRD_PARTY_RECON_SOURCE_ZUORA_PROD + THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
 --                 resolved to Acronis sku_match_group inside this script
 --   Grain       = (sf_id, billing_month, sku_match_group), sku_match_group = VENDOR SKU code
@@ -187,13 +188,14 @@ combined_map AS (
     GROUP BY 1, 2, 3
 ),
 
--- ---- Vendor side: ACRONIS_USAGE -> sf_id, sku_match_group = vendor SKU code ----
+-- ---- Vendor side: shared vendor usage -> sf_id, sku_match_group = vendor SKU code ----
 vendor_rows AS (
     WITH usage_norm AS (
         SELECT
             u.*,
             TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm
-        FROM ACRONIS_USAGE u
+        FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
+        WHERE u.VENDOR = 'Acronis'
     ),
     usage_resolved AS (
         SELECT
@@ -1023,7 +1025,7 @@ raw AS (
         UPPER(TRIM(u.VENDOR_PRODUCT_SKU)) AS vendor_sku,
         COALESCE(u.QUANTITY, 0) AS quantity,
         COALESCE(cm.sf_id, p.sf_id) AS sf_id
-    FROM ACRONIS_USAGE u
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
     LEFT JOIN combined_map cm
         ON cm.billing_month = u.BILLING_MONTH::DATE
        AND cm.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
@@ -1031,7 +1033,8 @@ raw AS (
     LEFT JOIN partner_map p
                 ON p.billing_month = u.BILLING_MONTH::DATE
              AND p.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
-    WHERE COALESCE(u.QUANTITY, 0) > 0
+    WHERE u.VENDOR = 'Acronis'
+      AND COALESCE(u.QUANTITY, 0) > 0
       AND u.VENDOR_PRODUCT_SKU IS NOT NULL
 )
 SELECT
@@ -1051,7 +1054,8 @@ ORDER BY billing_month;
 CREATE OR REPLACE TABLE ACRONIS_SOURCE_COVERAGE_AUDIT AS
 WITH usage_qty AS (
     SELECT BILLING_MONTH::DATE AS billing_month, SUM(QUANTITY) AS vendor_usage_quantity
-    FROM ACRONIS_USAGE
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+    WHERE VENDOR = 'Acronis'
     GROUP BY 1
 ),
 zuora_base AS (

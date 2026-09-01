@@ -24,6 +24,7 @@ WITH vendor_sku_map AS (
 partner_bridge AS (
     SELECT
         vendor_partner_name,
+        vendor_partner_name_normalized,
         cms_id,
         sf_id,
         sf_account_name,
@@ -32,6 +33,7 @@ partner_bridge AS (
     FROM (
         SELECT
             partner_name AS vendor_partner_name,
+            TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS vendor_partner_name_normalized,
             cms_id,
             sf_id,
             COALESCE(zuora_name, partner_name) AS sf_account_name,
@@ -42,7 +44,7 @@ partner_bridge AS (
           AND partner_name IS NOT NULL
     )
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY UPPER(TRIM(vendor_partner_name))
+        PARTITION BY vendor_partner_name_normalized
         ORDER BY CASE WHEN sf_id ILIKE 'ACT-%' THEN 0 ELSE 1 END,
                  CASE WHEN cms_id IS NULL THEN 1 ELSE 0 END,
                  sf_id NULLS LAST
@@ -70,11 +72,12 @@ SELECT
     pb.sf_account_name,
     pb.partner_review_flag,
     pb.partner_mapping_source
-FROM KEEPIT_USAGE u
+FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
 LEFT JOIN vendor_sku_map vsm
     ON UPPER(TRIM(vsm.vendor_product)) = UPPER(TRIM(u.VENDOR_PRODUCT_SKU))
 LEFT JOIN partner_bridge pb
-    ON UPPER(TRIM(pb.vendor_partner_name)) = UPPER(TRIM(u.VENDOR_PARTNER_NAME));
+    ON pb.vendor_partner_name_normalized = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
+WHERE u.VENDOR = 'KeepIT';
 
 CREATE OR REPLACE TABLE KEEPIT_RECON_DETAIL AS
 WITH vendor_family_presence AS (
@@ -581,7 +584,7 @@ keepit_api_rollup AS (
 
 scored_with_api AS (
     SELECT
-        s.*, 
+        s.*,
         a.api_quantity,
         a.avg_api_quantity
     FROM scored s

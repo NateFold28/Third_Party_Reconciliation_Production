@@ -1,7 +1,8 @@
 -- =============================================================================
 -- STEP 2: ESET FINAL RECONCILIATION  (Proofpoint-style, SKU-family grain)
 -- =============================================================================
---   Vendor side = ESET_USAGE (MSP-summary rows; billed qty = modifier seats)
+--   Vendor side = THIRD_PARTY_RECON_VENDOR_USAGE_PROD filtered to ESET
+--                 (MSP-summary rows; billed qty = modifier seats)
 --   CW side     = THIRD_PARTY_RECON_SOURCE_ZUORA_PROD (Zuora, USD)
 --               + THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD (Marketplace, USD)
 --   Grain       = (sf_id, billing_month, sku_match_group)
@@ -31,7 +32,7 @@ WITH partner_map AS (
     GROUP BY 1
 ),
 
--- ---- Vendor side: ESET_USAGE -> group, mapped to sf_id ----
+-- ---- Vendor side: shared vendor usage -> group, mapped to sf_id ----
 vendor_rows AS (
     SELECT
         u.BILLING_MONTH::DATE AS billing_month,
@@ -58,10 +59,11 @@ vendor_rows AS (
         COALESCE(u.MODIFIER, 0) AS quantity,
         COALESCE(u.QUANTITY, 0) AS seat_days_quantity,
         COALESCE(u.AMOUNT, 0) AS vendor_amount
-    FROM ESET_USAGE u
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
     LEFT JOIN partner_map p
         ON p.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
-    WHERE COALESCE(u.MODIFIER, 0) > 0
+    WHERE u.VENDOR = 'ESET'
+      AND COALESCE(u.MODIFIER, 0) > 0
 ),
 vendor_agg AS (
     SELECT
@@ -79,7 +81,9 @@ vendor_agg AS (
 
 -- Only reconcile months for which a vendor usage file exists.
 vendor_months AS (
-    SELECT DISTINCT BILLING_MONTH::DATE AS billing_month FROM ESET_USAGE
+    SELECT DISTINCT BILLING_MONTH::DATE AS billing_month
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+    WHERE VENDOR = 'ESET'
 ),
 
 eset_sku_map AS (

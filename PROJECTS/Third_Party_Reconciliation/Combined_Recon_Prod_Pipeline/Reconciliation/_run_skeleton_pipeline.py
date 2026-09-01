@@ -83,7 +83,7 @@ CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
             'Clear', 'Unmapped Partner', 'Duplicated CW Invoice',
             'Marketplace Billing Delay',
             'Disabled Partner SKU',
-            'API Usage, Insufficient CW Billing', 'Vendor SKU, No CW SKU',
+            'Vendor SKU, No CW SKU',
             'CW SKU, No Vendor SKU', 'Vendor Billing, No CW Billing',
             'CW Billing, No Vendor Billing',
             'Vendor Billing, Insufficient CW Billing', 'Other Issue'
@@ -97,6 +97,13 @@ CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
                               'BILLING_OVER_VENDOR','Overage') THEN 'Clear'
         WHEN OUTCOME_FLAG IN ('MARKETPLACE_TIMING','BILLING_TIMING_ADJACENT_MONTH')
             THEN 'Marketplace Billing Delay'
+        WHEN OUTCOME_FLAG IN ('API Usage, Insufficient CW Billing',
+                              'TRT_VENDOR_USAGE_NOT_BILLED',
+                              'STRUCTURAL_VENDOR_ONLY_TRT_CONFIRMED',
+                              'Missing CW Billing - API Confirmed',
+                              'API Usage Recorded, No CW Billing')
+             AND COALESCE(__API_QUANTITY_EXPR__, 0) > 0
+            THEN 'API Usage, Insufficient CW Billing'
         WHEN STARTSWITH(OUTCOME_FLAG, 'CLEAR|') THEN 'Clear'
         WHEN STARTSWITH(OUTCOME_FLAG, 'NO_BILLING_NO_HISTORY|')
             THEN 'Vendor Billing, No CW Billing'
@@ -122,11 +129,6 @@ CANONICAL_OUTCOME_FLAG_NORMALIZATION = """
         -- Duplicate-billing remains a side-signal only.
         -- WHEN OUTCOME_FLAG IN ('DUPLICATE_BILLING','Duplicate Billing')
         --     THEN 'Duplicated CW Invoice'
-        WHEN OUTCOME_FLAG IN ('TRT_VENDOR_USAGE_NOT_BILLED',
-                              'STRUCTURAL_VENDOR_ONLY_TRT_CONFIRMED',
-                              'Missing CW Billing - API Confirmed',
-                              'API Usage Recorded, No CW Billing')
-            THEN 'API Usage, Insufficient CW Billing'
         WHEN OUTCOME_FLAG IN ('STRUCTURAL_BILLING_ONLY','BILLING_ONLY_NO_VENDOR_USAGE',
                               'STRUCTURAL_BILLING_ONLY_TRT_CONFIRMED',
                               'MARKETPLACE_BILLING_NO_VENDOR',
@@ -227,6 +229,10 @@ def live_emit_block(vendor: str, live_table: str, target_table: str = DETAIL_TAB
     vendor_amount_expr = "VENDOR_AMOUNT"
     amount_delta_expr = "AMOUNT_DELTA"
     abs_amount_delta_expr = "ABS_AMOUNT_DELTA"
+    outcome_flag_expr = CANONICAL_OUTCOME_FLAG_NORMALIZATION.replace(
+        "__API_QUANTITY_EXPR__",
+        api_quantity_expr,
+    )
     return f"""{USE}
 
 -- Idempotent: remove any prior rows for this vendor.
@@ -287,7 +293,7 @@ SELECT
         'TRUE',
         'FALSE'
     )::VARCHAR                                                                  AS DUPLICATE_BILLING_FLAG,
-    ({CANONICAL_OUTCOME_FLAG_NORMALIZATION})                                   AS OUTCOME_FLAG,
+    ({outcome_flag_expr})                                                      AS OUTCOME_FLAG,
     INVESTIGATION_REASON                                                       AS INVESTIGATION_REASON
 FROM {live_table};
 """
@@ -518,18 +524,33 @@ def main() -> int:
         print("\n=== STEP 0: initialize staging detail table ===")
         run_sql(conn, INIT_SQL, f"init + truncate {DETAIL_TABLE_STAGE}")
 
-        # 2026-08-30 static-maps directive:
-        # RECON_PARTNER_MAP and RECON_SKU_MAP are manually maintained artifacts
-        # (source of truth = the seed workbook + curated overrides). They are
-        # rebuilt EXPLICITLY out-of-band via Maps\sql\02_unified_reference_maps.sql
-        # when the seed changes -- NOT every pipeline run. The prior STEP 0a
-        # rebuild-on-every-run silently broke the map when the dedup logic
-        # regressed (2026-08-30 Unmapped Partner spike). Removing 0a from the
-        # orchestrator makes the map version stable across pipeline runs so
-        # regressions cannot be caused by an accidental map change.
+        # 2026-08-31 architecture — governed layer auto-rebuilds every run:
         #
-        # To rebuild the map manually after a seed update:
-        #     .venv\Scripts\python.exe tools\rebuild_recon_reference_maps.py
+        # Source of truth for partner mapping is manually maintained directly in Snowflake:
+        #   - THIRD_PARTY_RECON_PARTNER_MAP_PROD   (partner -> SF_ID / CMS / Zuora)
+        #     Edit this table in Snowsight and it flows through automatically on
+        #     the next pipeline run. No extra rebuild step required.
+        #   - THIRD_PARTY_RECON_SKU_MAP_PROD       (vendor SKU -> CW SKU)
+        #   - RECON_VENDOR_PARTNER_MANUAL_MAP      (vendor alias overrides)
+        #   - RECON_PRICEBOOK                      (list price by SKU / tier)
+        #
+        # Downstream derived governed layer (rebuilt here every run, ~9s):
+        #   - RECON_ACCOUNT_MERGE_RESOLVER, RECON_PARTNER_MAP, RECON_PARTNER_MAP_MONTHLY
+        #     -> auto-rebuilt from THIRD_PARTY_RECON_PARTNER_MAP_PROD so that any
+        #        new partner entry added in Snowflake is immediately live.
+        #   - RECON_SKU_MAP, V_RECON_PARTNER_MAP_MONTHLY_NORM,
+        #     V_RECON_PRICEBOOK_TIER_LOOKUP -> live views (always auto-fresh).
+        #
+        # NOTE: STEP 0a ONLY reads from the mapping tables and writes to the
+        # derived governed layer. It never modifies THIRD_PARTY_RECON_PARTNER_MAP_PROD
+        # or any other manually-maintained table.
+        print("\n=== STEP 0a: rebuild governed partner map from THIRD_PARTY_RECON_PARTNER_MAP_PROD ===")
+        if not run_repo_sql_file(
+            conn,
+            r"Maps\sql\02_unified_reference_maps.sql",
+            "rebuild RECON_PARTNER_MAP + RECON_PARTNER_MAP_MONTHLY (picks up new partner entries)",
+        ):
+            return 1
 
         print("\n=== STEP 0b: rebuild Bitdefender vendor usage from PRODUCT_MANAGEMENT__ROYALTIES ===")
         # Native replacement for the deprecated Excel-based ingestion. Populates

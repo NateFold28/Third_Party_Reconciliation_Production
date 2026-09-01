@@ -2,7 +2,7 @@
 -- STEP 2: EXIUM FINAL RECONCILIATION
 -- =============================================================================
 -- Proofpoint-style reconciliation adapted for Exium:
---   Vendor side: normalized EXIUM_USAGE, retaining raw QUANTITY and
+--   Vendor side: shared vendor usage filtered to Exium, retaining raw QUANTITY and
 --                OVERAGE_QUANTITY, while reconciling on billed quantity
 --                recovered from AMOUNT / UNIT_PRICE when available.
 --   Billing side: Zuora is the primary reconciliation source; Marketplace is
@@ -78,9 +78,19 @@ contract_group_rates AS (
     GROUP BY 1, 2
 ),
 usage_deduped AS (
-    SELECT *
-    FROM EXIUM_USAGE_RECON_COMPAT
-    WHERE COALESCE(quantity, 0) <> 0
+    SELECT
+        BILLING_MONTH,
+        VENDOR_PARTNER_NAME,
+        VENDOR_PRODUCT_SKU AS VENDOR_SKU_OR_PRODUCT,
+        MODIFIER AS VENDOR_ENTITY,
+        QUANTITY,
+        NULL::FLOAT AS OVERAGE_QUANTITY,
+        UNIT_PRICE,
+        AMOUNT,
+        CURRENCY
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+    WHERE VENDOR = 'Exium'
+      AND COALESCE(quantity, 0) <> 0
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY
             billing_month,

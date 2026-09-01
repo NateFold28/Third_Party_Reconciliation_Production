@@ -1,48 +1,27 @@
 -- =============================================================================
--- 02_unified_reference_maps.sql   (idempotent v3.1 — HYBRID VIEW/TABLE LAYOUT)
+-- 02_unified_reference_maps.sql   (idempotent v2)
 --
--- 2026-08-31 rewrite: converted the governed-map layer to reduce sprawl and
--- guarantee seed edits land immediately. Layout:
+-- Builds:
+--   RECON_PARTNER_MAP   (VENDOR, PARTNER_NAME, PARENT_COMPANY, SF_ID, CMS_ID, ZUORA_NAME)
+--   RECON_SKU_MAP      (VENDOR, VENDOR_PRODUCT, VENDOR_SKU, CW_SKU, SKU_MATCH_KEY,
+--                       MAPPING_NOTES, CONTRACT_COST_RATE, VENDOR_UNIT_PRICE, CW_UNIT_PRICE,
+--                       PRICEBOOK_BILLING_TYPE, PRICEBOOK_TIERNUM,
+--                       PRICEBOOK_TIER_LOWER, PRICEBOOK_TIER_UPPER,
+--                       PRICEBOOK_VENDOR_UNIT_PRICE, PRICEBOOK_CW_UNIT_PRICE,
+--                       PRICEBOOK_PRODUCT_NAME, PRICEBOOK_FAMILY, PRICEBOOK_STATUS)
+--   V_RECON_PRICEBOOK_TIER_LOOKUP  (view for quantity-aware tier price lookup)
 --
---   OBJECT                            | KIND  | RATIONALE
---   ----------------------------------|-------|-----------------------------
---   RECON_ACCOUNT_MERGE_RESOLVER      | TABLE | recursive walk of merged_account_map
---                                     |       | (too expensive as a view; rebuilt
---                                     |       |  automatically at pipeline STEP 0)
---   RECON_PARTNER_MAP                 | TABLE | joins resolver + manual overrides;
---                                     |       |  rebuilt at pipeline STEP 0
---   RECON_PARTNER_MAP_MONTHLY         | TABLE | RECON_PARTNER_MAP × 240-month spine
---                                     |       | (~1.7M rows; rebuilt at STEP 0)
---   V_RECON_PARTNER_MAP_MONTHLY_NORM  | VIEW  | normalized-name fallback
---   RECON_SKU_MAP                     | VIEW  | live over seed + pricebook
---   V_RECON_PRICEBOOK_TIER_LOOKUP     | VIEW  | quantity-aware tier price lookup
+-- Sources unioned into RECON_PARTNER_MAP:
+--   THIRD_PARTY_RECON_PARTNER_MAP_PROD            (production partner map source of truth)
+--   RECON_MANUAL_SEED_PARTNER_MAP                 (manual curated additions)
 --
--- User-facing guarantee: any edit to `THIRD_PARTY_RECON_PARTNER_MAP_PROD` or
--- `THIRD_PARTY_RECON_SKU_MAP_PROD` lands in the next pipeline run automatically.
--- The 3 governed tables are rebuilt as pipeline STEP 0 (`run_repo_sql_file` of
--- this script, invoked by `_run_skeleton_pipeline.py`). No manual step required.
+-- Sources for RECON_SKU_MAP:
+--   THIRD_PARTY_RECON_SKU_MAP_PROD                (production SKU map source of truth)
+--   RECON_PRICEBOOK                               (base-tier price enrichment)
 --
--- Prior version (all 4 as materialized tables, rebuilt manually) is archived at:
---   Maps/sql/_archive_20260831_governed_view_migration/02_unified_reference_maps_PRE_VIEW_MIGRATION.sql
---
--- Sources:
---   THIRD_PARTY_RECON_PARTNER_MAP_PROD  (production partner map source of truth)
---   THIRD_PARTY_RECON_SKU_MAP_PROD      (production SKU map source of truth)
---   ANALYTICS.DBO.CW_DW__MERGED_ACCOUNT_MAP  (upstream merge history — live)
---   ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT  (parent rollup — live)
---   RECON_PRICEBOOK                     (base-tier price enrichment, loaded via
---                                        tools/load_pricebook_to_snowflake.py)
---
--- Also kept:
---   RECON_VENDOR_PARTNER_MANUAL_MAP  (manually-populated table — still a TABLE)
---
+-- No vendor-specific V5 compatibility views are emitted by this script.
 -- Active reconciliation SQL consumes RECON_PARTNER_MAP and RECON_SKU_MAP directly.
 -- =============================================================================
-
-USE ROLE DEVELOPER;
-USE WAREHOUSE REPORTING_WH;
-USE DATABASE ANALYTICS_DEV;
-USE SCHEMA DBT_NFOLD_TRANSFORMATION;
 
 USE ROLE DEVELOPER;
 USE WAREHOUSE REPORTING_WH;
@@ -72,9 +51,6 @@ CREATE TABLE IF NOT EXISTS RECON_VENDOR_PARTNER_MANUAL_MAP (
 --   3) Emit RECON_PARTNER_MAP_MONTHLY so vendor SQL can resolve sf_id by
 --      BILLING_MONTH: pre-merge months keep RAW_SF_ID; post-merge months use
 --      canonical SF_ID.
---
--- 2026-08-31 (v3.1): kept as TABLE (rebuilt automatically at pipeline STEP 0)
--- because the recursive walk is too expensive to run as a live view per query.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE TABLE RECON_ACCOUNT_MERGE_RESOLVER AS
 WITH merge_edges AS (
@@ -221,7 +197,6 @@ LEFT JOIN resolved r
 LEFT JOIN resolved_parent rp
   ON rp.old_sf_id = i.sf_id;
 
--- 2026-08-31 (v3.1): kept as TABLE (rebuilt automatically at pipeline STEP 0).
 CREATE OR REPLACE TABLE RECON_PARTNER_MAP AS
 WITH manual_partner_overrides AS (
     SELECT *
@@ -499,8 +474,6 @@ QUALIFY ROW_NUMBER() OVER (
              SF_ID
 ) = 1;
 
--- 2026-08-31 (v3.1): kept as TABLE (rebuilt automatically at pipeline STEP 0).
--- ~1.7M rows; a live view forces the 240-month cross join per query.
 CREATE OR REPLACE TABLE RECON_PARTNER_MAP_MONTHLY AS
 WITH month_spine AS (
     SELECT DATEADD('MONTH', SEQ4(), '2020-01-01'::DATE)::DATE AS billing_month
@@ -580,11 +553,8 @@ QUALIFY ROW_NUMBER() OVER (
 --
 -- Full tier-aware lookup (pick price by seat count) is available via the
 -- helper view V_RECON_PRICEBOOK_TIER_LOOKUP defined further down.
---
--- 2026-08-31: converted from TABLE to VIEW so seed edits to
--- THIRD_PARTY_RECON_SKU_MAP_PROD land immediately.
 -- -----------------------------------------------------------------------------
-CREATE OR REPLACE VIEW RECON_SKU_MAP AS
+CREATE OR REPLACE TABLE RECON_SKU_MAP AS
 WITH sku_map_seed AS (
     SELECT DISTINCT
         VENDOR::VARCHAR             AS VENDOR,

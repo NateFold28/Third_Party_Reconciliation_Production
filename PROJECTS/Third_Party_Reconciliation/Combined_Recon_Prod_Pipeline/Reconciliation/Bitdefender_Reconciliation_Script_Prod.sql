@@ -1,7 +1,7 @@
 -- =============================================================================
 -- STEP 2: BITDEFENDER FINAL RECONCILIATION  (Proofpoint-aligned)
 -- =============================================================================
--- Vendor side  = BITDEFENDER_USAGE_PROD, materialized from
+-- Vendor side  = THIRD_PARTY_RECON_VENDOR_USAGE_PROD Bitdefender rows, materialized from
 --                PRODUCT_MANAGEMENT__ROYALTIES (what CW owes Bitdefender; all
 --                THIRD_PARTY_TYPEs: Usage + Contract + Marketplace)
 -- CW side      = live Zuora source v2 (Posted BillRun) + Manage/NetSuite
@@ -89,12 +89,15 @@ roy_desc_group AS (
 ),
 
 partner_lookup AS (
-    SELECT partner_name, sf_id
+    SELECT
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_key,
+        partner_name,
+        sf_id
     FROM RECON_PARTNER_MAP
     WHERE partner_name IS NOT NULL
       AND sf_id IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY UPPER(partner_name)
+        PARTITION BY TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
         ORDER BY IFF(zuora_name IS NOT NULL, 0, 1), IFF(cms_id IS NOT NULL, 0, 1), sf_id
     ) = 1
 ),
@@ -112,7 +115,7 @@ royalties_base AS (
         r.AMOUNT
     FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD r
     LEFT JOIN partner_lookup pm
-        ON UPPER(pm.partner_name) = UPPER(r.vendor_partner_name)
+        ON pm.partner_name_key = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(r.vendor_partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
     LEFT JOIN roy_desc_group g ON g.PRODUCT_DESCRIPTION = r.VENDOR_PRODUCT_SKU
     WHERE r.VENDOR = 'Bitdefender'
       AND r.BILLING_MONTH >= '2026-01-01'

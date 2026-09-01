@@ -29,21 +29,12 @@ WITH usage_product_map AS (
 partner_map AS (
     SELECT
         billing_month,
-        UPPER(TRIM(partner_name)) AS partner_name_key,
+        partner_name_normalized AS partner_name_key,
         partner_name,
         sf_id,
         cms_id,
         zuora_name
-    FROM RECON_PARTNER_MAP_MONTHLY
-    QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY billing_month, UPPER(TRIM(partner_name))
-        ORDER BY
-            IFF(sf_id IS NOT NULL, 0, 1),
-            IFF(cms_id IS NOT NULL, 0, 1),
-            partner_name,
-            sf_id,
-            cms_id
-    ) = 1
+    FROM V_RECON_PARTNER_MAP_MONTHLY_NORM
 ),
 
 usage_base AS (
@@ -63,12 +54,13 @@ usage_base AS (
         u.amount,
         COALESCE(u.amount, 0) <> 0 AS chargeable_flag,
         NULL::VARCHAR AS source_file
-    FROM WEBROOT_USAGE u
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
     LEFT JOIN partner_map pm
         ON pm.billing_month = u.billing_month::DATE
-       AND pm.partner_name_key = UPPER(TRIM(u.vendor_partner_name))
-    WHERE COALESCE(u.quantity, 0) <> 0
-       OR COALESCE(u.amount, 0) <> 0
+       AND pm.partner_name_key = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.vendor_partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
+    WHERE u.VENDOR = 'Webroot'
+      AND (COALESCE(u.quantity, 0) <> 0
+           OR COALESCE(u.amount, 0) <> 0)
 ),
 
 usage_agg AS (

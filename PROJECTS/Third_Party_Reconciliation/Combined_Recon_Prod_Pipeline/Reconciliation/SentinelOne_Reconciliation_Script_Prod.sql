@@ -2,7 +2,7 @@
 -- STEP 2: SENTINELONE FINAL RECONCILIATION
 -- =============================================================================
 -- Proofpoint-style contract adapted to SentinelOne:
---   Vendor usage truth  = SENTINELONE_USAGE product quantities.
+--   Vendor usage truth  = THIRD_PARTY_RECON_VENDOR_USAGE_PROD SentinelOne product quantities.
 --   Billing truth       = Zuora Posted BillRun + Marketplace.
 --   TRT/internal meter  = supporting validation only; it never fills billing.
 --
@@ -13,7 +13,7 @@
 --   duplicate billed quantity.
 --
 -- Vendor matching rules:
---   * SENTINELONE_USAGE already resolves the invoice-match product into
+--   * SentinelOne ingestion already resolves the invoice-match product into
 --     VENDOR_PRODUCT_SKU during ingestion.
 --   * Total Active Agents is loaded as Complete / Control / Core.
 --   * Data Retention is loaded as "Data Retention - <tier>".
@@ -131,11 +131,15 @@ cw_sku_group_map AS (
 partner_map AS (
     -- V5 map is pre-canonicalized in 00_reference_maps.sql, so sf_id here is
     -- already the current Salesforce canonical id.
-    SELECT TRIM(partner_name) AS partner_name, sf_id, zuora_name
+    SELECT
+        TRIM(partner_name) AS partner_name,
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_norm,
+        sf_id,
+        zuora_name
     FROM RECON_PARTNER_MAP
     WHERE sf_id IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY UPPER(TRIM(partner_name))
+        PARTITION BY TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
         ORDER BY zuora_name DESC NULLS LAST
     ) = 1
 ),
@@ -208,6 +212,7 @@ partner_map_monthly AS (
     -- partner-level). Canonicalize merged sf_ids via SENTINELONE_SF_ID_RESOLVER.
     SELECT
         TRIM(s.PARTNER_NAME)  AS partner_name,
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(s.PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_norm,
         NULL::DATE            AS billing_month,   -- not applicable in unified map
         CASE
             WHEN s.sf_id IN (SELECT sf_id FROM sentinel_child_sfid_lock) THEN s.sf_id
@@ -220,7 +225,7 @@ partner_map_monthly AS (
     WHERE s.sf_id IS NOT NULL
       AND s.PARTNER_NAME IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY UPPER(TRIM(s.PARTNER_NAME))
+        PARTITION BY TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(s.PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
         ORDER BY s.ZUORA_NAME DESC NULLS LAST
     ) = 1
 ),
@@ -261,17 +266,17 @@ vendor_usage_normalized AS (
         END AS partner_match_method,
         SUM(u.QUANTITY) AS quantity,
         COUNT(*) AS source_row_count
-    FROM SENTINELONE_USAGE u
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
     LEFT JOIN manual_partner_map mpm
         ON mpm.partner_name_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
     LEFT JOIN partner_map_monthly pm_month
         ON mpm.sf_id IS NULL
-       AND UPPER(pm_month.partner_name) = UPPER(TRIM(u.VENDOR_PARTNER_NAME))
+       AND pm_month.partner_name_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
        AND pm_month.billing_month = u.BILLING_MONTH::DATE
     LEFT JOIN partner_map pm_exact
         ON mpm.sf_id IS NULL
        AND pm_month.sf_id IS NULL
-       AND UPPER(pm_exact.partner_name) = UPPER(TRIM(u.VENDOR_PARTNER_NAME))
+       AND pm_exact.partner_name_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
     -- Accent-normalized fallback: translates common diacritics to ASCII so
     -- PARROINFODÃ‰VELOPPEMENT matches PARROINFODEVELOPPEMENT.
     LEFT JOIN partner_map pm_accent
@@ -287,12 +292,27 @@ vendor_usage_normalized AS (
        AND pm_month.sf_id IS NULL
        AND pm_exact.sf_id IS NULL
        AND pm_accent.sf_id IS NULL
-       AND UPPER(pm_prefix.partner_name) = UPPER(TRIM(SPLIT_PART(u.VENDOR_PARTNER_NAME, '-', 1)))
+       AND pm_prefix.partner_name_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(SPLIT_PART(u.VENDOR_PARTNER_NAME, '-', 1)), '[^a-z0-9]+', ' '), '\\s+', ' '))
        AND LENGTH(TRIM(SPLIT_PART(u.VENDOR_PARTNER_NAME, '-', 1))) >= 3
        AND CONTAINS(u.VENDOR_PARTNER_NAME, '-')
-    WHERE u.BILLING_MONTH >= '2026-01-01'
+    WHERE u.VENDOR = 'SentinelOne'
+      AND u.BILLING_MONTH >= '2026-01-01'
       AND COALESCE(u.QUANTITY, 0) > 0
       AND u.VENDOR_PARTNER_NAME IS NOT NULL
+      -- Exclude CW internal dev/test accounts that are never real partner billing.
+      -- These accounts appear with consistently unmappable names and pollute the
+      -- Unmapped Partner bucket with pipe-concatenated strings that change monthly.
+      -- 2026-08-31: identified from recurring Unmapped Partner audit.
+      AND UPPER(TRIM(u.VENDOR_PARTNER_NAME)) NOT IN (
+          'CONTINUUM-TEST', 'CW AUTOMATE', 'PMT-TEST', 'MP-AMARTEST1',
+          'MRGA', 'NJTECH', 'RUSHAB', 'MAHESH-TEST', 'SAHIL',
+          'TEAM-40-AI-TEST', 'CAISOFTWARE-COVID731ACCESS', 'BCDR NOC',
+          'SECURENETWORKS (PALMETTO TECH)', 'JD_ELITESUPPORT', 'TISDALE_DEMO',
+          'ONENET', 'RD_ELITESUPPORT'
+      )
+      AND UPPER(TRIM(u.VENDOR_PARTNER_NAME)) NOT LIKE 'CW DEV%'
+      AND UPPER(TRIM(u.VENDOR_PARTNER_NAME)) NOT LIKE 'CW DEV EMEA%'
+      AND UPPER(TRIM(u.VENDOR_PARTNER_NAME)) NOT LIKE 'PARROINFODEVELOPPEMENT%'
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
 ),
 

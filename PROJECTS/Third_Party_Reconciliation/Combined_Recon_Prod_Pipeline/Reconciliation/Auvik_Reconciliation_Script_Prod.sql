@@ -2,7 +2,7 @@
 -- STEP 2: AUVIK FINAL RECONCILIATION
 -- =============================================================================
 -- Proofpoint-style reconciliation adapted for Auvik:
---   Vendor side: normalized AUVIK_USAGE, retaining raw QUANTITY and
+--   Vendor side: shared vendor usage filtered to Auvik, retaining raw QUANTITY and
 --                OVERAGE_QUANTITY, while reconciling on billed quantity
 --                recovered from AMOUNT / UNIT_PRICE when available.
 --   Billing side: Zuora is the primary reconciliation source; Marketplace is
@@ -78,8 +78,9 @@ contract_group_rates AS (
 ),
 usage_deduped AS (
     SELECT *
-    FROM AUVIK_USAGE
-    WHERE COALESCE(quantity, 0) <> 0
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+    WHERE VENDOR = 'Auvik'
+      AND COALESCE(quantity, 0) <> 0
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY
             billing_month,

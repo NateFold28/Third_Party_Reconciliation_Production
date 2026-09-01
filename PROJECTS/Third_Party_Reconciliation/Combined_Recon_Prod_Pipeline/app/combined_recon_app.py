@@ -65,7 +65,7 @@ FRESHNESS_TTL_SECONDS = int(os.getenv("THIRD_PARTY_RECON_DASHBOARD_FRESHNESS_TTL
 #      so the app skips per-row Python classification. Single UNION query
 #      loads every vendor in one round-trip. Cache TTLs bumped so freshness
 #      key alone drives invalidation.
-# v24: TRT API backfill expanded to Proofpoint (21st cycle snapshot). 
+# v24: TRT API backfill expanded to Proofpoint (21st cycle snapshot).
 #      API_QUANTITY and AVG_API_QUANTITY now populate for Proofpoint rows.
 # v26: ESET is quantity-first and now carries contract-cost overlay dollars.
 # v27: adds vendor invoice vs raw vendor usage SKU-level intra-vendor control.
@@ -786,12 +786,20 @@ def _normalize_detail(df: pd.DataFrame) -> pd.DataFrame:
         # (built before the pipeline v23 refresh) still renders. When the
         # column exists the app skips per-row Python classification.
         "ACTION_NEEDED", "CASE_ID",
+        # 2026-08-31 board-ready display columns — canonical single-name
+        # replacements for pipe-delimited VENDOR_PRODUCT / VENDOR_PARTNER_NAME.
+        # Fall back to empty string here for pre-refresh cached data; the
+        # UI code prefers *_DISPLAY when present and falls through to the
+        # raw fields when they aren't.
+        "PRODUCT_DISPLAY", "PARTNER_DISPLAY_NAME",
     ]
     bool_false = [
         "DUPLICATE_BILLING_FLAG", "MARKETPLACE_TIMING_FLAG", "MATERIAL_BELOW_COST_FLAG",
         # Pipeline v23 boolean queue-membership flags.
         "IS_LEAKAGE", "IS_FINANCE_QUEUE", "IS_OPS_QUEUE",
         "IS_TIMING_QUEUE", "IS_CLEAR",
+        # 2026-08-31 aggregator/distributor flag from PARTNER_CANONICAL CTE.
+        "IS_AGGREGATOR_ACCOUNT",
     ]
     # Fast path: pipeline v23 emits every required column, so on the common
     # cache-miss we can skip the ~100 MB defensive copy entirely.
@@ -955,25 +963,26 @@ def _load_combined_vendor_impl(
         coverage = pd.DataFrame(columns=["BILLING_MONTH"])
 
     # Ghost-month trim baked into the cached load: any month where the
-    # vendor summary shows 0 seats AND 0 amount is dropped from every
-    # returned frame. Prevents phantom trailing months (TRT / marketplace
-    # accumulation past the last invoice month) from leaking into the app.
+    # vendor summary shows 0 vendor seats AND 0 vendor amount is dropped from
+    # every returned frame. Prevents phantom trailing months (TRT / marketplace
+    # accumulation past the last vendor usage load, or future-dated Zuora billing
+    # rows) from leaking into the app.
+    # IMPORTANT: only VENDOR-SIDE columns gate this check. TOTAL_BILLING_SEATS
+    # and TOTAL_BILLING_AMOUNT are intentionally excluded — CW billing can exist
+    # for months where no vendor usage file has been loaded (e.g. Zuora has
+    # forward-dated contract rows, or Bitdefender quarterly invoices land early).
+    # Using billing-side columns as the "loaded" signal caused August 2026 to
+    # appear even when no vendor usage was ingested for that month.
     if not summary.empty and "BILLING_MONTH" in summary.columns:
         seat_col = "TOTAL_VENDOR_SEATS" if "TOTAL_VENDOR_SEATS" in summary.columns else None
         amt_col = "TOTAL_VENDOR_AMOUNT" if "TOTAL_VENDOR_AMOUNT" in summary.columns else None
-        billing_seat_col = "TOTAL_BILLING_SEATS" if "TOTAL_BILLING_SEATS" in summary.columns else None
-        billing_amt_col = "TOTAL_BILLING_AMOUNT" if "TOTAL_BILLING_AMOUNT" in summary.columns else None
         total_rows_col = "TOTAL_ROWS" if "TOTAL_ROWS" in summary.columns else None
-        if seat_col or amt_col or billing_seat_col or billing_amt_col or total_rows_col:
+        if seat_col or amt_col or total_rows_col:
             mask = pd.Series(False, index=summary.index)
             if seat_col:
                 mask = mask | (pd.to_numeric(summary[seat_col], errors="coerce").fillna(0) > 0)
             if amt_col:
                 mask = mask | (pd.to_numeric(summary[amt_col], errors="coerce").fillna(0) > 0)
-            if billing_seat_col:
-                mask = mask | (pd.to_numeric(summary[billing_seat_col], errors="coerce").fillna(0) > 0)
-            if billing_amt_col:
-                mask = mask | (pd.to_numeric(summary[billing_amt_col], errors="coerce").fillna(0) > 0)
             if total_rows_col:
                 mask = mask | (pd.to_numeric(summary[total_rows_col], errors="coerce").fillna(0) > 0)
             loaded = set(pd.to_datetime(summary.loc[mask, "BILLING_MONTH"]).unique())
@@ -2011,12 +2020,10 @@ class VendorSlice:
         self.name: str = vendor["name"]
         self.category: str = vendor["category"]
 
-        # Belt-and-suspenders re-trim to summary DATA_LOAD_STATUS='LOADED'
-        # months. VENDOR_SOURCE_ROW_COUNT in OUTPUT_PROD is a constant `1`
-        # (see build_third_party_recon_output_prod.py line 447) so it cannot
-        # be used to distinguish loaded months; SUMMARY_PROD.DATA_LOAD_STATUS
-        # is the canonical vendor-file-presence signal (falls back to
-        # USAGE_ROW_COUNT > 0 if the column is missing).
+        # Belt-and-suspenders re-trim: only include months where vendor-side
+        # data exists. Billing-side columns (TOTAL_BILLING_SEATS / AMOUNT) are
+        # excluded for the same reason as the loader — CW billing can pre-exist
+        # for months with no vendor usage loaded.
         if not summary_all.empty and "BILLING_MONTH" in summary_all.columns:
             _vs_mask = None
             if "DATA_LOAD_STATUS" in summary_all.columns:
@@ -2359,13 +2366,12 @@ if not active_vendors:
 # will render "no data" states in each tab rather than stopping.
 first_vendor = active_vendors[0]
 
-# Portfolio-level months are the INTERSECTION-anchored union of loaded months
-# across every active vendor. Each vendor was already trimmed to its own
-# loaded months in `_load_combined_vendor`, so their per-vendor max-loaded
-# month is the last month with real usage. To prevent "trailing edge" months
-# from appearing when only some vendors have loaded that month (e.g. Aug
-# 2026 has Bitdefender usage but not Acronis/Auvik/SentinelOne/etc.), we
-# cap the portfolio max month at the SMALLEST per-vendor max-loaded month.
+# Portfolio-level month list = union of every vendor's loaded months.
+# Each vendor's frames are already trimmed to its own loaded months inside
+# _load_combined_vendor_impl (ghost-month filter + DATA_LOAD_STATUS guard),
+# so the union here is safe: a vendor that has no August data simply
+# contributes nothing to August aggregates, while a vendor that does have
+# August data shows up normally. No portfolio-wide min-cap is applied.
 _month_union: set = set()
 _per_vendor_max_month: list = []
 for v in active_vendors:
@@ -2376,9 +2382,12 @@ for v in active_vendors:
             _month_union |= set(_v_months.unique())
             _per_vendor_max_month.append(_v_months.max())
 months_available = sorted(_month_union)
-if _per_vendor_max_month:
-    _portfolio_max_month = min(_per_vendor_max_month)
-    months_available = [m for m in months_available if pd.to_datetime(m) <= _portfolio_max_month]
+# NOTE: no portfolio-min cap here. Each vendor's frames are already trimmed to
+# its own loaded months inside _load_combined_vendor_impl (ghost-month filter +
+# DATA_LOAD_STATUS guard). Imposing a min() across vendors would suppress
+# legitimate data — e.g. if Proofpoint only has through July but KeepIT has
+# through August, the month picker should still offer August and each vendor's
+# August data (or absence of it) reflects its real load state.
 # Cap at the current calendar month — future-dated contract/royalty rows in
 # Zuora or Bitdefender quarterly billings can produce months that haven't
 # happened yet, which bleeds month-number highlights into the pill row.
@@ -2966,6 +2975,16 @@ def render_exception_detail(
         .map({"TRUE": "Y", "FALSE": "N", "Y": "Y", "N": "N"})
         .fillna("N")
     )
+    drill["PARTNER_DISPLAY"] = (
+        drill.get("PARTNER_DISPLAY_NAME", drill.get("VENDOR_PARTNER_NAME", ""))
+        .fillna("(unknown)")
+        .astype(str)
+    )
+    drill["PRODUCT_DISPLAY"] = (
+        drill.get("PRODUCT_DISPLAY", drill.get("VENDOR_PRODUCT", ""))
+        .fillna("(unmapped)")
+        .astype(str)
+    )
     # OUTCOME_FLAG intentionally last so the primary business dimensions
     # (month, account, product, seats, amounts) render leftmost.
     # If the input carries a _VENDOR column (portfolio view), surface it early.
@@ -2975,7 +2994,7 @@ def render_exception_detail(
     if "_VENDOR" in drill.columns:
         _col_source.append("_VENDOR")
     _col_source += [
-        "SF_ID", "VENDOR_PARTNER_NAME", "VENDOR_PRODUCT",
+        "SF_ID", "PARTNER_DISPLAY", "PRODUCT_DISPLAY",
         "ACTION_NEEDED", "VENDOR_QUANTITY",
         "TOTAL_BILLING_QUANTITY",
         # API_QUANTITY / AVG_API_QUANTITY surface TRT / vendor-API telemetry
@@ -3008,8 +3027,8 @@ def render_exception_detail(
             "BILLING_MONTH": st.column_config.TextColumn("Billing Month"),
             "_VENDOR": st.column_config.TextColumn("Vendor"),
             "SF_ID": st.column_config.TextColumn("Salesforce ID"),
-            "VENDOR_PARTNER_NAME": st.column_config.TextColumn("Partner"),
-            "VENDOR_PRODUCT": st.column_config.TextColumn("Product"),
+            "PARTNER_DISPLAY": st.column_config.TextColumn("Partner"),
+            "PRODUCT_DISPLAY": st.column_config.TextColumn("Product"),
             "ACTION_NEEDED": st.column_config.TextColumn("Action Needed"),
             "VENDOR_QUANTITY": st.column_config.NumberColumn("Vendor Seats", format="%d"),
             "TOTAL_BILLING_QUANTITY": st.column_config.NumberColumn("CW Billed Seats", format="%d"),
@@ -3308,8 +3327,8 @@ with tab_close:
                     f"bucket. These would be invisible in the tiles \u2014 review below:"
                 )
                 _keep = [c for c in [
-                    "BILLING_MONTH", "SF_ID", "VENDOR_PARTNER_NAME",
-                    "VENDOR_PRODUCT", "OUTCOME_FLAG", "EXCEPTION_TYPE",
+                    "BILLING_MONTH", "SF_ID", "PARTNER_DISPLAY_NAME",
+                    "PRODUCT_DISPLAY", "OUTCOME_FLAG", "EXCEPTION_TYPE",
                     "TOTAL_BILLING_AMOUNT", "VENDOR_AMOUNT", "AMOUNT_DELTA",
                 ] if c in _orphans.columns]
                 st.dataframe(_orphans[_keep], use_container_width=True, hide_index=True)
@@ -3716,7 +3735,11 @@ def render_vendor_api_amount_comparison(vendor_name: str) -> None:
     df = upper_cols(_try_query(
         f"""
         SELECT
-            COALESCE(NULLIF(TRIM(VENDOR_PRODUCT), ''), '(unmapped)') AS SKU,
+            COALESCE(
+                NULLIF(TRIM(PRODUCT_DISPLAY), ''),
+                NULLIF(TRIM(VENDOR_PRODUCT), ''),
+                '(unmapped)'
+            ) AS SKU,
             SUM(API_QUANTITY)     AS API_SEATS_POINT,
             SUM(AVG_API_QUANTITY) AS API_SEATS_AVG,
             SUM(API_AMOUNT)       AS API_AMT_POINT,
@@ -3973,10 +3996,11 @@ def _render_variance_table(
         raise ValueError(f"unknown direction: {direction}")
 
     if not keep.any():
-        st.markdown(
-            f'<div class="note">{caption}</div>',
-            unsafe_allow_html=True,
-        )
+        if caption:
+            st.markdown(
+                f'<div class="note">{caption}</div>',
+                unsafe_allow_html=True,
+            )
         st.markdown(
             f'<div class="note">{slice_name} billed every row at the mapped rate for {period_label}. '
             "No variance rows to review.</div>",
@@ -4003,7 +4027,8 @@ def _render_variance_table(
     total_partners = int(work["PARTNER"].astype(str).nunique())
     total_rows = int(len(work))
 
-    st.markdown(f'<div class="note">{caption}</div>', unsafe_allow_html=True)
+    if caption:
+        st.markdown(f'<div class="note">{caption}</div>', unsafe_allow_html=True)
     st.markdown(
         f'<div class="note">'
         f"{fmt_num(total_rows)} variance rows across {fmt_num(total_partners)} partners &middot; "
@@ -4138,13 +4163,20 @@ def render_vendor_invoice_vs_contract_rate(slice_: VendorSlice) -> None:
         "BILLING_MONTH", "VENDOR_PARTNER_NAME", "VENDOR_PRODUCT",
         "VENDOR_QUANTITY", "VENDOR_UNIT_PRICE", "VENDOR_AMOUNT",
     ]].copy()
-    d["PARTNER"] = d["VENDOR_PARTNER_NAME"].fillna("(unknown)").astype(str)
-    d["SKU"] = d["VENDOR_PRODUCT"].fillna("(unmapped)").astype(str)
+    d["PARTNER"] = detail.get(
+        "PARTNER_DISPLAY_NAME",
+        d["VENDOR_PARTNER_NAME"],
+    ).fillna("(unknown)").astype(str)
+    d["SKU"] = detail.get(
+        "PRODUCT_DISPLAY",
+        d["VENDOR_PRODUCT"],
+    ).fillna("(unmapped)").astype(str)
+    d["SKU_JOIN"] = d["VENDOR_PRODUCT"].fillna("(unmapped)").astype(str)
 
     ref_slim = ref[["VENDOR_PRODUCT", "MAP_REFERENCE_RATE"]].rename(
-        columns={"VENDOR_PRODUCT": "SKU"}
+        columns={"VENDOR_PRODUCT": "SKU_JOIN"}
     )
-    merged = d.merge(ref_slim, on="SKU", how="left")
+    merged = d.merge(ref_slim, on="SKU_JOIN", how="left")
 
     _render_variance_table(
         frame=merged,
@@ -4159,14 +4191,7 @@ def render_vendor_invoice_vs_contract_rate(slice_: VendorSlice) -> None:
         period_label=period_label,
         download_stem="vendor_rate_variance",
         header=f"{slice_.name} vendor invoice vs contracted rate",
-        caption=(
-            "Row-level check: vendor unit price on OUTPUT_PROD (invoice-derived "
-            "where the raw usage file omits it, with carry-forward from the most "
-            "recent prior invoice month) vs the mapped rate from "
-            "THIRD_PARTY_RECON_SKU_MAP_PROD (VENDOR_UNIT_PRICE when published, "
-            "else CONTRACT_COST_RATE). Only rows where the vendor invoiced above "
-            "the mapped rate are shown."
-        ),
+        caption="",
     )
 
 
@@ -4199,8 +4224,15 @@ def render_cw_retail_vs_billed_rate(slice_: VendorSlice) -> None:
     if missing:
         return
     d = detail[cols].copy()
-    d["PARTNER"] = d["VENDOR_PARTNER_NAME"].fillna("(unknown)").astype(str)
-    d["SKU"] = d["VENDOR_PRODUCT"].fillna("(unmapped)").astype(str)
+    d["PARTNER"] = detail.get(
+        "PARTNER_DISPLAY_NAME",
+        d["VENDOR_PARTNER_NAME"],
+    ).fillna("(unknown)").astype(str)
+    d["SKU"] = detail.get(
+        "PRODUCT_DISPLAY",
+        d["VENDOR_PRODUCT"],
+    ).fillna("(unmapped)").astype(str)
+    d["SKU_JOIN"] = d["VENDOR_PRODUCT"].fillna("(unmapped)").astype(str)
 
     zqty = pd.to_numeric(d["ZUORA_QUANTITY"], errors="coerce").fillna(0.0)
     zprc = pd.to_numeric(d["ZUORA_UNIT_PRICE"], errors="coerce").fillna(0.0)
@@ -4217,11 +4249,11 @@ def render_cw_retail_vs_billed_rate(slice_: VendorSlice) -> None:
 
     ref_slim = ref[["VENDOR_PRODUCT", "CW_UNIT_PRICE"]].rename(
         columns={
-            "VENDOR_PRODUCT": "SKU",
+            "VENDOR_PRODUCT": "SKU_JOIN",
             "CW_UNIT_PRICE": "MAP_CW_UNIT_PRICE",
         }
     )
-    merged = d.merge(ref_slim, on="SKU", how="left")
+    merged = d.merge(ref_slim, on="SKU_JOIN", how="left")
 
     _render_variance_table(
         frame=merged,
@@ -4236,12 +4268,7 @@ def render_cw_retail_vs_billed_rate(slice_: VendorSlice) -> None:
         period_label=period_label,
         download_stem="cw_rate_variance",
         header=f"{slice_.name} CW billing vs retail rate",
-        caption=(
-            "Row-level check: Zuora unit price (or Marketplace unit price when "
-            "Zuora is absent) vs the mapped retail rate from "
-            "THIRD_PARTY_RECON_SKU_MAP_PROD. Only rows where CW billed the "
-            "partner below retail are shown."
-        ),
+        caption="",
         extra_cols=[("BILLING_SOURCE", "Source")],
     )
 
@@ -4260,27 +4287,21 @@ def render_vendor_sku_profitability(slice_: VendorSlice) -> None:
     "is it mix shift (share moving between SKUs) or rate movement (margin %
     changing within a SKU)?"
 
-    Currently keyed off VENDOR_PRODUCT since that's the only vendor
-    with a mapped SKU column in the POC. When additional vendors land a
-    <VENDOR>_PRODUCT column, extend the fallback list below.
+    Prefer PRODUCT_DISPLAY when present so family rollups stay consistent
+    with the queue and portfolio tables. Fall back to VENDOR_PRODUCT for
+    pre-refresh data or raw audit slices.
     """
     detail = slice_.detail
     if detail.empty:
         return
     sku_col = next(
-        (c for c in ("VENDOR_PRODUCT",) if c in detail.columns),
+        (c for c in ("PRODUCT_DISPLAY", "VENDOR_PRODUCT") if c in detail.columns),
         None,
     )
     if sku_col is None:
         return
 
     st.markdown(f"### {slice_.name} profitability by SKU")
-    st.caption(
-        "Totals across all months in scope. Use this to isolate mix shift "
-        "(share of revenue changing between SKUs) from rate movement "
-        "(margin % changing within a SKU)."
-    )
-
     _det = detail.copy()
     _det["_SKU"] = _det[sku_col].fillna("(unmapped)").astype(str)
     _det["_REV"] = pd.to_numeric(
@@ -4397,7 +4418,7 @@ def render_vendor_rate_audit(slice_: VendorSlice) -> None:
     ).dt.strftime("%Y-%m")
 
     keep_cols = [c for c in [
-        "SF_ID", "BILLING_MONTH", "VENDOR_PARTNER_NAME", "VENDOR_PRODUCT",
+        "SF_ID", "BILLING_MONTH", "PARTNER_DISPLAY_NAME", "PRODUCT_DISPLAY",
         "CONTRACT_COST_RATE", "VENDOR_UNIT_PRICE", "VENDOR_VS_CONTRACT_PCT",
         "VENDOR_QUANTITY", "VENDOR_VS_CONTRACT_DOLLAR_IMPACT",
         "VENDOR_VS_CONTRACT_FLAG",
@@ -4405,8 +4426,8 @@ def render_vendor_rate_audit(slice_: VendorSlice) -> None:
     disp = exposed[keep_cols].rename(columns={
         "SF_ID": "Salesforce ID",
         "BILLING_MONTH": "Month",
-        "VENDOR_PARTNER_NAME": "Partner",
-        "VENDOR_PRODUCT": "Product",
+        "PARTNER_DISPLAY_NAME": "Partner",
+        "PRODUCT_DISPLAY": "Product",
         "CONTRACT_COST_RATE": "Contract $/seat",
         "VENDOR_UNIT_PRICE": "Vendor $/seat",
         "VENDOR_VS_CONTRACT_PCT": "Vendor vs Contract",
@@ -4465,15 +4486,15 @@ def _build_negative_margin_frame(slice_: VendorSlice) -> pd.DataFrame:
         below["BILLING_MONTH"], errors="coerce"
     ).dt.strftime("%Y-%m")
     _cols = [c for c in [
-        "SF_ID", "BILLING_MONTH", "VENDOR_PARTNER_NAME", "VENDOR_PRODUCT",
+        "SF_ID", "BILLING_MONTH", "PARTNER_DISPLAY_NAME", "PRODUCT_DISPLAY",
         "CONTRACT_COST_RATE", "BILLED_UNIT_PRICE", "PCT_DISCOUNT",
         "TOTAL_BILLING_QUANTITY", "BILLING_VS_COST_DOLLAR_IMPACT", "EXCEPTION_TYPE",
     ] if c in below.columns]
     disp = below[_cols].rename(columns={
         "SF_ID": "Salesforce ID",
         "BILLING_MONTH": "Month",
-        "VENDOR_PARTNER_NAME": "Partner",
-        "VENDOR_PRODUCT": "Product",
+        "PARTNER_DISPLAY_NAME": "Partner",
+        "PRODUCT_DISPLAY": "Product",
         "CONTRACT_COST_RATE": "Contract $/seat",
         "BILLED_UNIT_PRICE": "Billed $/seat",
         "PCT_DISCOUNT": "% Discount",
@@ -4571,24 +4592,44 @@ with tab_team:
             # Vectorized Case ID (vendor|sf_id|product|YYYY-MM|exception).
             # Vector string concat with pd.Series.str.cat is ~50-100x faster
             # than .apply for tens of thousands of rows.
-            _vendor_str = queue_source.get(
-                "_VENDOR", pd.Series("", index=queue_source.index)
-            ).fillna("").astype(str)
-            _sf_str = queue_source.get(
-                "SF_ID", pd.Series("", index=queue_source.index)
-            ).fillna("").astype(str)
-            _prod_str = queue_source.get(
-                "VENDOR_PRODUCT", pd.Series("", index=queue_source.index)
-            ).fillna("").astype(str)
-            _month_ts = pd.to_datetime(
-                queue_source.get("BILLING_MONTH"), errors="coerce"
-            )
-            _month_str = _month_ts.dt.strftime("%Y-%m").fillna("")
-            _exc_str = queue_source["Exception Type"].fillna("").astype(str)
-            queue_source["Case ID"] = (
-                _vendor_str + "|" + _sf_str + "|" + _prod_str + "|"
-                + _month_str + "|" + _exc_str
-            )
+            #
+            # 2026-08-31: OUTPUT_PROD now emits a canonical CASE_ID column
+            # keyed on PRODUCT_DISPLAY (SKU_MATCH_GROUP-driven family, not
+            # raw VENDOR_PRODUCT). Prefer that when present so pipe-SKU
+            # variants collapse into one queue row per real case. Fall back
+            # to the vectorized rebuild for pre-refresh cached data.
+            _existing_case = queue_source.get("CASE_ID")
+            if (
+                _existing_case is not None
+                and _existing_case.astype(str).str.strip().replace({"": None}).notna().any()
+            ):
+                queue_source["Case ID"] = _existing_case.fillna("").astype(str)
+            else:
+                _vendor_str = queue_source.get(
+                    "_VENDOR", pd.Series("", index=queue_source.index)
+                ).fillna("").astype(str)
+                _sf_str = queue_source.get(
+                    "SF_ID", pd.Series("", index=queue_source.index)
+                ).fillna("").astype(str)
+                # Prefer PRODUCT_DISPLAY for Case ID keying; fall back to
+                # VENDOR_PRODUCT when the display column is not yet populated.
+                _prod_series = queue_source.get(
+                    "PRODUCT_DISPLAY", pd.Series("", index=queue_source.index)
+                ).fillna("").astype(str)
+                if not _prod_series.str.strip().replace({"": None}).notna().any():
+                    _prod_series = queue_source.get(
+                        "VENDOR_PRODUCT", pd.Series("", index=queue_source.index)
+                    ).fillna("").astype(str)
+                _prod_str = _prod_series
+                _month_ts = pd.to_datetime(
+                    queue_source.get("BILLING_MONTH"), errors="coerce"
+                )
+                _month_str = _month_ts.dt.strftime("%Y-%m").fillna("")
+                _exc_str = queue_source["Exception Type"].fillna("").astype(str)
+                queue_source["Case ID"] = (
+                    _vendor_str + "|" + _sf_str + "|" + _prod_str + "|"
+                    + _month_str + "|" + _exc_str
+                )
             # Collapse to one row per Case ID (multiple pipeline rows can
             # share the same case when SKUs roll up to the same product).
             # OUTCOME_FLAG: keep the pipeline's own reason code (first non-
@@ -4625,13 +4666,29 @@ with tab_team:
                 .first()
                 .rename("Outcome Flag")
             )
+            # 2026-08-31 board-ready: prefer canonical *_DISPLAY columns
+            # for the Partner and Product fields the recon team sees.
+            # When they're absent (pre-refresh cached data) fall back to
+            # the raw pipe-delimited VENDOR_* columns so nothing breaks.
+            _has_partner_display = (
+                "PARTNER_DISPLAY_NAME" in queue_source.columns
+                and queue_source["PARTNER_DISPLAY_NAME"]
+                    .fillna("").astype(str).str.strip().replace({"": None}).notna().any()
+            )
+            _has_product_display = (
+                "PRODUCT_DISPLAY" in queue_source.columns
+                and queue_source["PRODUCT_DISPLAY"]
+                    .fillna("").astype(str).str.strip().replace({"": None}).notna().any()
+            )
+            _partner_col = "PARTNER_DISPLAY_NAME" if _has_partner_display else "VENDOR_PARTNER_NAME"
+            _product_col = "PRODUCT_DISPLAY" if _has_product_display else "VENDOR_PRODUCT"
             grouped = (
                 queue_source.groupby("Case ID", dropna=False)
                 .agg({
                     "_VENDOR": "first",
                     "SF_ID": "first",
-                    "VENDOR_PARTNER_NAME": "first",
-                    "VENDOR_PRODUCT": "first",
+                    _partner_col: "first",
+                    _product_col: "first",
                     "BILLING_MONTH": "first",
                     "Exception Type": "first",
                     "Est $ Impact": "sum",
@@ -4666,8 +4723,8 @@ with tab_team:
             display_df = grouped.rename(columns={
                 "_VENDOR": "Vendor",
                 "SF_ID": "Salesforce ID",
-                "VENDOR_PARTNER_NAME": "Partner",
-                "VENDOR_PRODUCT": "Product",
+                _partner_col: "Partner",
+                _product_col: "Product",
             })[[
                 "Priority", "Vendor", "Salesforce ID", "Partner", "Product",
                 "Billing Month", "Exception Type", "Outcome Flag",

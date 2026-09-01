@@ -25,7 +25,7 @@ OUTPUT_DIR = KEEPIT_ROOT / "outputs"
 
 DEFAULT_SOURCE_ROOT = Path(
     r"C:\Users\Nate.Fold\OneDrive - ConnectWise, Inc"
-    r"\THIRD_PARTY_RECONCILIATION\Manual Recon Files 2026\KeepIT"
+    r"\THIRD_PARTY_RECONCILIATION\2026 - Vendor Files\KeepIT"
 )
 DEFAULT_MANUAL_ROOT = DEFAULT_SOURCE_ROOT
 

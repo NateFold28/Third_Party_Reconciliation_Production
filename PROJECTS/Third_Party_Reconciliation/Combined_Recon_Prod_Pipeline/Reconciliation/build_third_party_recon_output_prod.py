@@ -231,21 +231,23 @@ CASE
     -- activity matches the API activity (i.e., VENDOR_QUANTITY > 0 at row grain).
     -- If VENDOR_QUANTITY = 0 but API_QUANTITY > 0, the usage is NOT on this product,
     -- so it falls to Rule 9 (Vendor Billing / CW Billing mismatch).
-    WHEN (COALESCE(VENDOR_QUANTITY, 0) > 0
-          AND COALESCE(API_QUANTITY, 0) > 0
-          AND (
-              COALESCE(TOTAL_BILLING_QUANTITY, 0) <= 0
-              OR COALESCE(VENDOR_QUANTITY, 0) > COALESCE(TOTAL_BILLING_QUANTITY, 0) * 1.25
-              OR COALESCE(TOTAL_BILLING_AMOUNT, 0) <= 0
-              OR (COALESCE(VENDOR_AMOUNT, 0) > 0
-                  AND COALESCE(VENDOR_AMOUNT, 0) > COALESCE(TOTAL_BILLING_AMOUNT, 0) * 1.25)
-          ))
-         OR OUTCOME_FLAG IN (
-             'API Usage, Insufficient CW Billing',
-             'API Usage Recorded, No CW Billing',
-             'Missing CW Billing - API Confirmed',
-             'TRT_VENDOR_USAGE_NOT_BILLED',
-             'STRUCTURAL_VENDOR_ONLY_TRT_CONFIRMED'
+    WHEN COALESCE(API_QUANTITY, 0) > 0
+         AND (
+             (COALESCE(VENDOR_QUANTITY, 0) > 0
+              AND (
+                  COALESCE(TOTAL_BILLING_QUANTITY, 0) <= 0
+                  OR COALESCE(VENDOR_QUANTITY, 0) > COALESCE(TOTAL_BILLING_QUANTITY, 0) * 1.25
+                  OR COALESCE(TOTAL_BILLING_AMOUNT, 0) <= 0
+                  OR (COALESCE(VENDOR_AMOUNT, 0) > 0
+                      AND COALESCE(VENDOR_AMOUNT, 0) > COALESCE(TOTAL_BILLING_AMOUNT, 0) * 1.25)
+              ))
+             OR OUTCOME_FLAG IN (
+                 'API Usage, Insufficient CW Billing',
+                 'API Usage Recorded, No CW Billing',
+                 'Missing CW Billing - API Confirmed',
+                 'TRT_VENDOR_USAGE_NOT_BILLED',
+                 'STRUCTURAL_VENDOR_ONLY_TRT_CONFIRMED'
+             )
          )
     THEN 'API Usage, Insufficient CW Billing'
 
@@ -402,7 +404,79 @@ try:
     # is preserved as SF_ID_ORIGINAL for audit trail.
     output_sql = f"""{USE}
 CREATE OR REPLACE TABLE THIRD_PARTY_RECON_OUTPUT_PROD AS
-WITH filtered AS (
+WITH partner_canonical AS (
+    -- One canonical display name per SF_ID (2026-08-31 board-ready pass).
+    --
+    -- The vendor reconciliation scripts LISTAGG every alias variant they've
+    -- ever seen for an account, so the app's Partner column ends up looking
+    -- like "Oryx Align | Oryx Align Limited | VIRTUS DATA CENTRES (Oryx
+    -- Align Ltd) | SDT Ltd". That collapses multiple real cases into
+    -- indistinguishable rows and prevents the Recon Team Queue from
+    -- grouping cleanly.
+    --
+    -- Selection rules (deterministic — same input always picks the same
+    -- name). Real business names are usually the SHORTEST reasonable
+    -- variant; qualified/legacy suffixes ("- Legacy X", "(Parent Co)")
+    -- inflate length without adding clarity, and ALLCAPS codes like
+    -- "TEMPLESA" are internal identifiers, not display names.
+    --
+    --   1. PARENT_COMPANY if the map has one set (~75 sf_ids today).
+    --   2. Otherwise the "cleanest" partner_name for that SF_ID:
+    --        a. skip names that literally contain a pipe (data-quality
+    --           leak in the source map — e.g. "ROCK | IT Consultancy")
+    --        b. skip ALLCAPS-only codes < 12 chars (TEMPLESA, TTALX)
+    --        c. skip names containing "( )" qualifier clauses if a
+    --           non-parenthesized alternative exists
+    --        d. skip "- Legacy" / "- ThreatAdvice" trailing qualifiers
+    --        e. tie-break: shortest length between 4 and 60 chars,
+    --           then alphabetical
+    --   3. sf_ids with > 20 mapped aliases are flagged
+    --      IS_AGGREGATOR_ACCOUNT so the app can render
+    --      "<name> (aggregator, N sub-partners)".
+    SELECT
+        sf_id,
+        COALESCE(
+            NULLIF(TRIM(MAX(parent_company)), ''),
+            best_partner_name
+        )                                                       AS canonical_partner_name,
+        COUNT(DISTINCT partner_name) > 20                       AS is_aggregator_account,
+        COUNT(DISTINCT partner_name)                            AS partner_alias_count
+    FROM (
+        SELECT
+            m.sf_id,
+            m.partner_name,
+            m.parent_company,
+            FIRST_VALUE(m.partner_name) OVER (
+                PARTITION BY m.sf_id
+                ORDER BY
+                    -- 1. Names containing pipes go last (data-quality leak)
+                    IFF(m.partner_name LIKE '% | %' OR m.partner_name LIKE '%|%', 1, 0) ASC,
+                    -- 2. ALLCAPS short codes go last (internal identifiers)
+                    IFF(m.partner_name = UPPER(m.partner_name)
+                        AND LENGTH(m.partner_name) < 12, 1, 0) ASC,
+                    -- 3. Parenthesized qualifier clauses go last
+                    IFF(m.partner_name LIKE '%(%', 1, 0) ASC,
+                    -- 4. Dash-suffixed legacy tags go last ("- Legacy X")
+                    IFF(m.partner_name ILIKE '% - %', 1, 0) ASC,
+                    -- 5. Prefer 4-60 char range (real business names)
+                    IFF(LENGTH(m.partner_name) BETWEEN 4 AND 60, 0, 1) ASC,
+                    -- 6. Prefer mixed case over all lower / all upper
+                    IFF(m.partner_name = UPPER(m.partner_name)
+                        OR m.partner_name = LOWER(m.partner_name), 1, 0) ASC,
+                    -- 7. Shortest wins (Oryx Align beats Oryx Align Limited)
+                    LENGTH(m.partner_name) ASC,
+                    -- 8. Deterministic tie-break
+                    m.partner_name ASC
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+            ) AS best_partner_name
+        FROM RECON_PARTNER_MAP m
+        WHERE m.sf_id IS NOT NULL
+          AND m.partner_name IS NOT NULL
+          AND TRIM(m.partner_name) <> ''
+    )
+    GROUP BY sf_id, best_partner_name
+),
+filtered AS (
     -- Global internal / test partner exclusion (Proofpoint mechanism).
     -- Drop rows whose VENDOR_PARTNER_NAME matches the internal/test regex.
     -- Preserved in THIRD_PARTY_RECON_DETAIL_PROD if audit needed.
@@ -469,30 +543,124 @@ WITH filtered AS (
 -- App-facing precomputed columns (2026-08-21 latency pass): these move the
 -- per-row classification / label / group-id work out of the Streamlit
 -- app and into Snowflake so tab / filter changes stay O(1) in Python.
+--
+-- 2026-08-31 board-ready pass: derive canonical PRODUCT_DISPLAY and
+-- PARTNER_DISPLAY_NAME here so the app never has to render pipe-delimited
+-- LISTAGG blobs like "S1ES-CTL-EN-T2-SA | S1ES-CTL-EN-T9-SA" or
+-- "Oryx Align | Oryx Align Ltd | VIRTUS DATA CENTRES (Oryx Align Ltd)".
+-- The raw fields are preserved for audit; app UI reads DISPLAY columns.
 SELECT
-    VENDOR,
-    BILLING_MONTH,
-    INV_ID,
-    SF_ID,
-    * EXCLUDE (VENDOR, BILLING_MONTH, INV_ID, SF_ID),
-    IFF(COALESCE(DUPLICATE_BILLING_FLAG, 'FALSE') = 'TRUE', 'Y', 'N')            AS DUPLICATE_BILLING,
+    c.VENDOR,
+    c.BILLING_MONTH,
+    c.INV_ID,
+    c.SF_ID,
+    c.* EXCLUDE (VENDOR, BILLING_MONTH, INV_ID, SF_ID),
+    -- ---------------- PRODUCT_DISPLAY ---------------------------------
+    -- Prefer the upstream sku_match_group when the vendor script populated
+    -- it (SentinelOne, Auvik, ESET, Exium, Webroot). Fall back to text
+    -- inference for vendors without a group column (Bitdefender,
+    -- Proofpoint, Acronis, KeepIT). Final fallback strips pipes to the
+    -- first token so nothing ever displays as a pipe-list.
+    CASE
+        -- Bucket 1 — trust vendor-script sku_match_group when meaningful
+        WHEN c.SKU_MATCH_GROUP IS NOT NULL
+         AND c.SKU_MATCH_GROUP NOT IN ('', 'UNMAPPED_VENDOR_PRODUCT', 'UNMAPPED')
+            THEN CASE c.SKU_MATCH_GROUP
+                    WHEN 'AUVIK_ESSENTIALS'   THEN 'Auvik Essentials'
+                    WHEN 'AUVIK_PERFORMANCE'  THEN 'Auvik Performance'
+                    WHEN 'AUVIK_ASM'          THEN 'Auvik SaaS Management'
+                    WHEN 'COMPLETE'           THEN 'Complete'
+                    WHEN 'CONTROL'            THEN 'Control'
+                    WHEN 'CORE'               THEN 'Core'
+                    WHEN 'RANGER'             THEN 'Ranger'
+                    WHEN 'RANGER_INSIGHTS'    THEN 'Ranger Insights'
+                    WHEN 'RANGER_AD'          THEN 'Ranger AD'
+                    WHEN 'PURPLE_AI'          THEN 'Purple AI'
+                    WHEN 'GSM'                THEN 'Webroot GSM'
+                    WHEN 'DNS'                THEN 'Webroot DNS'
+                    WHEN 'SAT'                THEN 'Webroot SAT'
+                    WHEN 'GRAVITYZONE'        THEN 'Bitdefender GravityZone'
+                    WHEN 'ENCRYPTION'         THEN 'Bitdefender Cloud Encryption'
+                    WHEN 'PATCH_MGMT'         THEN 'Bitdefender Patch Management'
+                    WHEN 'ATS_EDR'            THEN 'Bitdefender ATS & EDR'
+                    WHEN 'EMAIL_SECURITY'     THEN 'Bitdefender Email Security'
+                    WHEN 'MOBILE'             THEN 'Bitdefender Mobile Security'
+                    WHEN 'MSP_SECURE'         THEN 'Bitdefender MSP Secure'
+                    ELSE INITCAP(REPLACE(c.SKU_MATCH_GROUP, '_', ' '))
+                 END
+        -- Bucket 2 — Bitdefender text inference (VENDOR_PRODUCT is a
+        -- pipe-list of Royalties product descriptions).
+        WHEN c.VENDOR = 'Bitdefender' AND UPPER(COALESCE(c.VENDOR_PRODUCT, '')) LIKE '%EMAIL SECURITY%'
+            THEN 'Bitdefender Email Security'
+        WHEN c.VENDOR = 'Bitdefender' AND UPPER(COALESCE(c.VENDOR_PRODUCT, '')) LIKE '%SECURITY FOR MOBILE%'
+            THEN 'Bitdefender Mobile Security'
+        WHEN c.VENDOR = 'Bitdefender' AND UPPER(COALESCE(c.VENDOR_PRODUCT, '')) LIKE '%PATCH MANAGEMENT%'
+            THEN 'Bitdefender Patch Management'
+        WHEN c.VENDOR = 'Bitdefender' AND UPPER(COALESCE(c.VENDOR_PRODUCT, '')) LIKE '%EDR (MSP SECURE)%'
+            THEN 'Bitdefender MSP Secure'
+        WHEN c.VENDOR = 'Bitdefender' AND UPPER(COALESCE(c.VENDOR_PRODUCT, '')) LIKE '%CLOUD ENCRYPTION%'
+            THEN 'Bitdefender Cloud Encryption'
+        WHEN c.VENDOR = 'Bitdefender' AND UPPER(COALESCE(c.VENDOR_PRODUCT, '')) LIKE '%ATS & EDR%'
+            THEN 'Bitdefender ATS & EDR'
+        WHEN c.VENDOR = 'Bitdefender' AND (
+             UPPER(COALESCE(c.VENDOR_PRODUCT, '')) LIKE '%ADVANCED THREAT SECURITY%'
+          OR UPPER(COALESCE(c.VENDOR_PRODUCT, '')) LIKE '%GRAVITYZONE%'
+          OR UPPER(COALESCE(c.VENDOR_PRODUCT, '')) LIKE '%GRAVITY ZONE%'
+          OR UPPER(COALESCE(c.VENDOR_PRODUCT, '')) LIKE '%CLOUD SEC%')
+            THEN 'Bitdefender GravityZone'
+        -- Bucket 3 — Proofpoint text inference for the 12 pipe-rows
+        WHEN c.VENDOR = 'Proofpoint' AND c.VENDOR_PRODUCT LIKE '% | %'
+            THEN SPLIT_PART(c.VENDOR_PRODUCT, ' | ', 1)
+        -- Bucket 4 — anything else with a pipe: strip to first token
+        WHEN c.VENDOR_PRODUCT LIKE '% | %'
+            THEN SPLIT_PART(c.VENDOR_PRODUCT, ' | ', 1)
+        ELSE COALESCE(NULLIF(TRIM(c.VENDOR_PRODUCT), ''), '(unmapped)')
+    END                                                                              AS PRODUCT_DISPLAY,
+    -- ---------------- PARTNER_DISPLAY_NAME ----------------------------
+    -- If the map has a single canonical name for this SF_ID, prefer it.
+    -- Otherwise (unmapped, or the vendor's own name has no pipes and is
+    -- likely correct), fall back to the vendor-emitted first token.
+    COALESCE(
+        pc.canonical_partner_name,
+        SPLIT_PART(c.VENDOR_PARTNER_NAME, ' | ', 1),
+        c.VENDOR_PARTNER_NAME
+    )                                                                                AS PARTNER_DISPLAY_NAME,
+    -- Downstream can badge aggregator accounts ("+ N sub-partners") so
+    -- the operator knows the row is a shared distributor/house account.
+    COALESCE(pc.is_aggregator_account, FALSE)                                        AS IS_AGGREGATOR_ACCOUNT,
+    COALESCE(pc.partner_alias_count, 0)                                              AS PARTNER_ALIAS_COUNT,
+    IFF(COALESCE(c.DUPLICATE_BILLING_FLAG, 'FALSE') = 'TRUE', 'Y', 'N')            AS DUPLICATE_BILLING,
     {ACTION_NEEDED_CASE}                                                                AS ACTION_NEEDED,
-    CASE WHEN EXCEPTION_TYPE IN ({FINANCE_QUEUE_BUCKETS_SQL}) THEN TRUE ELSE FALSE END  AS IS_LEAKAGE,
-    CASE WHEN EXCEPTION_TYPE IN ({FINANCE_QUEUE_BUCKETS_SQL}) THEN TRUE ELSE FALSE END  AS IS_FINANCE_QUEUE,
-    CASE WHEN EXCEPTION_TYPE IN ({OPS_QUEUE_BUCKETS_SQL})     THEN TRUE ELSE FALSE END  AS IS_OPS_QUEUE,
-    CASE WHEN EXCEPTION_TYPE = 'Marketplace Billing Delay'    THEN TRUE ELSE FALSE END  AS IS_TIMING_QUEUE,
-    CASE WHEN EXCEPTION_TYPE = 'Clear'                        THEN TRUE ELSE FALSE END  AS IS_CLEAR,
+    CASE WHEN c.EXCEPTION_TYPE IN ({FINANCE_QUEUE_BUCKETS_SQL}) THEN TRUE ELSE FALSE END  AS IS_LEAKAGE,
+    CASE WHEN c.EXCEPTION_TYPE IN ({FINANCE_QUEUE_BUCKETS_SQL}) THEN TRUE ELSE FALSE END  AS IS_FINANCE_QUEUE,
+    CASE WHEN c.EXCEPTION_TYPE IN ({OPS_QUEUE_BUCKETS_SQL})     THEN TRUE ELSE FALSE END  AS IS_OPS_QUEUE,
+    CASE WHEN c.EXCEPTION_TYPE = 'Marketplace Billing Delay'    THEN TRUE ELSE FALSE END  AS IS_TIMING_QUEUE,
+    CASE WHEN c.EXCEPTION_TYPE = 'Clear'                        THEN TRUE ELSE FALSE END  AS IS_CLEAR,
     -- Stable Case ID matches the app's Recon Team Queue key so team edits
     -- persist across filter changes without an app-side apply() loop.
+    -- Uses PRODUCT_DISPLAY (canonical family) so raw-SKU pipe variants no
+    -- longer split one real case into multiple queue rows.
     CONCAT_WS(
         '|',
-        COALESCE(VENDOR, ''),
-        COALESCE(SF_ID, ''),
-        COALESCE(VENDOR_PRODUCT, ''),
-        TO_CHAR(BILLING_MONTH, 'YYYY-MM'),
-        COALESCE(EXCEPTION_TYPE, '')
+        COALESCE(c.VENDOR, ''),
+        COALESCE(c.SF_ID, ''),
+        COALESCE(
+            CASE
+                WHEN c.SKU_MATCH_GROUP IS NOT NULL
+                 AND c.SKU_MATCH_GROUP NOT IN ('', 'UNMAPPED_VENDOR_PRODUCT', 'UNMAPPED')
+                    THEN c.SKU_MATCH_GROUP
+                WHEN c.VENDOR_PRODUCT LIKE '% | %'
+                    THEN SPLIT_PART(c.VENDOR_PRODUCT, ' | ', 1)
+                ELSE c.VENDOR_PRODUCT
+            END,
+            ''
+        ),
+        TO_CHAR(c.BILLING_MONTH, 'YYYY-MM'),
+        COALESCE(c.EXCEPTION_TYPE, '')
     )                                                                                    AS CASE_ID
-FROM classified;
+FROM classified c
+LEFT JOIN partner_canonical pc
+    ON pc.sf_id = c.SF_ID;
 """
     run_sql(conn, output_sql, "THIRD_PARTY_RECON_OUTPUT_PROD")
 

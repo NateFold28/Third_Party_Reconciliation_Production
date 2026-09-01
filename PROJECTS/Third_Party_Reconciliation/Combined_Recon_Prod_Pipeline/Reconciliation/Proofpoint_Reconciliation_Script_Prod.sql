@@ -6,7 +6,7 @@
 --   vendor usage, partner/SKU maps, Zuora billing, and Marketplace billing.
 --
 -- Required upstream objects:
---   - PROOFPOINT_USAGE
+--   - THIRD_PARTY_RECON_VENDOR_USAGE_PROD filtered to Proofpoint
 --   - RECON_PARTNER_MAP
 --   - (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Proofpoint')
 --   - THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
@@ -171,7 +171,7 @@ proofpoint_base AS (
             WHEN pn.sf_id IS NOT NULL THEN 'PARTNER_NAME'
             ELSE 'UNMAPPED'
         END AS partner_match_method
-    FROM PROOFPOINT_USAGE u
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
     LEFT JOIN manual_partner_map mpm
         ON mpm.partner_name_normalized = TRIM(
             REGEXP_REPLACE(
@@ -193,7 +193,8 @@ proofpoint_base AS (
         ON sfr.old_sf_id = COALESCE(mpm.sf_id, pn.sf_id)
     LEFT JOIN cmit_parent_rollup cr
         ON cr.child_sf_id = COALESCE(sfr.canonical_sf_id, mpm.sf_id, pn.sf_id)
-    WHERE COALESCE(u.quantity, 0) <> 0
+    WHERE u.VENDOR = 'Proofpoint'
+      AND COALESCE(u.quantity, 0) <> 0
       AND COALESCE(u.amount, 0) <> 0
             AND u.billing_month::DATE IN (SELECT billing_month FROM proofpoint_loaded_billing_months)
 ),
