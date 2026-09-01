@@ -128,6 +128,7 @@ def run_sql_file(path: Path, label: str) -> bool:
     sql_text = "\n".join(
         ln for ln in raw_sql.splitlines()
         if not ln.lstrip().startswith("--")
+        and not set(ln.strip()) <= {"-", "="}
     )
     conn = get_snowflake_connection(
         role="DEVELOPER",
