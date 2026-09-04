@@ -3442,6 +3442,7 @@ def _sum_preserve_null(series: pd.Series) -> float:
 
 
 def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
+    is_auvik = vendor_name.strip().upper() == "AUVIK"
     is_bitdefender = vendor_name.strip().upper() == "BITDEFENDER"
     usage_source_label = "Royalty Report" if is_bitdefender else "Vendor Raw Usage"
     st.markdown(f"### Vendor Invoice vs. {usage_source_label}")
@@ -3492,6 +3493,17 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
     for col in metric_cols:
         work[col] = pd.to_numeric(work.get(col), errors="coerce")
 
+    if is_auvik and work["VENDOR_INVOICE_SKU"].str.match(
+        r"^(BASIC|ADVANCED|PREMIER)( NEW)?$",
+        case=False,
+    ).any():
+        st.caption(
+            "Auvik BASIC, ADVANCED, and PREMIER rows are ConnectWise OEM invoice "
+            "tiers. They are valid invoice charges, but the partner-level Auvik "
+            "usage workbook does not contain the corresponding OEM population, so "
+            "these rows remain invoice-only rather than true usage variances."
+        )
+
     invoice_options = sorted(work["INVOICE_ID"].dropna().astype(str).unique().tolist())
     selected_invoice = st.selectbox(
         "Invoice",
@@ -3504,7 +3516,7 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
     comparison_grains = sorted(
         {value for value in work["COMPARISON_GRAIN"].astype(str) if value.strip()}
     )
-    if vendor_name.strip().upper() == "AUVIK":
+    if is_auvik:
         st.caption("Display grain: Vendor × Invoice × SKU")
     elif comparison_grains:
         st.caption(f"Comparison grain: {', '.join(comparison_grains)}")
@@ -3538,14 +3550,46 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
             }
         )
     )
-    sku_rollup["Delta Seats"] = (
-        sku_rollup[usage_seats_label].fillna(0)
-        - sku_rollup["Vendor Invoice Seats"].fillna(0)
-    )
-    sku_rollup["Delta Amount"] = (
-        sku_rollup[usage_amount_label].fillna(0)
-        - sku_rollup["Vendor Invoice Amount"].fillna(0)
-    )
+    if is_auvik:
+        comparable = (
+            sku_rollup["Vendor Invoice Seats"].notna()
+            & sku_rollup[usage_seats_label].notna()
+        )
+        sku_rollup["Delta Seats"] = (
+            sku_rollup[usage_seats_label] - sku_rollup["Vendor Invoice Seats"]
+        ).where(comparable)
+        sku_rollup["Delta Amount"] = (
+            sku_rollup[usage_amount_label] - sku_rollup["Vendor Invoice Amount"]
+        ).where(comparable)
+        oem_invoice = sku_rollup["SKU"].str.match(
+            r"^(BASIC|ADVANCED|PREMIER)( NEW)?$",
+            case=False,
+        )
+        sku_rollup["Status"] = "Variance"
+        sku_rollup.loc[
+            sku_rollup["Vendor Invoice Seats"].isna(), "Status"
+        ] = "Usage only"
+        sku_rollup.loc[
+            sku_rollup[usage_seats_label].isna(), "Status"
+        ] = "Invoice only"
+        sku_rollup.loc[
+            sku_rollup[usage_seats_label].isna() & oem_invoice, "Status"
+        ] = "OEM invoice — no usage feed"
+        sku_rollup.loc[
+            comparable
+            & sku_rollup["Delta Seats"].abs().lt(0.0001)
+            & sku_rollup["Delta Amount"].abs().lt(0.01),
+            "Status",
+        ] = "Match"
+    else:
+        sku_rollup["Delta Seats"] = (
+            sku_rollup[usage_seats_label].fillna(0)
+            - sku_rollup["Vendor Invoice Seats"].fillna(0)
+        )
+        sku_rollup["Delta Amount"] = (
+            sku_rollup[usage_amount_label].fillna(0)
+            - sku_rollup["Vendor Invoice Amount"].fillna(0)
+        )
     sku_rollup["_abs_delta_amount"] = sku_rollup["Delta Amount"].abs()
     sku_rollup["_abs_delta_seats"] = sku_rollup["Delta Seats"].abs()
     sku_rollup = sku_rollup.sort_values(
@@ -3562,14 +3606,27 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
         "Vendor Invoice Amount": _sum_preserve_null(sku_rollup["Vendor Invoice Amount"]),
         usage_amount_label: _sum_preserve_null(sku_rollup[usage_amount_label]),
     }
-    total["Delta Seats"] = (
-        (0 if pd.isna(total[usage_seats_label]) else total[usage_seats_label])
-        - (0 if pd.isna(total["Vendor Invoice Seats"]) else total["Vendor Invoice Seats"])
-    )
-    total["Delta Amount"] = (
-        (0 if pd.isna(total[usage_amount_label]) else total[usage_amount_label])
-        - (0 if pd.isna(total["Vendor Invoice Amount"]) else total["Vendor Invoice Amount"])
-    )
+    if is_auvik and (
+        sku_rollup["Vendor Invoice Seats"].isna().any()
+        or sku_rollup[usage_seats_label].isna().any()
+    ):
+        total["Delta Seats"] = float("nan")
+        total["Delta Amount"] = float("nan")
+        total["Status"] = "Incomplete source coverage"
+    else:
+        total["Delta Seats"] = (
+            (0 if pd.isna(total[usage_seats_label]) else total[usage_seats_label])
+            - (0 if pd.isna(total["Vendor Invoice Seats"]) else total["Vendor Invoice Seats"])
+        )
+        total["Delta Amount"] = (
+            (0 if pd.isna(total[usage_amount_label]) else total[usage_amount_label])
+            - (0 if pd.isna(total["Vendor Invoice Amount"]) else total["Vendor Invoice Amount"])
+        )
+        if is_auvik:
+            total["Status"] = "Match" if (
+                abs(total["Delta Seats"]) < 0.0001
+                and abs(total["Delta Amount"]) < 0.01
+            ) else "Variance"
     display = pd.concat([sku_rollup, pd.DataFrame([total])], ignore_index=True)
 
     display_columns = [
@@ -3582,6 +3639,8 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
         "Delta Seats",
         "Delta Amount",
     ]
+    if is_auvik:
+        display_columns.insert(2, "Status")
 
     def _invoice_links(link_keys: object, invoice_ids: object) -> str:
         url_by_invoice: dict[str, str] = {}

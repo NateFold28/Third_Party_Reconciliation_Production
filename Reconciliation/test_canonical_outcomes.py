@@ -167,6 +167,8 @@ class StrictOutcomeCaseTests(unittest.TestCase):
         self.assertIn('st.caption("Display grain: Vendor × Invoice × SKU")', app)
         self.assertNotIn('key=f"vendor-intra-partner-{vendor_name}"', app)
         self.assertIn('["INVOICE_ID", "SKU"]', app)
+        self.assertIn('"OEM invoice — no usage feed"', app)
+        self.assertIn('total["Status"] = "Incomplete source coverage"', app)
         self.assertIn('label="Download Actual Reconciliation as CSV"', app)
         self.assertNotIn('f"resolver: {freshness', app)
         self.assertIn("fmt_est_timestamp(latest_freshness_timestamp(freshness))", app)

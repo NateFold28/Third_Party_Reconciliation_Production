@@ -314,6 +314,19 @@ def _parse_auvik(text: str, file_path: str) -> list[dict]:
         sku_clean = (sku or "").strip()
         if not sku_clean or total is None or qty is None or up is None:
             return
+        # Document Intelligence can wrap the final digit of a large quantity
+        # onto the next table row (for example ``2,358,64`` then ``4``). Auvik
+        # invoice lines are quantity × unit price, so recover only a near-whole
+        # implied quantity that is materially larger than the parsed value.
+        if abs(up) > 1e-12:
+            implied_qty = total / up
+            rounded_qty = round(implied_qty)
+            if (
+                abs(implied_qty - rounded_qty) < 0.05
+                and abs(total - qty * up) > max(0.02, abs(total) * 0.001)
+                and abs(rounded_qty) > abs(qty) * 1.5
+            ):
+                qty = float(rounded_qty)
         # Canonical dedupe key guards against overlap between markdown-table
         # extraction and freeform page-continuation extraction.
         key = (
