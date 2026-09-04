@@ -61,6 +61,7 @@ VENDOR_NAME_MAP: dict[str, str] = {
     "eset":        "ESET",
     "exium":       "Exium",
     "keepit":      "KeepIT",
+    "opentext":    "Webroot",
     "proofpoint":  "Proofpoint",
     "sentinelone": "SentinelOne",
     "webroot":     "Webroot",
@@ -83,6 +84,7 @@ def _invoice_id(file_path: str, text: str, source_record_id: object) -> str:
     patterns = (
         r"(?i)(INV[A-Z]*-?\d+[A-Z]?)",
         r"(?i)(CF[AM]I\d+)",
+        r"(?i)\bBilling\s+Doc\.\s*#\s*:\s*([0-9]{5,})",
         r"(?i)(?:INVOICE[_ -])([0-9]{5,})",
         r"(?i)\bNumber\s*:?\s*([A-Z0-9-]{5,})",
         r"(?i)\bInvoice\s*(?:No\.?|Number|#)\s*:?\s*([A-Z0-9-]{5,})",
@@ -97,6 +99,8 @@ def _invoice_id(file_path: str, text: str, source_record_id: object) -> str:
 
 def _invoice_description(vendor: str | None, text: str, file_path: str) -> str:
     """Derive a concise invoice label for filtering and app display."""
+    if str(vendor or "").upper() == "WEBROOT":
+        return "Main"
     if str(vendor or "").upper() == "KEEPIT":
         if re.search(r"TAKEOUT", text, flags=re.IGNORECASE):
             return "Takeout"
@@ -922,29 +926,32 @@ def _parse_sentinelone(text: str, file_path: str) -> list[dict]:
 
 
 def _parse_webroot(text: str, file_path: str) -> list[dict]:
-    """
-    Webroot invoice format: table with item number at top of description cell.
-    Table: rows where first cell contains a numeric SKU code; description follows.
-    Columns inferred: | Item/SKU | Description | Qty | Unit Price | Price/Amount |
-    """
+    """Parse OpenText invoices that carry the Webroot product portfolio."""
     results: list[dict] = []
     rows = _parse_markdown_table(text)
     header_idx = None
     for i, row in enumerate(rows):
-        h = [c.lower() for c in row]
-        if any("qty" in c for c in h) and any("price" in c or "amount" in c for c in h):
+        h = [c.strip().lower() for c in row]
+        if (
+            any(c in ("qty", "quantity") for c in h)
+            and "description" in h
+            and "unit price" in h
+            and "price" in h
+        ):
             header_idx = i
             break
     if header_idx is None:
         return results
 
-    hdr = [c.lower() for c in rows[header_idx]]
+    hdr = [c.strip().lower() for c in rows[header_idx]]
     try:
-        i_desc = next(i for i, h in enumerate(hdr) if "description" in h or "item" in h)
-        i_qty  = next(i for i, h in enumerate(hdr) if "qty" in h or "quantity" in h)
-        i_up   = next(i for i, h in enumerate(hdr) if "unit" in h and "price" in h)
-        i_amt  = next(i for i, h in enumerate(hdr) if h in ("price", "amount", "total", "ext"))
+        i_desc = hdr.index("description")
+        i_qty = next(i for i, h in enumerate(hdr) if h in ("qty", "quantity"))
+        i_up = hdr.index("unit price")
+        i_amt = hdr.index("price")
     except StopIteration:
+        return results
+    except ValueError:
         return results
 
     for row in rows[header_idx + 1:]:
@@ -953,26 +960,35 @@ def _parse_webroot(text: str, file_path: str) -> list[dict]:
         cell = row[i_desc].strip()
         if not cell:
             continue
-        # SKU = first token (numeric or alphanumeric code), description = rest
-        parts = cell.split("\n", 1)
-        if len(parts) == 2:
-            sku  = parts[0].strip()
-            desc = parts[1].strip()
-        else:
-            # Try splitting on first whitespace after a code-like token
-            m = re.match(r"^([A-Z0-9\-]+)\s+(.*)", cell, re.DOTALL)
-            if m:
-                sku, desc = m.group(1), m.group(2).strip()
-            else:
-                sku  = cell
-                desc = cell
-        qty  = _num(row[i_qty])
-        up   = _num(row[i_up])
-        amt  = _num(row[i_amt])
-        if qty is None and amt is None:
+
+        # OpenText uses a stable ten-digit SKU followed by the product label,
+        # service period, contract metadata, and end-user metadata. Preserve
+        # only the actual product label in DESCRIPTION.
+        match = re.match(r"^(\d{10})\s+(.+)$", cell, flags=re.DOTALL)
+        if not match:
             continue
-        results.append({"partner": None, "sku": sku, "description": desc,
-                         "quantity": qty, "unit_price": up, "amount": amt})
+        sku = match.group(1)
+        desc = re.split(
+            r"\s+\d{4}-\d{2}-\d{2}\s+to\s+\d{4}-\d{2}-\d{2}\b",
+            match.group(2),
+            maxsplit=1,
+            flags=re.IGNORECASE,
+        )[0].strip()
+
+        qty = _num_sentinelone_qty(row[i_qty])
+        up = _num(row[i_up])
+        amount_text = re.sub(r"(?i)\s+[A-Z]{3}\s*$", "", row[i_amt].strip())
+        amt = _num(amount_text)
+        if qty is None or up is None or amt is None:
+            continue
+        results.append({
+            "partner": None,
+            "sku": sku,
+            "description": desc,
+            "quantity": qty,
+            "unit_price": up,
+            "amount": amt,
+        })
     return results
 
 

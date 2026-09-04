@@ -19,6 +19,8 @@
 --   * Bitdefender royalties descriptions are collapsed to the same governed
 --     product families used by the parsed Bitdefender invoice SKUs.
 --   * KeepIT compares within MAIN/TAKEOUT invoice-type lanes.
+--   * Webroot OpenText invoice SKUs are aligned to the GSM/DNS/SAT families
+--     in Aggregator Order Details and compared at combined month/SKU grain.
 --   * A lane with one invoice compares directly to that invoice.
 --   * Other multi-invoice lanes compare at combined month/SKU grain because
 --     raw usage has no defensible invoice attribution key.
@@ -194,6 +196,9 @@ invoice_lines AS (
                 -- July's Bitdefender invoice uses the legacy ME_Loy code for
                 -- the same Email Security charge carried as BP_2765_EMS.
                 WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku_key = 'BP 2765 ME LOY' THEN 'EMAIL'
+                WHEN UPPER(s.vendor) = 'WEBROOT' AND s.raw_sku_key = '1000062533' THEN 'GSM'
+                WHEN UPPER(s.vendor) = 'WEBROOT' AND s.raw_sku_key = '1000063236' THEN 'DNS'
+                WHEN UPPER(s.vendor) = 'WEBROOT' AND s.raw_sku_key = '1000063234' THEN 'SAT'
             END,
             m.canonical_sku,
             s.raw_sku_key,
@@ -442,4 +447,4 @@ WHERE billing_month >= '2026-01-01'::DATE
 ORDER BY vendor, billing_month, inv_type, invoice_id, sku;
 
 COMMENT ON TABLE THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD IS
-    'Vendor invoice vs raw usage reconciliation at an evidenced vendor-aware grain: Auvik partner/SKU, KeepIT invoice-type/SKU, direct invoice/SKU for one-invoice lanes, and combined month/SKU otherwise. Unmatched usage is shown once; delta is raw usage minus parsed invoice.';
+    'Vendor invoice vs raw usage reconciliation at an evidenced vendor-aware grain: Auvik partner/SKU, KeepIT invoice-type/SKU, Webroot OpenText invoice SKUs aligned to Aggregator Order Details families, direct invoice/SKU for one-invoice lanes, and combined month/SKU otherwise. Unmatched usage is shown once; delta is raw usage minus parsed invoice.';

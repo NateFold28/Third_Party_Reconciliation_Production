@@ -3444,7 +3444,12 @@ def _sum_preserve_null(series: pd.Series) -> float:
 def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
     is_auvik = vendor_name.strip().upper() == "AUVIK"
     is_bitdefender = vendor_name.strip().upper() == "BITDEFENDER"
-    usage_source_label = "Royalty Report" if is_bitdefender else "Vendor Raw Usage"
+    is_webroot = vendor_name.strip().upper() == "WEBROOT"
+    usage_source_label = (
+        "Royalty Report" if is_bitdefender
+        else "Aggregator Order Details" if is_webroot
+        else "Vendor Raw Usage"
+    )
     st.markdown(f"### Vendor Invoice vs. {usage_source_label}")
 
     raw = _load_vendor_invoice_usage_intra(
@@ -3464,6 +3469,12 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
             "Bitdefender has no product-telemetry usage feed. This control compares "
             "the parsed vendor invoice with the Product Management royalty report at "
             "month/SKU-family grain."
+        )
+    elif is_webroot:
+        st.caption(
+            "Webroot invoices arrive from OpenText. This control aligns their numeric "
+            "product SKUs to the GSM, DNS, and SAT families in combined CW and CMS "
+            "Aggregator Order Details, then compares them at month/SKU-family grain."
         )
 
     work = raw.copy()
@@ -3678,7 +3689,7 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
         "Vendor Invoice Amount", usage_amount_label, "Delta Amount",
     }
     money_columns = {
-        "Vendor Invoice Amount", "Vendor Raw Usage Amount", "Delta Amount",
+        "Vendor Invoice Amount", usage_amount_label, "Delta Amount",
     }
     for _, row in display.iterrows():
         cells = []

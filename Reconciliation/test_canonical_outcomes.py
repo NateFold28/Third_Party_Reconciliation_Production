@@ -202,6 +202,10 @@ class StrictOutcomeCaseTests(unittest.TestCase):
         self.assertIn("s.raw_sku ILIKE '%ATS & EDR%' THEN 'ATS EDR'", intra)
         self.assertIn("s.raw_sku ILIKE '%Advanced Threat Security%' THEN 'ATS'", intra)
         self.assertIn("s.raw_sku_key = 'BP 2765 ME LOY' THEN 'EMAIL'", intra)
+        self.assertIn("s.raw_sku_key = '1000062533' THEN 'GSM'", intra)
+        self.assertIn("s.raw_sku_key = '1000063236' THEN 'DNS'", intra)
+        self.assertIn("s.raw_sku_key = '1000063234' THEN 'SAT'", intra)
+        self.assertIn('"opentext":    "Webroot"', invoice_ingestion)
         self.assertIn("if int(mo.month) > fallback_month:", invoice_ingestion)
 
 
