@@ -963,7 +963,7 @@ def build_vendor_usage_frame(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(records, columns=list(USAGE_COLUMNS))
 
 
-def validate_vendor_usage(vendor_usage: pd.DataFrame, *, require_complete_rates: bool = False) -> None:
+def validate_vendor_usage(vendor_usage: pd.DataFrame, *, require_complete_rates: bool = True) -> None:
     if vendor_usage.empty:
         raise RuntimeError("No Acronis vendor usage rows were produced.")
 
@@ -1056,7 +1056,7 @@ def load_snowflake(df: pd.DataFrame, *, reset: bool) -> None:
             unit_price.notna(),
             load_df["AMOUNT"],
         )
-        validate_vendor_usage(load_df, require_complete_rates=False)
+        validate_vendor_usage(load_df)
         cur = conn.cursor()
         cur.execute(f"CREATE SCHEMA IF NOT EXISTS {TARGET_DATABASE}.{TARGET_SCHEMA}")
         cur.execute(snowflake_ddl())
@@ -1272,9 +1272,8 @@ def main() -> None:
     scan_all = pd.concat(scans, ignore_index=True) if scans else pd.DataFrame()
     vendor_usage = build_vendor_usage_frame(all_rows)
     if not args.allow_incomplete:
-        # Keep production behavior parity: allow unresolved rates to persist for
-        # downstream dynamic fills/manual review while still enforcing shape checks.
-        validate_vendor_usage(vendor_usage, require_complete_rates=False)
+        # In dry-run, prices have not yet passed through dynamic backfill.
+        validate_vendor_usage(vendor_usage, require_complete_rates=not args.dry_run)
     label = "all_months" if args.all_months else args.month.replace("-", "_")
     write_local_outputs(all_rows, vendor_usage, scan_all, label)
     print(f"TOTAL rows={len(all_rows):,}, entities={all_rows['Entity'].nunique():,}, tenants={all_rows['Tenant name'].nunique():,}")

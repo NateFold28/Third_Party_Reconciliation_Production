@@ -1,17 +1,17 @@
 -- =============================================================================
 -- STEP 2: BITDEFENDER FINAL RECONCILIATION  (Proofpoint-aligned)
 -- =============================================================================
--- Vendor side  = BITDEFENDER_USAGE_PROD, materialized from
+-- Vendor side  = THIRD_PARTY_RECON_VENDOR_USAGE_PROD Bitdefender rows, materialized from
 --                PRODUCT_MANAGEMENT__ROYALTIES (what CW owes Bitdefender; all
 --                THIRD_PARTY_TYPEs: Usage + Contract + Marketplace)
--- CW side      = ZUORA_THIRD_PARTY_RECON_BASE (Posted BillRun) + Manage/NetSuite
+-- CW side      = live Zuora source v2 (Posted BillRun) + Manage/NetSuite
 --                Evergreen Marketplace (CARR__ALL_TRANSACTIONS)
 -- Grain        = (sf_id, billing_month)  -- partner-month (the Bitdefender manual
 --                recon DATA-tab grain). Products LISTAGG'd; a primary
 --                sku_match_group is resolved per account for the contract overlay.
 --
 -- KEY CHANGES vs prior build (2026-08-03):
---  1. FX FIX (systemic). ZUORA_THIRD_PARTY_RECON_BASE.CHARGE_AMOUNT / UNIT_PRICE
+--  1. FX FIX (systemic). Live Zuora source charge_amount / unit_price
 --     are NATIVE currency (ACCOUNT_CURRENCY; HOME_CURRENCY is 100% NULL). ~740
 --     non-USD Bitdefender rows/mo (CAD/GBP/AUD/EUR) were summed as if USD. Now
 --     converted to USD via analytics.dbo_seed_files.seed__fpa_budget_exchange_rates
@@ -89,12 +89,16 @@ roy_desc_group AS (
 ),
 
 partner_lookup AS (
-    SELECT partner_name, sf_id
-    FROM RECON_PARTNER_MAP
+    SELECT
+        billing_month,
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_key,
+        partner_name,
+        sf_id
+    FROM RECON_PARTNER_MAP_MONTHLY
     WHERE partner_name IS NOT NULL
       AND sf_id IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY UPPER(partner_name)
+        PARTITION BY billing_month, TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
         ORDER BY IFF(zuora_name IS NOT NULL, 0, 1), IFF(cms_id IS NOT NULL, 0, 1), sf_id
     ) = 1
 ),
@@ -112,7 +116,8 @@ royalties_base AS (
         r.AMOUNT
     FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD r
     LEFT JOIN partner_lookup pm
-        ON UPPER(pm.partner_name) = UPPER(r.vendor_partner_name)
+        ON pm.partner_name_key = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(r.vendor_partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
+       AND pm.billing_month = r.BILLING_MONTH::DATE
     LEFT JOIN roy_desc_group g ON g.PRODUCT_DESCRIPTION = r.VENDOR_PRODUCT_SKU
     WHERE r.VENDOR = 'Bitdefender'
       AND r.BILLING_MONTH >= '2026-01-01'
@@ -168,20 +173,18 @@ royalties_contract_cost AS (
 -- CW side, Zuora BillRun, FX-converted to USD.
 zuora_rows AS (
     SELECT
-        z.SFDC_ACCOUNT_NUMBER AS sf_id,
-        z.BILLING_MONTH::DATE AS billing_month,
-        z.PRODUCT_SKU,
-        z.CHARGE_NAME,
-        COALESCE(z.QUANTITY, 0) AS quantity,
-        z.UNIT_PRICE * COALESCE(fx.budget_ex_rate, 1) AS unit_price_usd,
-        COALESCE(z.CHARGE_AMOUNT, 0) * COALESCE(fx.budget_ex_rate, 1) AS charge_amount_usd
-    FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE z
-    LEFT JOIN fx_rates fx ON fx.currency_id = UPPER(z.ACCOUNT_CURRENCY)
-    WHERE z.VENDOR_NAME = 'Bitdefender'
-      AND z.INVOICE_STATUS = 'Posted'
-      AND z.INVOICE_SOURCE = 'BillRun'
-      AND z.BILLING_MONTH >= '2026-01-01'
-      AND z.CHARGE_AMOUNT <> 0
+                z.sf_id,
+                z.billing_month::DATE AS billing_month,
+                z.product_sku,
+                z.charge_name,
+                COALESCE(z.qty, 0) AS quantity,
+                z.unit_price_usd,
+                COALESCE(z.charge_amount_usd, 0) AS charge_amount_usd
+        FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD z
+        WHERE z.vendor = 'Bitdefender'
+            AND z.sf_id ILIKE 'ACT-%'
+            AND z.billing_month >= '2026-01-01'
+            AND COALESCE(z.charge_amount_usd, 0) <> 0
 ),
 zuora_agg AS (
     SELECT
@@ -348,6 +351,44 @@ scored AS (
         END AS base_outcome_flag
     FROM joined
     WHERE COALESCE(vendor_quantity, 0) > 0 OR COALESCE(total_billing_quantity, 0) > 0
+),
+
+-- Bitdefender API usage: direct-from-live wire (2026-08-30). Reads CW-side
+-- per-partner cycle-day-21 snapshot from ANALYTICS.DBO_BASE_CW_DP_TRT.
+-- BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE for all product_sku values that
+-- appear in RECON_SKU_MAP for Bitdefender.  API_QUANTITY = cycle-day-21
+-- snapshot total agents; AVG_API_QUANTITY = daily average across the month
+-- (matches the Auvik / Proofpoint / SentinelOne / KeepIT / Exium pattern).
+bitdefender_api_daily AS (
+    SELECT
+        u.partner_id,
+        u.on_date::DATE AS on_date,
+        DATE_TRUNC('MONTH', u.on_date)::DATE AS billing_month,
+        SUM(COALESCE(u.agent_cnt, 0)) AS day_quantity
+    FROM ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+    WHERE u.on_date::DATE >= '2026-01-01'
+      AND u.product_sku IN (
+          SELECT DISTINCT cw_sku FROM RECON_SKU_MAP
+          WHERE vendor = 'Bitdefender' AND cw_sku IS NOT NULL
+      )
+    GROUP BY 1, 2, 3
+),
+bitdefender_api_partner_bridge AS (
+    -- Map only unambiguous month-effective CS-billing partner IDs.
+    SELECT billing_month, cms_id AS partner_id, sf_id
+    FROM RECON_PARTNER_MAP_MONTHLY_CMS_UNIQUE
+),
+bitdefender_api_rollup AS (
+    SELECT
+        pb.sf_id,
+        d.billing_month,
+        MAX(IFF(DAY(d.on_date) = 21, d.day_quantity, NULL))::FLOAT AS api_quantity,
+        AVG(d.day_quantity)::FLOAT                                  AS avg_api_quantity
+    FROM bitdefender_api_daily d
+    JOIN bitdefender_api_partner_bridge pb
+      ON pb.partner_id = d.partner_id
+         AND pb.billing_month = d.billing_month
+    GROUP BY pb.sf_id, d.billing_month
 )
 
 SELECT
@@ -359,6 +400,8 @@ SELECT
     s.zuora_skus,
     s.marketplace_skus,
     s.billing_source_mix,
+    api.api_quantity,
+    api.avg_api_quantity,
     s.vendor_quantity,
     s.vendor_unit_price,
     s.vendor_amount,
@@ -465,7 +508,10 @@ SELECT
     NULL::NUMBER AS vendor_vs_contract_pct,
     NULL::VARCHAR AS vendor_vs_contract_flag,
     NULL::NUMBER AS vendor_vs_contract_dollar_impact
-FROM scored s;
+FROM scored s
+LEFT JOIN bitdefender_api_rollup api
+    ON api.sf_id = s.sf_id
+ AND api.billing_month = s.billing_month;
 
 -- =============================================================================
 -- SUMMARY (matches AUVIK_RECON_SUMMARY / PROOFPOINT_RECON_SUMMARY 29-column schema)

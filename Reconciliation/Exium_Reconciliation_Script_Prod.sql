@@ -2,7 +2,7 @@
 -- STEP 2: EXIUM FINAL RECONCILIATION
 -- =============================================================================
 -- Proofpoint-style reconciliation adapted for Exium:
---   Vendor side: normalized EXIUM_USAGE, retaining raw QUANTITY and
+--   Vendor side: shared vendor usage filtered to Exium, retaining raw QUANTITY and
 --                OVERAGE_QUANTITY, while reconciling on billed quantity
 --                recovered from AMOUNT / UNIT_PRICE when available.
 --   Billing side: Zuora is the primary reconciliation source; Marketplace is
@@ -78,9 +78,19 @@ contract_group_rates AS (
     GROUP BY 1, 2
 ),
 usage_deduped AS (
-    SELECT *
-    FROM EXIUM_USAGE_RECON_COMPAT
-    WHERE COALESCE(quantity, 0) <> 0
+    SELECT
+        BILLING_MONTH,
+        VENDOR_PARTNER_NAME,
+        VENDOR_PRODUCT_SKU AS VENDOR_SKU_OR_PRODUCT,
+        MODIFIER AS VENDOR_ENTITY,
+        QUANTITY,
+        NULL::FLOAT AS OVERAGE_QUANTITY,
+        UNIT_PRICE,
+        AMOUNT,
+        CURRENCY
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+    WHERE VENDOR = 'Exium'
+      AND COALESCE(quantity, 0) <> 0
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY
             billing_month,
@@ -163,8 +173,7 @@ vendor_base AS (
         ON pm.billing_month = u.billing_month::DATE
        AND pm.partner_name_normalized = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.vendor_partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
     LEFT JOIN vendor_product_map vpm
-        ON vpm.vendor_entity = u.vendor_entity
-       AND vpm.vendor_product_key = UPPER(TRIM(u.vendor_sku_or_product))
+        ON vpm.vendor_product_key = UPPER(TRIM(u.vendor_sku_or_product))
 ),
 vendor_agg AS (
     SELECT
@@ -469,6 +478,89 @@ detail_pre AS (
         ON cr.exium_product_family = s.exium_product_family
        AND cr.currency = 'USD'
        AND s.billing_month BETWEEN cr.valid_from AND cr.valid_to
+),
+
+-- =============================================================================
+-- Exium API usage (direct-from-raw architecture, 2026-08-28)
+-- ---------------------------------------------------------------------------
+-- Reads API_QUANTITY / AVG_API_QUANTITY directly from the raw daily-usage
+-- table (same pattern as Proofpoint/SentinelOne/Acronis):
+--   ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE
+-- Join keys (governed):
+--   * partner_id (usage) = cms_id from RECON_PARTNER_MAP (keyed by sf_id).
+--   * product_sku (usage) = TRT_MATCH_KEY from RECON_SKU_MAP (Exium).
+--     For Exium, TRT_MATCH_KEY = CW_SKU (verified 2026-08-28: all 5 Exium
+--     CW_SKUs have 100% direct 1:1 coverage in raw TRT).
+-- Cycle window: day-20 snapshot (billing_month M covers on_date rows in
+--   (M-1 + 20 days, M + 20 days]).
+-- Grain: (sf_id, billing_month, sku_match_group).
+-- =============================================================================
+exium_trt_keys AS (
+    SELECT DISTINCT
+        UPPER(TRIM(TRT_MATCH_KEY)) AS product_sku_key,
+        COALESCE(SKU_MATCH_KEY, VENDOR_SKU) AS sku_match_group
+    FROM RECON_SKU_MAP
+    WHERE VENDOR = 'Exium'
+      AND TRT_MATCH_KEY IS NOT NULL
+      AND TRIM(TRT_MATCH_KEY) <> ''
+      AND COALESCE(SKU_MATCH_KEY, VENDOR_SKU) IS NOT NULL
+),
+
+exium_api_partners AS (
+    SELECT DISTINCT
+        d.sf_id,
+        d.billing_month,
+        d.sku_match_group,
+        pm.cms_id
+    FROM detail_pre d
+        JOIN RECON_PARTNER_MAP pm
+      ON pm.sf_id = d.sf_id
+    WHERE d.sf_id IS NOT NULL
+      AND d.sku_match_group IS NOT NULL
+      AND pm.cms_id IS NOT NULL
+      AND TRIM(pm.cms_id) <> ''
+),
+
+exium_api_daily AS (
+    SELECT
+        pa.sf_id,
+        pa.billing_month,
+        pa.sku_match_group,
+        DATEADD('day', 20, pa.billing_month)::DATE            AS snapshot_date,
+        u.on_date::DATE                                        AS on_date,
+        SUM(COALESCE(u.agent_cnt, 0))                          AS day_quantity
+    FROM exium_api_partners pa
+    JOIN exium_trt_keys k
+      ON k.sku_match_group = pa.sku_match_group
+    JOIN ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+      ON u.partner_id::VARCHAR = pa.cms_id
+     AND UPPER(TRIM(u.product_sku)) = k.product_sku_key
+     AND u.on_date::DATE >  DATEADD('day', 20, DATEADD('month', -1, pa.billing_month))::DATE
+     AND u.on_date::DATE <= DATEADD('day', 20, pa.billing_month)::DATE
+    GROUP BY 1, 2, 3, 4, 5
+),
+
+exium_api_rollup AS (
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        MAX(IFF(on_date = snapshot_date, day_quantity, NULL)) AS api_quantity,
+        AVG(day_quantity)                                     AS avg_api_quantity
+    FROM exium_api_daily
+    GROUP BY 1, 2, 3
+),
+
+detail_pre_with_api AS (
+    SELECT
+        d.*,
+        a.api_quantity,
+        a.avg_api_quantity
+    FROM detail_pre d
+    LEFT JOIN exium_api_rollup a
+      ON a.sf_id = d.sf_id
+     AND a.billing_month = d.billing_month
+     AND a.sku_match_group = d.sku_match_group
 )
 SELECT
     billing_month,
@@ -492,6 +584,8 @@ SELECT
         WHEN marketplace_quantity IS NOT NULL THEN 'MARKETPLACE_FALLBACK'
         ELSE 'NO_BILLING_SOURCE'
     END AS billing_source_mix,
+    api_quantity,
+    avg_api_quantity,
     vendor_raw_quantity,
     vendor_overage_quantity,
     vendor_quantity,
@@ -569,7 +663,7 @@ SELECT
         ELSE 'UNDER_CONTRACT'
     END AS vendor_vs_contract_flag,
     CASE WHEN contract_cost_rate IS NULL OR vendor_unit_price IS NULL THEN NULL ELSE (vendor_unit_price - contract_cost_rate) * vendor_quantity END AS vendor_vs_contract_dollar_impact
-FROM detail_pre;
+FROM detail_pre_with_api;
 
 CREATE OR REPLACE TABLE EXIUM_RECON_SUMMARY AS
 SELECT

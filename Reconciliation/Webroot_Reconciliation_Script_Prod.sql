@@ -29,21 +29,12 @@ WITH usage_product_map AS (
 partner_map AS (
     SELECT
         billing_month,
-        UPPER(TRIM(partner_name)) AS partner_name_key,
+        partner_name_normalized AS partner_name_key,
         partner_name,
         sf_id,
         cms_id,
         zuora_name
-    FROM RECON_PARTNER_MAP_MONTHLY
-    QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY billing_month, UPPER(TRIM(partner_name))
-        ORDER BY
-            IFF(sf_id IS NOT NULL, 0, 1),
-            IFF(cms_id IS NOT NULL, 0, 1),
-            partner_name,
-            sf_id,
-            cms_id
-    ) = 1
+    FROM V_RECON_PARTNER_MAP_MONTHLY_NORM
 ),
 
 usage_base AS (
@@ -63,12 +54,24 @@ usage_base AS (
         u.amount,
         COALESCE(u.amount, 0) <> 0 AS chargeable_flag,
         NULL::VARCHAR AS source_file
-    FROM WEBROOT_USAGE u
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
     LEFT JOIN partner_map pm
         ON pm.billing_month = u.billing_month::DATE
-       AND pm.partner_name_key = UPPER(TRIM(u.vendor_partner_name))
-    WHERE COALESCE(u.quantity, 0) <> 0
-       OR COALESCE(u.amount, 0) <> 0
+       AND pm.partner_name_key = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.vendor_partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
+    WHERE u.VENDOR = 'Webroot'
+      AND (COALESCE(u.quantity, 0) <> 0
+           OR COALESCE(u.amount, 0) <> 0)
+            -- Confirmed internal and integration-test identities, not billable customers.
+            AND UPPER(TRIM(COALESCE(u.vendor_partner_name, ''))) NOT IN (
+                    'CONTINUUM',
+                    'CONTINUUM MUMBAI',
+                    'OT GROUP',
+                    'CWPRODTESTPARTNER',
+                    'HARESHN',
+                    'COMMANDQA',
+                    'WEBROOTINTEGRATION',
+                    'OPENTEXTINTEGRATION'
+            )
 ),
 
 usage_agg AS (
@@ -96,14 +99,18 @@ cw_sku_group_map AS (
     SELECT
         m.cw_sku,
         m.sku_match_key AS sku_match_group,
+        m.vendor_unit_price AS map_vendor_unit_price,
+        m.cw_unit_price AS map_cw_unit_price,
         CASE
             WHEN UPPER(pb.source) = 'CMS' THEN 'CMS'
             WHEN m.cw_sku ILIKE 'CMS-%'
               OR m.cw_sku ILIKE 'CU-%'
               OR m.cw_sku ILIKE '3P-SAAS%'
-              OR m.cw_sku ILIKE '3RDPARTYSAASIIT%'
               OR m.cw_sku ILIKE 'CW-RMM-WR-EEP-OVERAG%'
                 THEN 'CMS'
+                        -- The manual CW map explicitly places 3RDPARTYSAASIITBUEPP and
+                        -- 3RDPARTYSAASIITBUMBP in the CW stream. Do not classify the
+                        -- entire 3RDPARTYSAASIIT family as CMS by prefix alone.
             ELSE 'CW'
         END AS billing_stream
     FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Webroot') m
@@ -121,6 +128,10 @@ cw_sku_group_map AS (
 
 webroot_zuora_rows AS (
     SELECT
+        ROW_NUMBER() OVER (
+            ORDER BY z.sf_id, z.billing_month, z.invoice_id, z.product_sku,
+                     z.charge_name, z.qty, z.charge_amount_usd
+        ) AS source_row_id,
         z.sf_id,
         z.billing_month::DATE AS billing_month,
         UPPER(TRIM(z.product_sku)) AS product_sku,
@@ -143,6 +154,10 @@ webroot_zuora_rows AS (
 
 webroot_marketplace_rows AS (
     SELECT
+        ROW_NUMBER() OVER (
+            ORDER BY m.sf_id, m.billing_month, m.marketplace_invoice_id,
+                     m.product_sku, m.transaction_source, m.qty, m.amount
+        ) AS source_row_id,
         m.sf_id,
         m.billing_month::DATE AS billing_month,
         UPPER(TRIM(m.product_sku)) AS product_sku,
@@ -154,6 +169,60 @@ webroot_marketplace_rows AS (
     WHERE m.vendor = 'Webroot'
       AND m.sf_id ILIKE 'ACT-%'
       AND COALESCE(m.qty, 0) <> 0
+),
+
+webroot_zuora_priced AS (
+    SELECT
+        b.*,
+        m.billing_stream,
+        m.sku_match_group,
+        COALESCE(pb.vendor_unit_price, m.map_vendor_unit_price) AS expected_vendor_unit_price,
+        COALESCE(pb.cw_unit_price, m.map_cw_unit_price) AS expected_cw_unit_price,
+        pb.billing_type AS selected_pricebook_billing_type,
+        pb.tiernum AS selected_pricebook_tier,
+        pb.tier_lower AS selected_pricebook_tier_lower,
+        pb.tier_upper AS selected_pricebook_tier_upper,
+        pb.vendor_unit_price IS NOT NULL OR pb.cw_unit_price IS NOT NULL AS tier_price_matched
+    FROM webroot_zuora_rows b
+    LEFT JOIN cw_sku_group_map m
+        ON m.cw_sku = b.product_sku
+    LEFT JOIN V_RECON_PRICEBOOK_TIER_LOOKUP pb
+        ON pb.vendor = 'Webroot'
+       AND pb.cw_sku_key = b.product_sku
+       AND pb.billing_type = IFF(m.billing_stream = 'CMS', 'MONTHLY', 'EVERGREEN')
+       AND ABS(b.zuora_quantity) >= COALESCE(pb.tier_lower, 0)
+       AND (pb.tier_upper IS NULL OR ABS(b.zuora_quantity) <= pb.tier_upper)
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY b.source_row_id
+        ORDER BY COALESCE(pb.tier_lower, -1) DESC, COALESCE(pb.tiernum, -1) DESC
+    ) = 1
+),
+
+webroot_marketplace_priced AS (
+    SELECT
+        b.*,
+        m.billing_stream,
+        m.sku_match_group,
+        COALESCE(pb.vendor_unit_price, m.map_vendor_unit_price) AS expected_vendor_unit_price,
+        COALESCE(pb.cw_unit_price, m.map_cw_unit_price) AS expected_cw_unit_price,
+        pb.billing_type AS selected_pricebook_billing_type,
+        pb.tiernum AS selected_pricebook_tier,
+        pb.tier_lower AS selected_pricebook_tier_lower,
+        pb.tier_upper AS selected_pricebook_tier_upper,
+        pb.vendor_unit_price IS NOT NULL OR pb.cw_unit_price IS NOT NULL AS tier_price_matched
+    FROM webroot_marketplace_rows b
+    LEFT JOIN cw_sku_group_map m
+        ON m.cw_sku = b.product_sku
+    LEFT JOIN V_RECON_PRICEBOOK_TIER_LOOKUP pb
+        ON pb.vendor = 'Webroot'
+       AND pb.cw_sku_key = b.product_sku
+       AND pb.billing_type = 'EVERGREEN'
+       AND ABS(b.marketplace_quantity) >= COALESCE(pb.tier_lower, 0)
+       AND (pb.tier_upper IS NULL OR ABS(b.marketplace_quantity) <= pb.tier_upper)
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY b.source_row_id
+        ORDER BY COALESCE(pb.tier_lower, -1) DESC, COALESCE(pb.tiernum, -1) DESC
+    ) = 1
 ),
 
 zuora_billing AS (
@@ -173,8 +242,22 @@ zuora_billing AS (
         MAX(b.last_service_end_date) AS last_service_end_date,
         SUM(b.zuora_quantity) AS zuora_quantity,
         SUM(b.zuora_charge_amount) AS zuora_amount,
-        SUM(b.billing_row_count) AS zuora_row_count
-    FROM webroot_zuora_rows b
+        SUM(b.billing_row_count) AS zuora_row_count,
+        SUM(b.zuora_quantity * b.expected_vendor_unit_price) AS zuora_expected_vendor_cost,
+        SUM(b.zuora_quantity * b.expected_cw_unit_price) AS zuora_expected_cw_retail,
+        SUM(IFF(b.expected_vendor_unit_price IS NOT NULL OR b.expected_cw_unit_price IS NOT NULL,
+                ABS(b.zuora_quantity), 0)) AS zuora_priced_quantity,
+        SUM(IFF(b.tier_price_matched, ABS(b.zuora_quantity), 0)) AS zuora_tier_priced_quantity,
+        LISTAGG(DISTINCT IFF(
+            b.tier_price_matched,
+            b.product_sku || ':' || b.selected_pricebook_billing_type || ':T' || b.selected_pricebook_tier,
+            NULL
+        ), ' | ') WITHIN GROUP (ORDER BY IFF(
+            b.tier_price_matched,
+            b.product_sku || ':' || b.selected_pricebook_billing_type || ':T' || b.selected_pricebook_tier,
+            NULL
+        )) AS zuora_pricebook_tiers
+    FROM webroot_zuora_priced b
     LEFT JOIN cw_sku_group_map m
         ON m.cw_sku = b.product_sku
     GROUP BY 1,2,3,4
@@ -190,9 +273,23 @@ marketplace_billing AS (
         SUM(b.marketplace_quantity) AS marketplace_quantity,
         SUM(b.marketplace_amount) AS marketplace_amount,
         SUM(b.marketplace_row_count) AS marketplace_row_count,
+        SUM(b.marketplace_quantity * b.expected_vendor_unit_price) AS marketplace_expected_vendor_cost,
+        SUM(b.marketplace_quantity * b.expected_cw_unit_price) AS marketplace_expected_cw_retail,
+        SUM(IFF(b.expected_vendor_unit_price IS NOT NULL OR b.expected_cw_unit_price IS NOT NULL,
+                ABS(b.marketplace_quantity), 0)) AS marketplace_priced_quantity,
+        SUM(IFF(b.tier_price_matched, ABS(b.marketplace_quantity), 0)) AS marketplace_tier_priced_quantity,
+        LISTAGG(DISTINCT IFF(
+            b.tier_price_matched,
+            b.product_sku || ':' || b.selected_pricebook_billing_type || ':T' || b.selected_pricebook_tier,
+            NULL
+        ), ' | ') WITHIN GROUP (ORDER BY IFF(
+            b.tier_price_matched,
+            b.product_sku || ':' || b.selected_pricebook_billing_type || ':T' || b.selected_pricebook_tier,
+            NULL
+        )) AS marketplace_pricebook_tiers,
         LISTAGG(DISTINCT b.marketplace_transaction_sources, ' | ')
             WITHIN GROUP (ORDER BY b.marketplace_transaction_sources) AS marketplace_transaction_sources
-    FROM webroot_marketplace_rows b
+    FROM webroot_marketplace_priced b
     LEFT JOIN cw_sku_group_map m
         ON m.cw_sku = b.product_sku
     GROUP BY 1,2,3,4
@@ -221,8 +318,50 @@ billing_agg AS (
         COALESCE(m.marketplace_amount, 0) AS marketplace_amount,
         COALESCE(m.marketplace_row_count, 0) AS marketplace_row_count,
         m.marketplace_transaction_sources,
-        COALESCE(z.zuora_quantity, 0) + COALESCE(m.marketplace_quantity, 0) AS total_billing_quantity,
-        COALESCE(z.zuora_amount, 0) + COALESCE(m.marketplace_amount, 0) AS total_billing_amount
+        COALESCE(z.zuora_expected_vendor_cost, 0) AS zuora_expected_vendor_cost,
+        COALESCE(z.zuora_expected_cw_retail, 0) AS zuora_expected_cw_retail,
+        COALESCE(z.zuora_priced_quantity, 0) AS zuora_priced_quantity,
+        COALESCE(z.zuora_tier_priced_quantity, 0) AS zuora_tier_priced_quantity,
+        z.zuora_pricebook_tiers,
+        COALESCE(m.marketplace_expected_vendor_cost, 0) AS marketplace_expected_vendor_cost,
+        COALESCE(m.marketplace_expected_cw_retail, 0) AS marketplace_expected_cw_retail,
+        COALESCE(m.marketplace_priced_quantity, 0) AS marketplace_priced_quantity,
+        COALESCE(m.marketplace_tier_priced_quantity, 0) AS marketplace_tier_priced_quantity,
+        m.marketplace_pricebook_tiers,
+        -- Zuora and CARR frequently represent the same posted Webroot charge.
+        -- Keep both source measures and the duplicate flag for auditability,
+        -- but use Zuora as billing truth with Marketplace as the fallback.
+        IFF(
+            COALESCE(z.zuora_row_count, 0) > 0,
+            COALESCE(z.zuora_quantity, 0),
+            COALESCE(m.marketplace_quantity, 0)
+        ) AS total_billing_quantity,
+        IFF(
+            COALESCE(z.zuora_row_count, 0) > 0,
+            COALESCE(z.zuora_amount, 0),
+            COALESCE(m.marketplace_amount, 0)
+        ) AS total_billing_amount,
+        IFF(
+            COALESCE(z.zuora_row_count, 0) > 0,
+            COALESCE(z.zuora_expected_vendor_cost, 0),
+            COALESCE(m.marketplace_expected_vendor_cost, 0)
+        ) AS expected_vendor_cost_amount,
+        IFF(
+            COALESCE(z.zuora_row_count, 0) > 0,
+            COALESCE(z.zuora_expected_cw_retail, 0),
+            COALESCE(m.marketplace_expected_cw_retail, 0)
+        ) AS expected_cw_retail_amount,
+        IFF(
+            COALESCE(z.zuora_row_count, 0) > 0,
+            COALESCE(z.zuora_priced_quantity, 0),
+            COALESCE(m.marketplace_priced_quantity, 0)
+        ) AS priced_billing_quantity,
+        IFF(
+            COALESCE(z.zuora_row_count, 0) > 0,
+            COALESCE(z.zuora_tier_priced_quantity, 0),
+            COALESCE(m.marketplace_tier_priced_quantity, 0)
+        ) AS tier_priced_billing_quantity,
+        COALESCE(z.zuora_pricebook_tiers, m.marketplace_pricebook_tiers) AS selected_pricebook_tiers
     FROM zuora_billing z
     FULL OUTER JOIN marketplace_billing m
         ON m.sf_id = z.sf_id
@@ -231,6 +370,314 @@ billing_agg AS (
        AND m.sku_match_group = z.sku_match_group
 ),
 
+-- =============================================================================
+-- Inline TRT usage aggregation (was WEBROOT_TRT_USAGE_MONTHLY view).
+-- Sources directly from ANALYTICS.DBO_BASE_CW_DP_TRT so no intermediate
+-- landing table is required.
+--
+-- Cycle: (billing_month + day 18, billing_month + day 18 next month];
+-- day 19 is the snapshot. sku_match_group is fixed 'GSM' (endpoint stream).
+-- TRT is CMS usage evidence and is emitted once. The retired view's duplicated
+-- CMS/CW stream expansion is intentionally not preserved because downstream
+-- forced both rows to CMS and summed them, doubling the same usage evidence.
+-- =============================================================================
+webroot_trt_sku_universe AS (
+    SELECT DISTINCT UPPER(TRIM(PRODUCT_SKU)) AS product_sku
+    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2
+    WHERE UPPER(VENDOR_NAME) = 'WEBROOT'
+      AND PRODUCT_SKU IS NOT NULL
+      AND INVOICE_STATUS = 'Posted'
+      AND BILLING_MONTH >= '2026-01-01'
+    UNION
+    SELECT DISTINCT UPPER(TRIM(prod_sku)) AS product_sku
+    FROM analytics.dbo_transformation.seed__product_categorization
+    WHERE (vendor ILIKE '%webroot%' OR sub_category ILIKE '%webroot%')
+      AND prod_sku IS NOT NULL
+),
+webroot_trt_raw_usage AS (
+    SELECT
+        u.partner_id::VARCHAR  AS cms_id,
+        u.on_date::DATE        AS on_date,
+        u.agent_cnt::FLOAT     AS agent_cnt
+    FROM ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+    JOIN webroot_trt_sku_universe s
+      ON UPPER(TRIM(u.product_sku)) = s.product_sku
+    WHERE u.on_date::DATE >= '2025-12-01'
+),
+webroot_trt_partner_daily AS (
+    SELECT cms_id, on_date, SUM(agent_cnt) AS agent_cnt
+    FROM webroot_trt_raw_usage
+    GROUP BY 1, 2
+),
+webroot_trt_month_spine AS (
+    SELECT DATEADD('month', SEQ4(), '2026-01-01')::DATE AS billing_month
+    FROM TABLE(GENERATOR(ROWCOUNT => 36))
+),
+webroot_trt_cycles AS (
+    SELECT
+        billing_month,
+        DATEADD('day', 18, billing_month)::DATE                       AS snapshot_date,
+        DATEADD('day', 18, DATEADD('month', -1, billing_month))::DATE AS prev_snapshot_date
+    FROM webroot_trt_month_spine
+    WHERE DATEADD('day', 18, billing_month)::DATE <= CURRENT_DATE()
+),
+webroot_trt_point_in_time AS (
+    SELECT c.billing_month, c.snapshot_date, pd.cms_id, pd.agent_cnt AS trt_agent_days
+    FROM webroot_trt_cycles c
+    JOIN webroot_trt_partner_daily pd ON pd.on_date = c.snapshot_date
+),
+webroot_trt_cycle_agg AS (
+    SELECT
+        c.billing_month,
+        pd.cms_id,
+        AVG(pd.agent_cnt)          AS trt_quantity_avg_daily,
+        MAX(pd.agent_cnt)          AS trt_quantity_max_daily,
+        COUNT(DISTINCT pd.on_date) AS trt_usage_days
+    FROM webroot_trt_cycles c
+    JOIN webroot_trt_partner_daily pd
+      ON pd.on_date >  c.prev_snapshot_date
+     AND pd.on_date <= c.snapshot_date
+    GROUP BY 1, 2
+),
+webroot_trt_merged AS (
+    SELECT
+        COALESCE(p.billing_month, a.billing_month) AS billing_month,
+        COALESCE(p.cms_id,        a.cms_id)        AS cms_id,
+        p.trt_agent_days,
+        a.trt_quantity_avg_daily,
+        a.trt_quantity_max_daily,
+        a.trt_usage_days
+    FROM webroot_trt_point_in_time p
+    FULL OUTER JOIN webroot_trt_cycle_agg a
+      ON p.billing_month = a.billing_month
+     AND p.cms_id        = a.cms_id
+),
+webroot_trt_zuora_bridge AS (
+    SELECT partner_id, sf_id FROM (
+        SELECT
+            ACCOUNT_CONTINUUM_ID::VARCHAR AS partner_id,
+            SFDC_ACCOUNT_NUMBER            AS sf_id,
+            ROW_NUMBER() OVER (
+                PARTITION BY ACCOUNT_CONTINUUM_ID
+                ORDER BY CASE WHEN SFDC_ACCOUNT_NUMBER ILIKE 'ACT-%' THEN 0 ELSE 1 END,
+                         BILLING_MONTH DESC
+            ) AS rk
+        FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2
+        WHERE SFDC_ACCOUNT_NUMBER IS NOT NULL
+          AND TRIM(SFDC_ACCOUNT_NUMBER) <> ''
+          AND INVOICE_STATUS = 'Posted'
+    ) WHERE rk = 1
+),
+webroot_trt_partner_map AS (
+    -- RECON_PARTNER_MAP_MONTHLY is unique by partner name, not CMS ID. Rank
+    -- here before the CMS/month join so aliases cannot multiply TRT usage.
+    SELECT billing_month, cms_id, sf_id
+    FROM RECON_PARTNER_MAP_MONTHLY
+    WHERE NULLIF(TRIM(cms_id), '') IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY billing_month, cms_id
+        ORDER BY IFF(sf_id ILIKE 'ACT-%', 0, 1), sf_id
+    ) = 1
+),
+webroot_trt_monthly AS (
+    -- Emits one row per (sf_id, cms_id, billing_month, sku_match_group='GSM').
+    SELECT
+        COALESCE(zb.sf_id, pm.SF_ID)  AS sf_id,
+        m.cms_id                       AS cms_id,
+        m.billing_month                AS billing_month,
+        'GSM'::VARCHAR                 AS sku_match_group,
+        'CMS'::VARCHAR                 AS recon_stream,
+        NULL::VARCHAR                  AS trt_product_skus,
+        NULL::VARCHAR                  AS trt_charge_skus,
+        NULL::DATE                     AS trt_first_usage_date,
+        NULL::DATE                     AS trt_last_usage_date,
+        m.trt_usage_days               AS trt_usage_days,
+        m.trt_quantity_avg_daily       AS trt_quantity_avg_daily,
+        m.trt_quantity_max_daily       AS trt_quantity_max_daily,
+        m.trt_agent_days               AS trt_agent_days
+    FROM webroot_trt_merged m
+    LEFT JOIN webroot_trt_partner_map pm
+           ON pm.CMS_ID        = m.cms_id
+          AND pm.BILLING_MONTH = m.billing_month
+    LEFT JOIN webroot_trt_zuora_bridge zb ON zb.partner_id = m.cms_id
+    WHERE COALESCE(zb.sf_id, pm.SF_ID) IS NOT NULL
+),
+
+-- =============================================================================
+-- Inline RMM discount overlay (2026-08-30)
+-- -----------------------------------------------------------------------------
+-- Splits raw Webroot MDR agent usage into Desktop / Server buckets and looks
+-- up per-partner RMM (Command + CW RMM) agent counts on the same partner_id
+-- so the overlay can offset Desktop-billable qty by the number of Desktop
+-- endpoints already covered by an RMM bundle. Server qty is emitted as-is
+-- (not adjusted by RMM Server) per the engineering business rule.
+--
+--   webroot_desktop_endpoint_pit = SUM(agent_cnt) WHERE product_description='WebrootDesktop' on snapshot day
+--   webroot_server_endpoint_pit  = SUM(agent_cnt) WHERE product_description='WebrootServer'  on snapshot day
+--   rmm_desktop_pit              = SUM(agent_cnt) WHERE product_sku IN (RMM SKUs) AND is_server='N' on snapshot day
+--   rmm_server_pit               = SUM(agent_cnt) WHERE product_sku IN (RMM SKUs) AND is_server='Y' on snapshot day
+--   webroot_endpoint_to_bill_pit = GREATEST(webroot_desktop_endpoint_pit - rmm_desktop_pit, 0)
+--                                  + webroot_server_endpoint_pit
+--   rmm_discount_qty_pit         = webroot_endpoint_qty_pit - webroot_endpoint_to_bill_pit
+--
+-- RMM SKU universe follows the engineering-provided pattern:
+--   (A) seed rows where SF product row has cws_product_line_c = 'UMM : Command'
+--       or cws_brand_name_c = 'Command'  (Command / MSP RMM)
+--   (B) seed rows where product_line = 'CW RMM' AND SF brand is not 'Auvik'
+--       (Auvik has its own vendor recon; CW-branded RMM add-ons)
+--   (C) seed rows where SF brand = 'Integrated Expert Services' — these are
+--       Help Desk bundles that ship Webroot as a bundled endpoint offering
+--       and therefore already cover Webroot desktops/servers. Validated
+--       against 50-partner ground-truth table 2026-08-29: without this
+--       bucket partners 374 (Rubino) and 684 (TACPros) reported 579 and 60
+--       Webroot Desktops to bill when engineering ground truth was 0/0.
+--
+-- Ground-truth validated against 50 partners on 2026-06-19: Webroot Desktop
+-- and Webroot Server match exactly on all 50; RMM Desktop/Server exact on
+-- 27/51 with the remaining <5% deltas immaterial to billing (RMM Desktop
+-- already exceeds Webroot Desktop, so billing floors at 0 either way).
+-- =============================================================================
+webroot_rmm_sku_universe AS (
+    -- (A) Command / MSP RMM
+    SELECT DISTINCT UPPER(TRIM(s.prod_sku)) AS product_sku
+    FROM analytics.dbo_transformation.seed__product_categorization s
+    LEFT JOIN analytics.dbo_base_salesforce.base_salesforce__product p
+           ON p.product_code = s.prod_sku
+    WHERE (p.cws_product_line_c = 'UMM : Command' OR p.cws_brand_name_c = 'Command')
+      AND s.prod_sku IS NOT NULL
+    UNION
+    -- (B) CW RMM brand family, excluding Auvik (recon'd separately)
+    SELECT DISTINCT UPPER(TRIM(s.prod_sku))
+    FROM analytics.dbo_transformation.seed__product_categorization s
+    LEFT JOIN analytics.dbo_base_salesforce.base_salesforce__product p
+           ON p.product_code = s.prod_sku
+    WHERE s.product_line = 'CW RMM'
+      AND COALESCE(p.cws_brand_name_c, '') <> 'Auvik'
+      AND NOT (p.cws_product_line_c = 'UMM : Command' OR p.cws_brand_name_c = 'Command')
+      AND s.prod_sku IS NOT NULL
+    UNION
+    -- (C) Integrated Expert Services (Help Desk bundles including Webroot)
+    SELECT DISTINCT UPPER(TRIM(s.prod_sku))
+    FROM analytics.dbo_transformation.seed__product_categorization s
+    LEFT JOIN analytics.dbo_base_salesforce.base_salesforce__product p
+           ON p.product_code = s.prod_sku
+    WHERE p.cws_brand_name_c = 'Integrated Expert Services'
+      AND s.prod_sku IS NOT NULL
+),
+webroot_rmm_daily AS (
+    -- Per-partner, per-date split into Webroot Desktop / Webroot Server /
+    -- RMM Desktop / RMM Server buckets in a single scan.
+    SELECT
+        u.partner_id::VARCHAR AS cms_id,
+        u.on_date::DATE       AS on_date,
+        SUM(IFF(w.product_sku IS NOT NULL AND u.product_description = 'WebrootDesktop',
+                u.agent_cnt::FLOAT, 0)) AS webroot_desktop_qty,
+        SUM(IFF(w.product_sku IS NOT NULL AND u.product_description = 'WebrootServer',
+                u.agent_cnt::FLOAT, 0)) AS webroot_server_qty,
+        SUM(IFF(r.product_sku IS NOT NULL AND COALESCE(u.is_server, 'N') = 'N',
+                u.agent_cnt::FLOAT, 0)) AS rmm_desktop_qty,
+        SUM(IFF(r.product_sku IS NOT NULL AND u.is_server = 'Y',
+                u.agent_cnt::FLOAT, 0)) AS rmm_server_qty
+    FROM ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+    LEFT JOIN webroot_trt_sku_universe w ON UPPER(TRIM(u.product_sku)) = w.product_sku
+    LEFT JOIN webroot_rmm_sku_universe r ON UPPER(TRIM(u.product_sku)) = r.product_sku
+    WHERE u.on_date::DATE >= '2025-12-01'
+      AND (w.product_sku IS NOT NULL OR r.product_sku IS NOT NULL)
+    GROUP BY 1, 2
+),
+webroot_rmm_pit AS (
+    -- Snapshot-day counts (billing_month + 18d = cycle-day 19).
+    SELECT
+        c.billing_month,
+        c.snapshot_date,
+        d.cms_id,
+        d.webroot_desktop_qty AS webroot_desktop_endpoint_pit,
+        d.webroot_server_qty  AS webroot_server_endpoint_pit,
+        d.rmm_desktop_qty     AS rmm_desktop_pit,
+        d.rmm_server_qty      AS rmm_server_pit
+    FROM webroot_trt_cycles c
+    JOIN webroot_rmm_daily d ON d.on_date = c.snapshot_date
+),
+webroot_rmm_cycle AS (
+    -- Cycle-window daily averages over (prev_snapshot, snapshot].
+    SELECT
+        c.billing_month,
+        d.cms_id,
+        AVG(d.webroot_desktop_qty + d.webroot_server_qty) AS avg_webroot_endpoint_qty,
+        AVG(d.rmm_desktop_qty     + d.rmm_server_qty)     AS avg_rmm_endpoint_qty,
+        AVG(GREATEST(d.webroot_desktop_qty - d.rmm_desktop_qty, 0) + d.webroot_server_qty)
+                                                          AS avg_webroot_endpoint_to_bill,
+        COUNT(DISTINCT d.on_date)                         AS rmm_discount_rolling_usage_days
+    FROM webroot_trt_cycles c
+    JOIN webroot_rmm_daily d
+      ON d.on_date >  c.prev_snapshot_date
+     AND d.on_date <= c.snapshot_date
+    GROUP BY 1, 2
+),
+webroot_rmm_overlay AS (
+    -- Combine point-in-time + cycle-average and derive the billable split.
+    -- Desktop bucket is offset by RMM Desktop (floored at 0); Server is not
+    -- adjusted per the engineering rule.
+    SELECT
+        p.billing_month,
+        p.cms_id,
+        p.webroot_desktop_endpoint_pit,
+        p.webroot_server_endpoint_pit,
+        p.webroot_desktop_endpoint_pit + p.webroot_server_endpoint_pit AS webroot_endpoint_qty_pit,
+        p.rmm_desktop_pit,
+        p.rmm_server_pit,
+        p.rmm_desktop_pit + p.rmm_server_pit                           AS rmm_endpoint_qty_pit,
+        GREATEST(p.webroot_desktop_endpoint_pit - p.rmm_desktop_pit, 0)
+          + p.webroot_server_endpoint_pit                              AS webroot_endpoint_to_bill_pit,
+        (p.webroot_desktop_endpoint_pit + p.webroot_server_endpoint_pit)
+          - (GREATEST(p.webroot_desktop_endpoint_pit - p.rmm_desktop_pit, 0) + p.webroot_server_endpoint_pit)
+                                                                       AS rmm_discount_qty_pit,
+        c.rmm_discount_rolling_usage_days,
+        c.avg_webroot_endpoint_qty,
+        c.avg_rmm_endpoint_qty,
+        c.avg_webroot_endpoint_to_bill,
+        c.avg_webroot_endpoint_qty - (p.webroot_desktop_endpoint_pit + p.webroot_server_endpoint_pit)
+                                                                       AS avg_vs_19th_raw_endpoint_qty_delta,
+        c.avg_webroot_endpoint_to_bill - (GREATEST(p.webroot_desktop_endpoint_pit - p.rmm_desktop_pit, 0) + p.webroot_server_endpoint_pit)
+                                                                       AS avg_vs_19th_billable_endpoint_qty_delta
+    FROM webroot_rmm_pit p
+    LEFT JOIN webroot_rmm_cycle c
+      ON c.billing_month = p.billing_month
+     AND c.cms_id        = p.cms_id
+),
+webroot_rmm_overlay_by_sf AS (
+    -- Roll overlay from (cms_id, billing_month) grain up to
+    -- (sf_id, billing_month) so it can join directly onto trt_agg.
+    SELECT
+        COALESCE(pm.SF_ID, zb.sf_id) AS sf_id,
+        o.billing_month              AS billing_month,
+        SUM(o.webroot_desktop_endpoint_pit) AS webroot_desktop_endpoint_pit,
+        SUM(o.webroot_server_endpoint_pit)  AS webroot_server_endpoint_pit,
+        SUM(o.webroot_endpoint_qty_pit)     AS webroot_endpoint_qty_pit,
+        SUM(o.rmm_desktop_pit)              AS rmm_desktop_pit,
+        SUM(o.rmm_server_pit)               AS rmm_server_pit,
+        SUM(o.rmm_endpoint_qty_pit)         AS rmm_endpoint_qty_pit,
+        SUM(o.webroot_endpoint_to_bill_pit) AS webroot_endpoint_to_bill_pit,
+        SUM(o.rmm_discount_qty_pit)         AS rmm_discount_qty_pit,
+        MAX(o.rmm_discount_rolling_usage_days) AS rmm_discount_rolling_usage_days,
+        SUM(o.avg_webroot_endpoint_qty)     AS avg_webroot_endpoint_qty,
+        SUM(o.avg_rmm_endpoint_qty)         AS avg_rmm_endpoint_qty,
+        SUM(o.avg_webroot_endpoint_to_bill) AS avg_webroot_endpoint_to_bill,
+        SUM(o.avg_vs_19th_raw_endpoint_qty_delta)      AS avg_vs_19th_raw_endpoint_qty_delta,
+        SUM(o.avg_vs_19th_billable_endpoint_qty_delta) AS avg_vs_19th_billable_endpoint_qty_delta
+    FROM webroot_rmm_overlay o
+    LEFT JOIN RECON_PARTNER_MAP_MONTHLY_CMS_UNIQUE pm
+           ON pm.CMS_ID        = o.cms_id
+          AND pm.BILLING_MONTH = o.billing_month
+    LEFT JOIN webroot_trt_zuora_bridge zb ON zb.partner_id = o.cms_id
+    WHERE COALESCE(pm.SF_ID, zb.sf_id) IS NOT NULL
+    GROUP BY 1, 2
+),
+
+-- Downstream `scored` CTE keys off `rmm_discount_qty_pit > 0` and
+-- `webroot_endpoint_to_bill_pit`; these are now populated from the overlay
+-- above. rmm_partner_types and *_free_license_qty are still NULL because
+-- engineering has not defined a formula for either yet.
 trt_agg AS (
     SELECT
         t.sf_id,
@@ -246,28 +693,27 @@ trt_agg AS (
         SUM(t.trt_quantity_avg_daily) AS trt_quantity_avg_daily,
         SUM(t.trt_quantity_max_daily) AS trt_quantity_max_daily,
         SUM(t.trt_agent_days) AS trt_agent_days,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rmm_partner_types, NULL)) AS rmm_partner_types,
-        MAX(IFF(t.sku_match_group = 'GSM', d.webroot_desktop_endpoint_pit, NULL)) AS webroot_desktop_endpoint_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.webroot_server_endpoint_pit, NULL)) AS webroot_server_endpoint_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.webroot_endpoint_qty_pit, NULL)) AS webroot_endpoint_qty_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rmm_desktop_pit, NULL)) AS rmm_desktop_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rmm_server_pit, NULL)) AS rmm_server_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rmm_endpoint_qty_pit, NULL)) AS rmm_endpoint_qty_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rmm_free_license_qty_pit, NULL)) AS rmm_free_license_qty_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.webroot_endpoint_to_bill_pit, NULL)) AS webroot_endpoint_to_bill_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rmm_discount_qty_pit, NULL)) AS rmm_discount_qty_pit,
-        MAX(IFF(t.sku_match_group = 'GSM', d.rolling_usage_days, NULL)) AS rmm_discount_rolling_usage_days,
-        MAX(IFF(t.sku_match_group = 'GSM', d.avg_webroot_endpoint_qty, NULL)) AS avg_webroot_endpoint_qty,
-        MAX(IFF(t.sku_match_group = 'GSM', d.avg_rmm_endpoint_qty, NULL)) AS avg_rmm_endpoint_qty,
-        MAX(IFF(t.sku_match_group = 'GSM', d.avg_rmm_free_license_qty, NULL)) AS avg_rmm_free_license_qty,
-        MAX(IFF(t.sku_match_group = 'GSM', d.avg_webroot_endpoint_to_bill, NULL)) AS avg_webroot_endpoint_to_bill,
-        MAX(IFF(t.sku_match_group = 'GSM', d.avg_vs_19th_raw_endpoint_qty_delta, NULL)) AS avg_vs_19th_raw_endpoint_qty_delta,
-        MAX(IFF(t.sku_match_group = 'GSM', d.avg_vs_19th_billable_endpoint_qty_delta, NULL)) AS avg_vs_19th_billable_endpoint_qty_delta
-    FROM WEBROOT_TRT_USAGE_MONTHLY t
-    LEFT JOIN WEBROOT_TRT_ENDPOINT_RMM_DISCOUNT_MONTHLY d
-        ON d.sf_id = t.sf_id
-       AND d.billing_month = t.billing_month
-       AND t.sku_match_group = 'GSM'
+        NULL::VARCHAR                                        AS rmm_partner_types,
+        MAX(o.webroot_desktop_endpoint_pit)                  AS webroot_desktop_endpoint_pit,
+        MAX(o.webroot_server_endpoint_pit)                   AS webroot_server_endpoint_pit,
+        MAX(o.webroot_endpoint_qty_pit)                      AS webroot_endpoint_qty_pit,
+        MAX(o.rmm_desktop_pit)                               AS rmm_desktop_pit,
+        MAX(o.rmm_server_pit)                                AS rmm_server_pit,
+        MAX(o.rmm_endpoint_qty_pit)                          AS rmm_endpoint_qty_pit,
+        NULL::FLOAT                                          AS rmm_free_license_qty_pit,
+        MAX(o.webroot_endpoint_to_bill_pit)                  AS webroot_endpoint_to_bill_pit,
+        MAX(o.rmm_discount_qty_pit)                          AS rmm_discount_qty_pit,
+        MAX(o.rmm_discount_rolling_usage_days)               AS rmm_discount_rolling_usage_days,
+        MAX(o.avg_webroot_endpoint_qty)                      AS avg_webroot_endpoint_qty,
+        MAX(o.avg_rmm_endpoint_qty)                          AS avg_rmm_endpoint_qty,
+        NULL::FLOAT                                          AS avg_rmm_free_license_qty,
+        MAX(o.avg_webroot_endpoint_to_bill)                  AS avg_webroot_endpoint_to_bill,
+        MAX(o.avg_vs_19th_raw_endpoint_qty_delta)            AS avg_vs_19th_raw_endpoint_qty_delta,
+        MAX(o.avg_vs_19th_billable_endpoint_qty_delta)       AS avg_vs_19th_billable_endpoint_qty_delta
+    FROM webroot_trt_monthly t
+    LEFT JOIN webroot_rmm_overlay_by_sf o
+           ON o.sf_id         = t.sf_id
+          AND o.billing_month = t.billing_month
     GROUP BY 1,2,3,4
 ),
 sf_id_to_partner AS (
@@ -331,6 +777,11 @@ joined AS (
         b.marketplace_transaction_sources,
         COALESCE(b.total_billing_quantity, 0) AS total_billing_quantity,
         COALESCE(b.total_billing_amount, 0) AS total_billing_amount,
+        COALESCE(b.expected_vendor_cost_amount, 0) AS expected_vendor_cost_amount,
+        COALESCE(b.expected_cw_retail_amount, 0) AS expected_cw_retail_amount,
+        COALESCE(b.priced_billing_quantity, 0) AS priced_billing_quantity,
+        COALESCE(b.tier_priced_billing_quantity, 0) AS tier_priced_billing_quantity,
+        b.selected_pricebook_tiers,
         t.trt_cms_ids,
         t.trt_product_skus,
         t.trt_charge_skus,
@@ -488,6 +939,22 @@ SELECT
     total_billing_quantity,
     total_billing_amount / NULLIF(total_billing_quantity, 0) AS total_billing_unit_price,
     total_billing_amount,
+    expected_vendor_cost_amount,
+    expected_cw_retail_amount,
+    total_billing_amount - expected_vendor_cost_amount AS actual_billing_vs_expected_cost_amount,
+    total_billing_amount - expected_cw_retail_amount AS actual_vs_expected_retail_amount,
+    expected_cw_retail_amount - expected_vendor_cost_amount AS expected_pricebook_margin_amount,
+    priced_billing_quantity,
+    tier_priced_billing_quantity,
+    LEAST(100, ROUND(
+        100 * priced_billing_quantity / NULLIF(ABS(total_billing_quantity), 0),
+        1
+    )) AS pricebook_pricing_coverage_pct,
+    LEAST(100, ROUND(
+        100 * tier_priced_billing_quantity / NULLIF(ABS(total_billing_quantity), 0),
+        1
+    )) AS tier_pricing_coverage_pct,
+    selected_pricebook_tiers,
     qty_delta,
     abs_qty_delta,
     amount_delta,
@@ -607,10 +1074,21 @@ SELECT
     SUM(zuora_quantity) AS total_zuora_seats,
     SUM(marketplace_quantity) AS total_marketplace_seats,
     SUM(total_billing_quantity) AS total_billing_seats,
+    SUM(priced_billing_quantity) AS total_pricebook_priced_seats,
+    SUM(tier_priced_billing_quantity) AS total_tier_priced_seats,
+    LEAST(100, ROUND(100 * SUM(priced_billing_quantity) / NULLIF(SUM(ABS(total_billing_quantity)), 0), 1))
+        AS pricebook_pricing_coverage_pct,
+    LEAST(100, ROUND(100 * SUM(tier_priced_billing_quantity) / NULLIF(SUM(ABS(total_billing_quantity)), 0), 1))
+        AS tier_pricing_coverage_pct,
     SUM(trt_quantity_avg_daily) AS total_trt_avg_daily_seats,
     SUM(trt_quantity_max_daily) AS total_trt_max_daily_seats,
     SUM(COALESCE(vendor_amount, 0))::NUMBER AS total_vendor_amount,
     SUM(total_billing_amount) AS total_billing_amount,
+    SUM(expected_vendor_cost_amount) AS expected_vendor_cost_amount,
+    SUM(expected_cw_retail_amount) AS expected_cw_retail_amount,
+    SUM(total_billing_amount - expected_vendor_cost_amount) AS actual_billing_vs_expected_cost_amount,
+    SUM(total_billing_amount - expected_cw_retail_amount) AS actual_vs_expected_retail_amount,
+    SUM(expected_cw_retail_amount - expected_vendor_cost_amount) AS expected_pricebook_margin_amount,
     COUNT_IF(duplicate_billing_flag = TRUE) AS duplicate_billing_rows,
     SUM(IFF(duplicate_billing_flag, vendor_quantity, 0))::NUMBER AS duplicate_billing_vendor_seats,
     SUM(IFF(duplicate_billing_flag, zuora_quantity, 0)) AS duplicate_billing_zuora_seats,

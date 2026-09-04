@@ -6,7 +6,7 @@
 --   vendor usage, partner/SKU maps, Zuora billing, and Marketplace billing.
 --
 -- Required upstream objects:
---   - PROOFPOINT_USAGE
+--   - THIRD_PARTY_RECON_VENDOR_USAGE_PROD filtered to Proofpoint
 --   - RECON_PARTNER_MAP
 --   - (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Proofpoint')
 --   - THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
@@ -32,6 +32,7 @@ CREATE OR REPLACE TABLE PROOFPOINT_RECON_DETAIL AS
 
 WITH partner_name_map AS (
     SELECT
+        billing_month,
         partner_name,
         TRIM(
             REGEXP_REPLACE(
@@ -41,35 +42,36 @@ WITH partner_name_map AS (
             )
         ) AS partner_name_normalized,
         sf_id
-    FROM RECON_PARTNER_MAP
+    FROM RECON_PARTNER_MAP_MONTHLY
     WHERE sf_id IS NOT NULL
       AND REGEXP_LIKE(sf_id, '^ACT-[0-9A-Z-]+$')
       AND partner_name IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY partner_name
+        PARTITION BY billing_month, partner_name
         ORDER BY zuora_name DESC NULLS LAST
     ) = 1
 ),
 
 partner_name_map_deduped AS (
-    SELECT partner_name_normalized, sf_id
+    SELECT billing_month, partner_name_normalized, sf_id
     FROM partner_name_map
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY partner_name_normalized
+        PARTITION BY billing_month, partner_name_normalized
         ORDER BY partner_name
     ) = 1
 ),
 
-cms_acc_map AS (
-    SELECT cms_id, sf_id
-    FROM RECON_PARTNER_MAP
-    WHERE cms_id IS NOT NULL
-      AND cms_id != ''
-      AND sf_id IS NOT NULL
-      AND REGEXP_LIKE(sf_id, '^ACT-[0-9A-Z-]+$')
+manual_partner_map AS (
+    SELECT
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_normalized,
+        sf_id
+    FROM RECON_VENDOR_PARTNER_MANUAL_MAP
+    WHERE UPPER(TRIM(vendor)) = 'PROOFPOINT'
+      AND partner_name IS NOT NULL
+      AND sf_id ILIKE 'ACT-%'
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY cms_id
-        ORDER BY zuora_name DESC NULLS LAST
+        PARTITION BY TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
+        ORDER BY COALESCE(updated_at, CURRENT_TIMESTAMP()) DESC, sf_id
     ) = 1
 ),
 
@@ -95,6 +97,7 @@ pp_skus AS (
         vendor_product,
         vendor_sku AS vendor_sku_invoices,
         cw_sku,
+        trt_match_key,
         sku_match_key AS sku_match_group,
         'SIMPLIFIED_SKU_MAP' AS mapping_source
     FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Proofpoint')
@@ -116,6 +119,10 @@ pp_contract_rates AS (
 proofpoint_loaded_billing_months AS (
     SELECT DISTINCT billing_month::DATE AS billing_month
     FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
+    WHERE vendor = 'Proofpoint'
+    UNION
+    SELECT DISTINCT billing_month::DATE AS billing_month
+    FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
     WHERE vendor = 'Proofpoint'
 ),
 
@@ -146,42 +153,62 @@ proofpoint_base AS (
         u.quantity,
         u.unit_price,
         u.amount,
-        pc.sf_id AS cms_sf_id,
-        pn.sf_id AS partner_sf_id,
-        -- Resolve to canonical sf_id via unified PROOFPOINT_SF_ID_RESOLVER
-        -- (SF merge map + curated aliases) BEFORE applying the CMIT parent
-        -- rollup, so merges/aliases are already flattened before parent lookup.
+        COALESCE(mpm.sf_id, pn.sf_id) AS partner_sf_id,
+        -- Preserve the historical/raw identity before the effective merge
+        -- month, then use the canonical identity from that month onward.
         COALESCE(
             cr.parent_sf_id,
-            sfr.canonical_sf_id,
-            pc.sf_id,
-            pn.sf_id
+            CASE
+                WHEN sfr.merge_effective_month IS NOT NULL
+                 AND u.billing_month::DATE < sfr.merge_effective_month
+                    THEN COALESCE(mpm.sf_id, pn.sf_id)
+                ELSE COALESCE(sfr.canonical_sf_id, mpm.sf_id, pn.sf_id)
+            END
         ) AS sf_id,
-        COALESCE(pc.sf_id, pn.sf_id) AS raw_sf_id,
-        sfr.resolver_source AS sf_id_resolver_source,
+        COALESCE(mpm.sf_id, pn.sf_id) AS raw_sf_id,
         CASE
-            WHEN cr.parent_sf_id IS NOT NULL AND pc.sf_id IS NOT NULL THEN 'CMS_ID|CMIT_PARENT_ROLLUP'
+            WHEN sfr.merge_effective_month IS NOT NULL
+             AND u.billing_month::DATE < sfr.merge_effective_month
+                THEN 'PRE_MERGE_SOURCE'
+            ELSE sfr.canonical_source
+        END AS sf_id_resolver_source,
+        CASE
+            WHEN cr.parent_sf_id IS NOT NULL AND mpm.sf_id IS NOT NULL THEN 'MANUAL_VENDOR_PARTNER_MAP|CMIT_PARENT_ROLLUP'
             WHEN cr.parent_sf_id IS NOT NULL AND pn.sf_id IS NOT NULL THEN 'PARTNER_NAME|CMIT_PARENT_ROLLUP'
-            WHEN pc.sf_id IS NOT NULL THEN 'CMS_ID'
+            WHEN mpm.sf_id IS NOT NULL THEN 'MANUAL_VENDOR_PARTNER_MAP'
             WHEN pn.sf_id IS NOT NULL THEN 'PARTNER_NAME'
             ELSE 'UNMAPPED'
         END AS partner_match_method
-    FROM PROOFPOINT_USAGE u
-    LEFT JOIN cms_acc_map pc
-        ON 1 = 0
-    LEFT JOIN partner_name_map_deduped pn
-        ON pn.partner_name_normalized = TRIM(
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
+    LEFT JOIN manual_partner_map mpm
+        ON mpm.partner_name_normalized = TRIM(
             REGEXP_REPLACE(
                 REGEXP_REPLACE(LOWER(u.vendor_partner_name), '[^a-z0-9]+', ' '),
                 '\\s+',
                 ' '
             )
         )
-    LEFT JOIN PROOFPOINT_SF_ID_RESOLVER sfr
-        ON sfr.old_sf_id = COALESCE(pc.sf_id, pn.sf_id)
+    LEFT JOIN partner_name_map_deduped pn
+        ON mpm.sf_id IS NULL
+       AND pn.partner_name_normalized = TRIM(
+            REGEXP_REPLACE(
+                REGEXP_REPLACE(LOWER(u.vendor_partner_name), '[^a-z0-9]+', ' '),
+                '\\s+',
+                ' '
+            )
+        )
+       AND pn.billing_month = u.billing_month::DATE
+    LEFT JOIN RECON_ACCOUNT_MERGE_RESOLVER sfr
+        ON sfr.old_sf_id = COALESCE(mpm.sf_id, pn.sf_id)
     LEFT JOIN cmit_parent_rollup cr
-        ON cr.child_sf_id = COALESCE(sfr.canonical_sf_id, pc.sf_id, pn.sf_id)
-    WHERE COALESCE(u.quantity, 0) <> 0
+        ON cr.child_sf_id = CASE
+            WHEN sfr.merge_effective_month IS NOT NULL
+             AND u.billing_month::DATE < sfr.merge_effective_month
+                THEN COALESCE(mpm.sf_id, pn.sf_id)
+            ELSE COALESCE(sfr.canonical_sf_id, mpm.sf_id, pn.sf_id)
+        END
+    WHERE u.VENDOR = 'Proofpoint'
+      AND COALESCE(u.quantity, 0) <> 0
       AND COALESCE(u.amount, 0) <> 0
             AND u.billing_month::DATE IN (SELECT billing_month FROM proofpoint_loaded_billing_months)
 ),
@@ -235,6 +262,89 @@ proofpoint_int AS (
             WITHIN GROUP (ORDER BY mapping_source) AS sku_mapping_sources
     FROM sku_candidates
     GROUP BY ALL
+),
+
+-- =============================================================================
+-- Proofpoint API usage (direct-from-raw architecture, 2026-08-28)
+-- ---------------------------------------------------------------------------
+-- Replaces the stale THIRD_PARTY_RECON_SOURCE_TRT_PROD snapshot / the
+-- pipeline-level PROOFPOINT_API_BACKFILL_SQL step. API_QUANTITY and
+-- AVG_API_QUANTITY are computed inline off the raw daily-usage table:
+--   ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE
+-- Join keys (governed):
+--   * partner_id (usage) = cms_id from RECON_PARTNER_MAP_MONTHLY.
+--   * product_sku (usage) = TRT_MATCH_KEY from RECON_SKU_MAP (Proofpoint).
+-- Cycle window:
+--   Proofpoint API snapshot = day 20 of each month, so a billing_month M
+--   accumulates on_date rows in (M-1 + 20 days, M + 20 days].
+-- Grain: (sf_id, billing_month, sku_match_group) -- matches vendor_group_base
+--        which is how vendor_agg rolls up to the recon detail row.
+-- Metrics:
+--   * api_quantity      = seats reported by TRT on the snapshot day (day 20).
+--   * avg_api_quantity  = average day_quantity across the full cycle window.
+-- =============================================================================
+pp_trt_keys AS (
+    -- All distinct TRT product_sku values Proofpoint maps to, plus the
+    -- sku_match_group they roll up to. Distinct so the join fan-out matches
+    -- the recon grain. Both sides normalized to UPPER(TRIM(...)) for the join.
+    SELECT DISTINCT
+        UPPER(TRIM(trt_match_key)) AS product_sku_key,
+        UPPER(TRIM(sku_match_group)) AS sku_match_group_key
+    FROM pp_skus
+    WHERE trt_match_key IS NOT NULL
+      AND TRIM(trt_match_key) <> ''
+),
+
+proofpoint_api_partners AS (
+    -- Restrict to sf_ids that actually appear in the Proofpoint recon for a
+    -- given billing_month, joined to their month-effective cms_id.
+    SELECT DISTINCT
+        i.sf_id,
+        i.billing_month,
+        i.sku_match_group,
+        UPPER(TRIM(i.sku_match_group)) AS sku_match_group_key,
+        pm.cms_id
+    FROM proofpoint_int i
+                JOIN RECON_PARTNER_MAP_MONTHLY_SF_UNIQUE pm
+      ON pm.sf_id = i.sf_id
+         AND pm.billing_month = i.billing_month
+    WHERE pm.cms_id IS NOT NULL
+      AND TRIM(pm.cms_id) <> ''
+),
+
+proofpoint_api_daily AS (
+    -- One row per (sf_id, billing_month, sku_match_group, on_date). The
+    -- window predicate binds each on_date to exactly one billing_month.
+    SELECT
+        pa.sf_id,
+        pa.billing_month,
+        pa.sku_match_group,
+        DATEADD('day', 20, pa.billing_month)::DATE            AS snapshot_date,
+        u.on_date::DATE                                        AS on_date,
+        SUM(COALESCE(u.agent_cnt, 0))                          AS day_quantity
+    FROM proofpoint_api_partners pa
+    JOIN pp_trt_keys k
+      ON k.sku_match_group_key = pa.sku_match_group_key
+    JOIN ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+      ON u.partner_id::VARCHAR = pa.cms_id
+     AND UPPER(TRIM(u.product_sku)) = k.product_sku_key
+     AND u.on_date::DATE >  DATEADD('day', 20, DATEADD('month', -1, pa.billing_month))::DATE
+     AND u.on_date::DATE <= DATEADD('day', 20, pa.billing_month)::DATE
+    GROUP BY 1, 2, 3, 4, 5
+),
+
+proofpoint_api_usage AS (
+    -- Roll up to recon grain. api_quantity = day-20 snapshot value (the
+    -- vendor-invoice snapshot day). avg_api_quantity = mean across the
+    -- window, used to smooth the mid-cycle add/drop noise.
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        MAX(IFF(on_date = snapshot_date, day_quantity, NULL))  AS api_quantity,
+        AVG(day_quantity)                                       AS avg_api_quantity
+    FROM proofpoint_api_daily
+    GROUP BY 1, 2, 3
 ),
 
 vendor_group_base AS (
@@ -365,8 +475,7 @@ zuora_source AS (
     FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
     WHERE vendor = 'Proofpoint'
       AND sf_id ILIKE 'ACT-%'
-      AND COALESCE(qty, 0) <> 0
-            AND UPPER(TRIM(product_sku)) IN (SELECT cw_sku_token FROM proofpoint_cw_sku_tokens)
+            AND COALESCE(qty, 0) <> 0
 ),
 
 marketplace_source AS (
@@ -374,12 +483,16 @@ marketplace_source AS (
         sf_id,
         UPPER(TRIM(product_sku)) AS product_sku,
         billing_month::DATE AS billing_month,
+                transaction_source,
         COALESCE(qty, 0) AS marketplace_quantity,
         COALESCE(amount, 0) AS marketplace_amount
     FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
     WHERE vendor = 'Proofpoint'
       AND sf_id ILIKE 'ACT-%'
-      AND COALESCE(qty, 0) <> 0
+            AND (
+                        COALESCE(qty, 0) <> 0
+                 OR (transaction_source = 'Salesforce Contract' AND COALESCE(amount, 0) <> 0)
+            )
             AND UPPER(TRIM(product_sku)) IN (SELECT cw_sku_token FROM proofpoint_cw_sku_tokens)
 ),
 
@@ -403,6 +516,39 @@ marketplace_billing AS (
         SUM(marketplace_quantity) AS marketplace_quantity,
         SUM(marketplace_amount) AS marketplace_amount
     FROM marketplace_source
+    GROUP BY 1, 2, 3
+),
+
+zuora_grouped AS (
+    SELECT
+        v.sf_id,
+        v.billing_month,
+        v.sku_match_group,
+        ARRAY_AGG(DISTINCT z.product_sku) WITHIN GROUP (ORDER BY z.product_sku) AS zuora_skus,
+        SUM(z.zuora_quantity) AS zuora_quantity,
+        AVG(z.zuora_unit_price) AS zuora_unit_price,
+        SUM(z.zuora_amount) AS zuora_amount
+    FROM vendor_agg v
+    LEFT JOIN zuora_proofpoint z
+        ON z.sf_id = v.sf_id
+       AND LAST_DAY(z.billing_month) = LAST_DAY(v.billing_month)
+       AND ARRAY_CONTAINS(z.product_sku::VARIANT, v.cw_skus)
+    GROUP BY 1, 2, 3
+),
+
+marketplace_grouped AS (
+    SELECT
+        v.sf_id,
+        v.billing_month,
+        v.sku_match_group,
+        ARRAY_AGG(DISTINCT m.product_sku) WITHIN GROUP (ORDER BY m.product_sku) AS marketplace_skus,
+        SUM(m.marketplace_quantity) AS marketplace_quantity,
+        SUM(m.marketplace_amount) AS marketplace_amount
+    FROM vendor_agg v
+    LEFT JOIN marketplace_billing m
+        ON m.sf_id = v.sf_id
+       AND LAST_DAY(m.billing_month) = LAST_DAY(v.billing_month)
+       AND ARRAY_CONTAINS(m.product_sku::VARIANT, v.cw_skus)
     GROUP BY 1, 2, 3
 ),
 
@@ -466,35 +612,34 @@ joined AS (
         v.billing_month,
         v.sf_id,
         v.sku_match_group,
-        LISTAGG(DISTINCT v.vendor_partner_name, ', ')
-            WITHIN GROUP (ORDER BY v.vendor_partner_name) AS vendor_partner_name,
+        v.vendor_partner_name,
         v.vendor_product,
         v.cw_skus,
         v.vendor_skus_invoices,
-        ARRAY_AGG(DISTINCT z.product_sku) WITHIN GROUP (ORDER BY z.product_sku) AS zuora_skus,
-        ARRAY_AGG(DISTINCT m.product_sku) WITHIN GROUP (ORDER BY m.product_sku) AS marketplace_skus,
+        zg.zuora_skus,
+        mg.marketplace_skus,
         v.vendor_quantity,
         v.vendor_unit_price,
         v.vendor_amount,
-        SUM(z.zuora_quantity) AS zuora_quantity,
-        AVG(z.zuora_unit_price) AS zuora_unit_price,
-        SUM(z.zuora_amount) AS zuora_amount,
-        SUM(m.marketplace_quantity) AS marketplace_quantity,
-        SUM(m.marketplace_amount) AS marketplace_amount,
-        ANY_VALUE(za.any_zuora_quantity) AS any_zuora_quantity,
-        ANY_VALUE(za.any_zuora_amount) AS any_zuora_amount,
-        ANY_VALUE(za.any_zuora_row_count) AS any_zuora_row_count,
-        ANY_VALUE(za.any_zuora_skus) AS any_zuora_skus,
-        ANY_VALUE(ma.any_marketplace_quantity) AS any_marketplace_quantity,
-        ANY_VALUE(ma.any_marketplace_amount) AS any_marketplace_amount,
-        ANY_VALUE(ma.any_marketplace_row_count) AS any_marketplace_row_count,
-        ANY_VALUE(ma.any_marketplace_skus) AS any_marketplace_skus,
-        ANY_VALUE(mp.prior_month_marketplace_quantity) AS prior_month_marketplace_quantity,
-        ANY_VALUE(mp.prior_month_marketplace_amount) AS prior_month_marketplace_amount,
-        ANY_VALUE(mp.prior_month_marketplace_row_count) AS prior_month_marketplace_row_count,
-        ANY_VALUE(mp.prior_month_marketplace_skus) AS prior_month_marketplace_skus,
-        ANY_VALUE(zn.nearby_zuora_month_count) AS nearby_zuora_month_count,
-        ANY_VALUE(zn.nearby_zuora_quantity) AS nearby_zuora_quantity,
+        zg.zuora_quantity,
+        zg.zuora_unit_price,
+        zg.zuora_amount,
+        mg.marketplace_quantity,
+        mg.marketplace_amount,
+        za.any_zuora_quantity,
+        za.any_zuora_amount,
+        za.any_zuora_row_count,
+        za.any_zuora_skus,
+        ma.any_marketplace_quantity,
+        ma.any_marketplace_amount,
+        ma.any_marketplace_row_count,
+        ma.any_marketplace_skus,
+        mp.prior_month_marketplace_quantity,
+        mp.prior_month_marketplace_amount,
+        mp.prior_month_marketplace_row_count,
+        mp.prior_month_marketplace_skus,
+        zn.nearby_zuora_month_count,
+        zn.nearby_zuora_quantity,
         v.vendor_row_count,
         v.partner_match_methods,
         v.sku_mapping_sources,
@@ -504,14 +649,14 @@ joined AS (
         v.contract_rate_missing_row_count,
         v.contract_rate_source_docs
     FROM vendor_agg v
-    LEFT JOIN zuora_proofpoint z
-        ON z.sf_id = v.sf_id
-       AND LAST_DAY(z.billing_month) = LAST_DAY(v.billing_month)
-       AND ARRAY_CONTAINS(z.product_sku::VARIANT, v.cw_skus)
-    LEFT JOIN marketplace_billing m
-        ON m.sf_id = v.sf_id
-       AND LAST_DAY(m.billing_month) = LAST_DAY(v.billing_month)
-       AND ARRAY_CONTAINS(m.product_sku::VARIANT, v.cw_skus)
+    LEFT JOIN zuora_grouped zg
+        ON zg.sf_id = v.sf_id
+       AND zg.billing_month = v.billing_month
+       AND zg.sku_match_group = v.sku_match_group
+    LEFT JOIN marketplace_grouped mg
+        ON mg.sf_id = v.sf_id
+       AND mg.billing_month = v.billing_month
+       AND mg.sku_match_group = v.sku_match_group
     LEFT JOIN zuora_any_sf_month za
         ON za.sf_id = v.sf_id
        AND LAST_DAY(za.billing_month) = LAST_DAY(v.billing_month)
@@ -524,7 +669,6 @@ joined AS (
     LEFT JOIN zuora_nearby_sf zn
         ON zn.sf_id = v.sf_id
        AND LAST_DAY(zn.billing_month) = LAST_DAY(v.billing_month)
-    GROUP BY ALL
 ),
 
 scored AS (
@@ -539,8 +683,9 @@ scored AS (
         zuora_skus,
         marketplace_skus,
         CASE
-            WHEN zuora_quantity IS NOT NULL AND marketplace_quantity IS NOT NULL THEN 'ZUORA_AND_MARKETPLACE'
-            WHEN zuora_quantity IS NOT NULL THEN 'ZUORA_ONLY'
+            WHEN (COALESCE(zuora_quantity, 0) > 0 OR COALESCE(any_zuora_quantity, 0) > 0)
+                 AND marketplace_quantity IS NOT NULL THEN 'ZUORA_AND_MARKETPLACE'
+            WHEN (COALESCE(zuora_quantity, 0) > 0 OR COALESCE(any_zuora_quantity, 0) > 0) THEN 'ZUORA_ONLY'
             WHEN marketplace_quantity IS NOT NULL THEN 'MARKETPLACE_ONLY'
             ELSE 'NO_BILLING_SOURCE'
         END AS source_presence_flag,
@@ -552,10 +697,62 @@ scored AS (
         zuora_amount,
         marketplace_quantity,
         marketplace_amount,
-        COALESCE(zuora_quantity, 0) + COALESCE(marketplace_quantity, 0) AS total_billing_quantity,
-        COALESCE(zuora_amount, 0) + COALESCE(marketplace_amount, 0) AS total_billing_amount,
-        COALESCE(zuora_quantity, 0) + COALESCE(marketplace_quantity, 0) - COALESCE(vendor_quantity, 0) AS qty_delta,
-        COALESCE(zuora_amount, 0) + COALESCE(marketplace_amount, 0) - COALESCE(vendor_amount, 0) AS amount_delta,
+        CASE
+            WHEN COALESCE(
+                    IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity,
+                        IFF(COALESCE(any_zuora_quantity, 0) > 0, any_zuora_quantity, marketplace_quantity)
+                    ),
+                    0
+                 ) = 0
+             AND COALESCE(
+                    IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount,
+                        IFF(COALESCE(any_zuora_amount, 0) > 0, any_zuora_amount, marketplace_amount)
+                    ),
+                    0
+                 ) > 0
+             AND UPPER(COALESCE(vendor_product, '')) IN ('BASIC OEM', 'ADVANCED OEM')
+                THEN COALESCE(vendor_quantity, 0)
+            ELSE COALESCE(
+                    IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity,
+                        IFF(COALESCE(any_zuora_quantity, 0) > 0, any_zuora_quantity, marketplace_quantity)
+                    ),
+                    0
+                 )
+        END AS total_billing_quantity,
+        COALESCE(
+            IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount,
+                IFF(COALESCE(any_zuora_amount, 0) > 0, any_zuora_amount, marketplace_amount)
+            ),
+            0
+        ) AS total_billing_amount,
+        CASE
+            WHEN COALESCE(
+                    IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity,
+                        IFF(COALESCE(any_zuora_quantity, 0) > 0, any_zuora_quantity, marketplace_quantity)
+                    ),
+                    0
+                 ) = 0
+             AND COALESCE(
+                    IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount,
+                        IFF(COALESCE(any_zuora_amount, 0) > 0, any_zuora_amount, marketplace_amount)
+                    ),
+                    0
+                 ) > 0
+             AND UPPER(COALESCE(vendor_product, '')) IN ('BASIC OEM', 'ADVANCED OEM')
+                THEN 0
+            ELSE COALESCE(
+                    IFF(COALESCE(zuora_quantity, 0) > 0, zuora_quantity,
+                        IFF(COALESCE(any_zuora_quantity, 0) > 0, any_zuora_quantity, marketplace_quantity)
+                    ),
+                    0
+                 ) - COALESCE(vendor_quantity, 0)
+        END AS qty_delta,
+        COALESCE(
+            IFF(COALESCE(zuora_amount, 0) > 0, zuora_amount,
+                IFF(COALESCE(any_zuora_amount, 0) > 0, any_zuora_amount, marketplace_amount)
+            ),
+            0
+        ) - COALESCE(vendor_amount, 0) AS amount_delta,
         vendor_row_count,
         partner_match_methods,
         sku_mapping_sources,
@@ -647,7 +844,11 @@ scored_with_mapping_evidence AS (
         COALESCE(h.prior_matched_history_month_count, 0) AS prior_matched_history_month_count,
         COALESCE(h.later_matched_history_month_count, 0) AS later_matched_history_month_count,
         h.last_prior_matched_month,
-        h.next_later_matched_month
+        h.next_later_matched_month,
+        -- Inline TRT API rollup (see proofpoint_api_usage CTE above).
+        -- Grain: (sf_id, billing_month, sku_match_group).
+        au.api_quantity::FLOAT      AS api_quantity,
+        au.avg_api_quantity::FLOAT  AS avg_api_quantity
     FROM scored s
     LEFT JOIN sku_merge_candidates m
         ON m.billing_month = s.billing_month
@@ -657,6 +858,10 @@ scored_with_mapping_evidence AS (
         ON h.billing_month = s.billing_month
        AND h.sf_id = s.sf_id
        AND h.sku_match_group = s.sku_match_group
+    LEFT JOIN proofpoint_api_usage au
+        ON au.sf_id          = s.sf_id
+       AND au.billing_month  = s.billing_month
+       AND au.sku_match_group = s.sku_match_group
 ),
 
 -- =============================================================================
@@ -675,6 +880,8 @@ SELECT
     zuora_skus,
     marketplace_skus,
     source_presence_flag AS billing_source_mix,
+    api_quantity,
+    avg_api_quantity,
     vendor_quantity,
     vendor_unit_price,
     vendor_amount,

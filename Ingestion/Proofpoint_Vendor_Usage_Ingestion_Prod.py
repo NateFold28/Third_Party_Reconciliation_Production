@@ -33,7 +33,7 @@ import pandas as pd
 
 PROOFPOINT_ROOT = Path(__file__).resolve().parents[2]
 PROJECT_ROOT = PROOFPOINT_ROOT.parent
-WORKSPACE_ROOT = PROJECT_ROOT.parents[1]
+WORKSPACE_ROOT = next((p for p in (PROJECT_ROOT, *PROJECT_ROOT.parents) if (p / "TEMPLATES").exists()), PROJECT_ROOT)
 # Aligned with the unified third-party recon vendor drop location so every
 # vendor pipeline pulls raw files from the same OneDrive tree.
 DEFAULT_SOURCE_ROOT = Path(

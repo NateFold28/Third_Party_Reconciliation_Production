@@ -2,7 +2,8 @@
 -- STEP 2: ACRONIS FINAL RECONCILIATION  (Proofpoint-style, vendor-SKU grain)
 -- =============================================================================
 -- 2026-08-03 REBUILD to the Proofpoint / Auvik pattern.
---   Vendor side = ACRONIS_USAGE   (vendor consumption; AMOUNT = qty * observed USD price)
+--   Vendor side = THIRD_PARTY_RECON_VENDOR_USAGE_PROD filtered to Acronis
+--                 (vendor consumption; AMOUNT = qty * observed USD price)
 --   CW side     = THIRD_PARTY_RECON_SOURCE_ZUORA_PROD + THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
 --                 resolved to Acronis sku_match_group inside this script
 --   Grain       = (sf_id, billing_month, sku_match_group), sku_match_group = VENDOR SKU code
@@ -60,6 +61,7 @@ acronis_sku_map AS (
     WHERE vendor = 'Acronis'
       AND sku_match_key IS NOT NULL
       AND cw_sku IS NOT NULL
+        AND UPPER(TRIM(cw_sku)) <> 'UNMATCHED'
 ),
 acronis_sku_map_tokens AS (
     SELECT DISTINCT
@@ -70,19 +72,31 @@ acronis_sku_map_tokens AS (
          LATERAL SPLIT_TO_TABLE(REPLACE(sm.cw_sku, '/', '|'), '|') tok
     WHERE TRIM(tok.value) <> ''
 ),
+manual_partner_map AS (
+    SELECT
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm,
+        sf_id
+    FROM RECON_VENDOR_PARTNER_MANUAL_MAP
+    WHERE UPPER(TRIM(vendor)) = 'ACRONIS'
+      AND partner_name IS NOT NULL
+      AND sf_id ILIKE 'ACT-%'
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
+        ORDER BY COALESCE(updated_at, CURRENT_TIMESTAMP()) DESC, sf_id
+    ) = 1
+),
 partner_map AS (
     WITH partner_name_candidates AS (
         SELECT
             pm.billing_month::DATE AS billing_month,
             TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(pm.partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm,
-            COALESCE(mr.canonical_sf_id, pm.sf_id) AS sf_id,
+                        pm.sf_id,
             IFF(b.sf_id IS NULL, 0, 1) AS has_billing_match,
             IFF(pm.cms_id IS NULL OR TRIM(pm.cms_id) IN ('', '-'), 0, 1) AS has_cms_id,
             0 AS alias_priority
         FROM RECON_PARTNER_MAP_MONTHLY pm
-        LEFT JOIN merged_account_resolver mr ON mr.old_sf_id = pm.sf_id
         LEFT JOIN billing_presence b
-          ON b.sf_id = COALESCE(mr.canonical_sf_id, pm.sf_id)
+                    ON b.sf_id = pm.sf_id
          AND b.billing_month = pm.billing_month::DATE
         WHERE pm.sf_id ILIKE 'ACT-%' AND pm.partner_name IS NOT NULL
 
@@ -91,14 +105,13 @@ partner_map AS (
         SELECT
             pm.billing_month::DATE AS billing_month,
             TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(pm.parent_company), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm,
-            COALESCE(mr.canonical_sf_id, pm.sf_id) AS sf_id,
+                        pm.sf_id,
             IFF(b.sf_id IS NULL, 0, 1) AS has_billing_match,
             IFF(pm.cms_id IS NULL OR TRIM(pm.cms_id) IN ('', '-'), 0, 1) AS has_cms_id,
             1 AS alias_priority
         FROM RECON_PARTNER_MAP_MONTHLY pm
-        LEFT JOIN merged_account_resolver mr ON mr.old_sf_id = pm.sf_id
         LEFT JOIN billing_presence b
-          ON b.sf_id = COALESCE(mr.canonical_sf_id, pm.sf_id)
+                    ON b.sf_id = pm.sf_id
          AND b.billing_month = pm.billing_month::DATE
         WHERE pm.sf_id ILIKE 'ACT-%' AND pm.parent_company IS NOT NULL
     ),
@@ -137,14 +150,18 @@ partner_map AS (
 ),
 combined_map AS (
     WITH cms_bridge AS (
+        -- A CMS ID can be shared by distinct SF accounts (for example,
+        -- ThrottleNet and Twin Pines). Only bridge one-to-one month keys;
+        -- otherwise retain the account carried by the combined seed.
         SELECT
             billing_month::DATE AS billing_month,
             cms_id::VARCHAR AS cms_id,
-            ANY_VALUE(raw_sf_id) AS raw_sf_id
+            ANY_VALUE(sf_id) AS effective_sf_id
         FROM RECON_PARTNER_MAP_MONTHLY
-        WHERE raw_sf_id ILIKE 'ACT-%'
+        WHERE sf_id ILIKE 'ACT-%'
           AND cms_id IS NOT NULL
         GROUP BY 1, 2
+                HAVING COUNT(DISTINCT sf_id) = 1
     )
     SELECT
         cm.BILLING_MONTH::DATE AS billing_month,
@@ -153,12 +170,7 @@ combined_map AS (
         -- Date-aware merge: only apply canonical for months on/after merge date
         ANY_VALUE(
             COALESCE(
-                CASE
-                    -- Flexxa di Andrea is operated under ELOVADE Italia and should
-                    -- roll to the parent ACT account for consistent partner reporting.
-                    WHEN cm.SF_ID = 'ACT-00098437' THEN 'ACT-00238412'
-                END,
-                cb.raw_sf_id,
+                cb.effective_sf_id,
                 CASE WHEN mr.old_sf_id IS NOT NULL
                           AND (mr.merge_effective_month IS NULL OR cm.BILLING_MONTH::DATE >= mr.merge_effective_month)
                      THEN mr.canonical_sf_id END,
@@ -178,134 +190,60 @@ combined_map AS (
     GROUP BY 1, 2, 3
 ),
 
--- ---- Vendor side: ACRONIS_USAGE -> sf_id, sku_match_group = vendor SKU code ----
+-- ---- Vendor side: shared vendor usage -> sf_id, sku_match_group = vendor SKU code ----
 vendor_rows AS (
     WITH usage_norm AS (
         SELECT
             u.*,
             TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm
-        FROM ACRONIS_USAGE u
-    )
-    SELECT
-        u.BILLING_MONTH::DATE AS billing_month,
-        COALESCE(
-            CASE
-                WHEN u.pn_norm IN ('elevity it') THEN 'ACT-00238028'
-                WHEN u.pn_norm IN ('flr spectron', 'flr spectron ltd') THEN 'ACT-00012675'
-                WHEN u.pn_norm IN ('onecom', 'onecom ltd') THEN 'ACT-00224155'
-                WHEN u.pn_norm IN ('bulletproof infotech inc') THEN 'ACT-00239634'
-                WHEN u.pn_norm IN ('circle technologies ltd') THEN 'ACT-00246156'
-                WHEN u.pn_norm IN ('extech ltd 1010936') THEN 'ACT-00095923'
-                WHEN u.pn_norm IN ('staley technologies cyber managed it services', 'staley technologies cyber managed it services hogantaylor') THEN 'ACT-00175494'
-                WHEN u.pn_norm IN ('scotiacomp technologies') THEN 'ACT-00065309'
-                WHEN u.pn_norm IN ('commercial networks ltd') THEN 'ACT-00107189'
-                WHEN u.pn_norm IN ('cwl systems ltd') THEN 'ACT-00184685'
-                WHEN u.pn_norm IN ('officeanyplace ltd') THEN 'ACT-00011794'
-                WHEN u.pn_norm IN ('cmit south brevard 179') THEN 'ACT-00245679'
-                WHEN u.pn_norm IN ('cmit solutions of oak park hinsdale and oak brook 887 107') THEN 'ACT-00240756'
-            END,
+        FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
+        WHERE u.VENDOR = 'Acronis'
+    ),
+    usage_resolved AS (
+        SELECT
+            u.*,
             CASE
                 WHEN cm.sf_id IS NOT NULL
                  AND NOT (
                      UPPER(COALESCE(cm.billing_type, '')) = 'MARKETPLACE'
                      AND COALESCE(cm.has_cw_sku_mapping, 0) = 0
-                     AND p.sf_id IS NOT NULL
+                     AND COALESCE(p.sf_id, mpm.sf_id) IS NOT NULL
                  )
                     THEN cm.sf_id
-            END,
-            p.sf_id,
-            NULL
-        ) AS sf_id,
+            END AS combined_sf_id,
+            -- The governed monthly map is date-aware and therefore outranks
+            -- the undated manual fallback when both resolve the same alias.
+            COALESCE(p.sf_id, mpm.sf_id) AS partner_map_sf_id
+        FROM usage_norm u
+        LEFT JOIN manual_partner_map mpm
+            ON mpm.pn_norm = u.pn_norm
+        LEFT JOIN combined_map cm
+            ON cm.billing_month = u.BILLING_MONTH::DATE
+            AND cm.pn_norm = u.pn_norm
+            AND cm.vendor_sku = UPPER(TRIM(u.VENDOR_PRODUCT_SKU))
+        LEFT JOIN partner_map p
+            ON p.billing_month = u.BILLING_MONTH::DATE
+           AND p.pn_norm = u.pn_norm
+    )
+    SELECT
+        u.BILLING_MONTH::DATE AS billing_month,
+        COALESCE(u.combined_sf_id, u.partner_map_sf_id, NULL) AS sf_id,
         CASE
             WHEN UPPER(TRIM(COALESCE(u.MODIFIER, ''))) = 'DISABLED' THEN
                 'DISABLED:' || u.pn_norm
                 || '|'
-                || COALESCE(
-                    CASE
-                        WHEN u.pn_norm IN ('elevity it') THEN 'ACT-00238028'
-                        WHEN u.pn_norm IN ('flr spectron', 'flr spectron ltd') THEN 'ACT-00012675'
-                        WHEN u.pn_norm IN ('onecom', 'onecom ltd') THEN 'ACT-00224155'
-                        WHEN u.pn_norm IN ('bulletproof infotech inc') THEN 'ACT-00239634'
-                        WHEN u.pn_norm IN ('circle technologies ltd') THEN 'ACT-00246156'
-                        WHEN u.pn_norm IN ('extech ltd 1010936') THEN 'ACT-00095923'
-                        WHEN u.pn_norm IN ('staley technologies cyber managed it services', 'staley technologies cyber managed it services hogantaylor') THEN 'ACT-00175494'
-                        WHEN u.pn_norm IN ('scotiacomp technologies') THEN 'ACT-00065309'
-                        WHEN u.pn_norm IN ('commercial networks ltd') THEN 'ACT-00107189'
-                        WHEN u.pn_norm IN ('cwl systems ltd') THEN 'ACT-00184685'
-                        WHEN u.pn_norm IN ('officeanyplace ltd') THEN 'ACT-00011794'
-                        WHEN u.pn_norm IN ('cmit south brevard 179') THEN 'ACT-00245679'
-                        WHEN u.pn_norm IN ('cmit solutions of oak park hinsdale and oak brook 887 107') THEN 'ACT-00240756'
-                    END,
-                    CASE
-                        WHEN cm.sf_id IS NOT NULL
-                         AND NOT (
-                             UPPER(COALESCE(cm.billing_type, '')) = 'MARKETPLACE'
-                             AND COALESCE(cm.has_cw_sku_mapping, 0) = 0
-                             AND p.sf_id IS NOT NULL
-                         )
-                            THEN cm.sf_id
-                    END,
-                    p.sf_id,
-                    'UNMAPPED'
-                )
+                || COALESCE(u.combined_sf_id, u.partner_map_sf_id, 'UNMAPPED')
             ELSE
-                COALESCE(
-                    CASE
-                        WHEN u.pn_norm IN ('elevity it') THEN 'ACT-00238028'
-                        WHEN u.pn_norm IN ('flr spectron', 'flr spectron ltd') THEN 'ACT-00012675'
-                        WHEN u.pn_norm IN ('onecom', 'onecom ltd') THEN 'ACT-00224155'
-                        WHEN u.pn_norm IN ('bulletproof infotech inc') THEN 'ACT-00239634'
-                        WHEN u.pn_norm IN ('circle technologies ltd') THEN 'ACT-00246156'
-                        WHEN u.pn_norm IN ('extech ltd 1010936') THEN 'ACT-00095923'
-                        WHEN u.pn_norm IN ('staley technologies cyber managed it services', 'staley technologies cyber managed it services hogantaylor') THEN 'ACT-00175494'
-                        WHEN u.pn_norm IN ('scotiacomp technologies') THEN 'ACT-00065309'
-                        WHEN u.pn_norm IN ('commercial networks ltd') THEN 'ACT-00107189'
-                        WHEN u.pn_norm IN ('cwl systems ltd') THEN 'ACT-00184685'
-                        WHEN u.pn_norm IN ('officeanyplace ltd') THEN 'ACT-00011794'
-                        WHEN u.pn_norm IN ('cmit south brevard 179') THEN 'ACT-00245679'
-                        WHEN u.pn_norm IN ('cmit solutions of oak park hinsdale and oak brook 887 107') THEN 'ACT-00240756'
-                    END,
-                    CASE
-                        WHEN cm.sf_id IS NOT NULL
-                         AND NOT (
-                             UPPER(COALESCE(cm.billing_type, '')) = 'MARKETPLACE'
-                             AND COALESCE(cm.has_cw_sku_mapping, 0) = 0
-                             AND p.sf_id IS NOT NULL
-                         )
-                            THEN cm.sf_id
-                    END,
-                    p.sf_id,
-                    'UNMAPPED:' || u.pn_norm
-                )
+                COALESCE(u.combined_sf_id, u.partner_map_sf_id, 'UNMAPPED:' || u.pn_norm)
         END AS partner_recon_key,
         u.VENDOR_PARTNER_NAME AS VENDOR_PARTNER_NAME,
         UPPER(TRIM(u.VENDOR_PRODUCT_SKU)) AS sku_match_group,
         IFF(UPPER(TRIM(COALESCE(u.MODIFIER, ''))) = 'DISABLED', 1, 0) AS is_disabled_modifier,
         COALESCE(u.QUANTITY, 0) AS quantity,
         COALESCE(u.AMOUNT, 0) AS amount
-    FROM usage_norm u
-    LEFT JOIN combined_map cm
-        ON cm.billing_month = u.BILLING_MONTH::DATE
-        AND cm.pn_norm = u.pn_norm
-        AND cm.vendor_sku = UPPER(TRIM(u.VENDOR_PRODUCT_SKU))
-    LEFT JOIN partner_map p
-        ON p.billing_month = u.BILLING_MONTH::DATE
-       AND p.pn_norm = u.pn_norm
-    LEFT JOIN ACRONIS_CONTRACT_RATES rate
-        ON rate.vendor_product = UPPER(TRIM(u.VENDOR_PRODUCT_SKU))
-        AND u.BILLING_MONTH::DATE BETWEEN rate.valid_from AND rate.valid_to
-        AND rate.currency = 'USD'
+    FROM usage_resolved u
     WHERE COALESCE(u.QUANTITY, 0) > 0
       AND u.VENDOR_PRODUCT_SKU IS NOT NULL
-),
-
-sf_account_lookup AS (
-    SELECT
-        TRIM(cws_account_unique_identifier_c) AS sf_id,
-        name AS sf_account_name
-    FROM ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT
-    WHERE is_deleted = FALSE
-      AND cws_account_unique_identifier_c ILIKE 'ACT-%'
 ),
 
 vendor_agg_raw AS (
@@ -327,26 +265,19 @@ vendor_agg AS (
         v.sf_id,
         v.billing_month,
         v.sku_match_group,
-        CASE
-            WHEN v.has_disabled_modifier = 0
-             AND v.partner_name_count > 1
-             AND s.sf_account_name IS NOT NULL
-                THEN s.sf_account_name
-            ELSE v.vendor_partner_name_raw
-        END AS vendor_partner_name,
+        v.vendor_partner_name_raw AS vendor_partner_name,
         v.vendor_product,
         v.has_disabled_modifier,
         v.vendor_quantity,
         v.vendor_amount,
         v.vendor_row_count
     FROM vendor_agg_raw v
-        LEFT JOIN sf_account_lookup s
-      ON s.sf_id = v.sf_id
 ),
 
 zuora_rollup_raw_sf AS (
     -- Parent rollup can collapse sibling subsidiaries into one parent sf_id.
     -- For vendor-level recon, recover the month+cms raw sf_id when available.
+    -- Shared CMS IDs are deliberately excluded rather than ANY_VALUE-selected.
     SELECT
         billing_month::DATE AS billing_month,
         cms_id::VARCHAR AS cms_id,
@@ -355,56 +286,7 @@ zuora_rollup_raw_sf AS (
     WHERE raw_sf_id ILIKE 'ACT-%'
       AND cms_id IS NOT NULL
     GROUP BY 1, 2
-),
-
-zuora_zero_amount_rows AS (
-    SELECT
-        CASE
-            WHEN TRIM(COALESCE(z.SUBSCRIPTION_SOLD_TO_SFDC_ID, '')) ILIKE 'ACT-%'
-                THEN TRIM(z.SUBSCRIPTION_SOLD_TO_SFDC_ID)
-            WHEN TRIM(COALESCE(z.SFDC_ACCOUNT_NUMBER, '')) ILIKE 'ACT-%'
-                THEN TRIM(z.SFDC_ACCOUNT_NUMBER)
-            WHEN TRIM(COALESCE(z.SUBSCRIPTION_SOLD_TO_SFDC_ID, '')) <> ''
-                THEN TRIM(z.SUBSCRIPTION_SOLD_TO_SFDC_ID)
-            ELSE TRIM(z.SFDC_ACCOUNT_NUMBER)
-        END AS sf_id,
-        CASE
-            WHEN TRIM(COALESCE(z.SUBSCRIPTION_SOLD_TO_SFDC_ID, '')) ILIKE 'ACT-%'
-                THEN 'subscription_sold_to_sfdc_id'
-            WHEN TRIM(COALESCE(z.SFDC_ACCOUNT_NUMBER, '')) ILIKE 'ACT-%'
-                THEN 'sfdc_account_number'
-            WHEN TRIM(COALESCE(z.SUBSCRIPTION_SOLD_TO_SFDC_ID, '')) <> ''
-                THEN 'subscription_sold_to_non_act'
-            WHEN TRIM(COALESCE(z.SFDC_ACCOUNT_NUMBER, '')) <> ''
-                THEN 'sfdc_account_number_non_act'
-            ELSE 'unresolved'
-        END AS sf_id_source,
-        z.ACCOUNT_CONTINUUM_ID::VARCHAR AS cms_id,
-        z.BILLING_MONTH::DATE AS billing_month,
-        z.INVOICE_NUMBER AS invoice_number,
-        z.INVOICE_ID AS invoice_id,
-        z.PRODUCT_SKU AS product_sku,
-        z.CHARGE_NAME AS charge_name,
-        COALESCE(z.QUANTITY, 0) AS qty,
-        z.UNIT_PRICE AS unit_price_usd,
-        0::FLOAT AS charge_amount_usd
-    FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE z
-    WHERE z.VENDOR_NAME = 'Acronis'
-      AND z.INVOICE_STATUS = 'Posted'
-      AND z.INVOICE_SOURCE = 'BillRun'
-      AND z.BILLING_MONTH >= '2026-01-01'
-      AND COALESCE(z.QUANTITY, 0) <> 0
-      AND COALESCE(z.CHARGE_AMOUNT, 0) = 0
-      AND NOT EXISTS (
-          SELECT 1
-          FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD s
-          WHERE s.vendor = 'Acronis'
-            AND s.billing_month = z.BILLING_MONTH::DATE
-            AND COALESCE(s.invoice_id, '') = COALESCE(z.INVOICE_ID, '')
-            AND COALESCE(s.product_sku, '') = COALESCE(z.PRODUCT_SKU, '')
-            AND COALESCE(s.charge_name, '') = COALESCE(z.CHARGE_NAME, '')
-            AND COALESCE(s.qty, 0) = COALESCE(z.QUANTITY, 0)
-      )
+        HAVING COUNT(DISTINCT raw_sf_id) = 1
 ),
 
 zuora_union_rows AS (
@@ -412,6 +294,7 @@ zuora_union_rows AS (
         sf_id,
         sf_id_source,
         cms_id,
+        subscription_sold_to_sf_id_raw AS sold_to_sf_id_raw,
         billing_month,
         product_sku,
         qty,
@@ -424,29 +307,17 @@ zuora_union_rows AS (
     WHERE vendor = 'Acronis'
       AND sf_id ILIKE 'ACT-%'
       AND COALESCE(qty, 0) <> 0
-
-    UNION ALL
-
-    SELECT
-        sf_id,
-        sf_id_source,
-        cms_id,
-        billing_month,
-        product_sku,
-        qty,
-        unit_price_usd,
-        charge_amount_usd,
-        invoice_number,
-        invoice_id,
-        charge_name
-    FROM zuora_zero_amount_rows
 ),
 
 zuora_source_rows AS (
     SELECT
         CASE
             WHEN z.sf_id_source ILIKE '%parent_rollup%'
-                THEN COALESCE(zr.raw_sf_id, z.sf_id)
+                THEN COALESCE(
+                    CASE WHEN z.sold_to_sf_id_raw ILIKE 'ACT-%' THEN z.sold_to_sf_id_raw END,
+                    zr.raw_sf_id,
+                    z.sf_id
+                )
             ELSE z.sf_id
         END AS sf_id,
         z.billing_month::DATE AS billing_month,
@@ -505,6 +376,15 @@ zuora_mapped_rows AS (
              AND UPPER(COALESCE(z.charge_name, '')) LIKE '%ADVANCED SECURITY%'
                 THEN 'SRIAMSENS'
 
+            -- Zuora NOC service lines do not appear in vendor usage with their
+            -- own SKU code; map them to the corresponding workload families.
+            WHEN z.product_sku = 'NOCSRVACRCYBPROTSERV'
+             AND UPPER(COALESCE(z.charge_name, '')) LIKE '%SERVER%'
+                THEN 'SPEAMSENS'
+            WHEN z.product_sku = 'NOCSRVACRCYBPROTSERV'
+             AND UPPER(COALESCE(z.charge_name, '')) LIKE '%DESKTOP%'
+                THEN 'SPFAMSENS'
+
             ELSE COALESCE(sm.sku_match_key, z.product_sku)
         END AS sku_match_group,
         z.product_sku,
@@ -540,7 +420,9 @@ marketplace_source_rows AS (
         m.billing_month::DATE AS billing_month,
         UPPER(TRIM(m.product_sku)) AS product_sku,
         COALESCE(m.qty, 0) AS qty,
-        COALESCE(m.amount, 0) AS amount
+        COALESCE(m.amount, 0) AS amount,
+        m.transaction_source,
+        m.marketplace_invoice_id
     FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD m
     WHERE m.vendor = 'Acronis'
       AND m.sf_id ILIKE 'ACT-%'
@@ -556,12 +438,21 @@ marketplace_mapped_rows AS (
         END AS sku_match_group,
         m.product_sku,
         m.qty,
-        m.amount
+        m.amount,
+        m.transaction_source,
+        m.marketplace_invoice_id
     FROM marketplace_source_rows m
     LEFT JOIN acronis_sku_map_tokens sm
       ON sm.cw_sku_token = m.product_sku
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY m.sf_id, m.billing_month, m.product_sku, m.qty, m.amount
+        PARTITION BY
+            m.sf_id,
+            m.billing_month,
+            m.product_sku,
+            m.qty,
+            m.amount,
+            COALESCE(m.transaction_source, ''),
+            COALESCE(m.marketplace_invoice_id, '')
         ORDER BY IFF(sm.cw_sku = m.product_sku, 1, 0) DESC,
                  LENGTH(COALESCE(sm.cw_sku, m.product_sku)) ASC,
                  sm.sku_match_key
@@ -669,7 +560,12 @@ joined AS (
         ON ma.sf_id = COALESCE(v.sf_id, z.sf_id, m.sf_id)
        AND ma.billing_month = COALESCE(v.billing_month, z.billing_month, m.billing_month)
     LEFT JOIN (SELECT sku_match_key AS sku_match_group, ARRAY_AGG(DISTINCT cw_sku) WITHIN GROUP (ORDER BY cw_sku) AS cw_skus
-               FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Acronis') GROUP BY 1) smv
+                             FROM (
+                                     SELECT *
+                                     FROM RECON_SKU_MAP
+                                     WHERE VENDOR = 'Acronis'
+                                         AND UPPER(TRIM(COALESCE(cw_sku, ''))) <> 'UNMATCHED'
+                             ) GROUP BY 1) smv
         ON smv.sku_match_group = COALESCE(v.sku_match_group, z.sku_match_group, m.sku_match_group)
     LEFT JOIN sf_id_to_partner pn
         ON pn.sf_id = COALESCE(v.sf_id, z.sf_id, m.sf_id)
@@ -834,6 +730,94 @@ scored AS (
         END AS outcome_flag
     FROM joined_with_flags
     WHERE COALESCE(vendor_quantity, 0) > 0 OR COALESCE(total_billing_quantity, 0) > 0
+),
+
+-- =============================================================================
+-- API TELEMETRY (direct raw-TRT join, 2026-08-28 rewrite)
+-- =============================================================================
+-- Architecture parity with Proofpoint (see PROOFPOINT_RECON_DETAIL script).
+-- Prior implementation used the stale THIRD_PARTY_RECON_SOURCE_TRT_PROD snapshot
+-- for both the partner bridge (sf_id -> cms_id) and a fuzzy multi-column token
+-- match. That is now retired in favor of a single canonical wiring:
+--
+--   TRT usage row is matched to a recon row when
+--       partner_id::VARCHAR = RECON_PARTNER_MAP.cms_id
+--   AND charge_sku          = RECON_SKU_MAP.TRT_MATCH_KEY
+--
+-- Acronis uses TRT.charge_sku (not product_sku) because vendor products bill
+-- under an APP-BC-<SKU>-001 / APP-SA-<SKU>-001 code. TRT_MATCH_KEY on the SKU
+-- map is populated as CW_SKU || '-001' for the CW_SKU rows matching that pattern.
+--
+-- Cycle window: (day 21 prev month, day 21 current month] -> Acronis invoice cycle.
+--   api_quantity     = point-in-time seats on snapshot_date (day 21 current month)
+--   avg_api_quantity = daily average across the full cycle
+--
+acronis_trt_keys AS (
+    -- One row per (sku_match_key, charge_sku) that Acronis expects to see in TRT.
+    -- UPPER(TRIM(...)) both sides so case / whitespace never causes a miss.
+    SELECT DISTINCT
+        UPPER(TRIM(trt_match_key)) AS charge_sku_key,
+        UPPER(TRIM(sku_match_key)) AS sku_match_group_key
+    FROM RECON_SKU_MAP
+    WHERE vendor = 'Acronis'
+      AND trt_match_key IS NOT NULL
+      AND sku_match_key IS NOT NULL
+),
+
+acronis_api_partners AS (
+    -- One (sf_id, billing_month, sku_match_group) row per scored recon row with
+    -- CMS_ID resolved from the canonical RECON_PARTNER_MAP (not the stale TRT
+    -- snapshot). Distinct sf_id -> cms_id map is fine because RECON_PARTNER_MAP
+    -- is already de-duped upstream.
+    SELECT DISTINCT
+        s.sf_id,
+        s.billing_month,
+        s.sku_match_group,
+        UPPER(TRIM(s.sku_match_group)) AS sku_match_group_key,
+        p.cms_id
+    FROM scored s
+        JOIN (
+                SELECT DISTINCT sf_id, cms_id
+                FROM RECON_PARTNER_MAP
+                WHERE sf_id IS NOT NULL
+                    AND cms_id IS NOT NULL
+                    AND TRIM(cms_id) <> ''
+        ) p ON p.sf_id = s.sf_id
+    WHERE s.sf_id IS NOT NULL
+      AND s.sku_match_group IS NOT NULL
+),
+
+acronis_api_daily AS (
+    -- Direct raw-TRT usage join:
+    --   partner_id = cms_id  AND  UPPER(charge_sku) = UPPER(trt_match_key)
+    -- Cycle window is (day 21 prev month, day 21 current month].
+    SELECT
+        pa.sf_id,
+        pa.billing_month,
+        pa.sku_match_group,
+        DATEADD('day', 20, pa.billing_month)::DATE                       AS snapshot_date,
+        u.on_date::DATE                                                  AS on_date,
+        SUM(COALESCE(u.agent_cnt, 0))                                    AS day_quantity
+    FROM ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+    JOIN acronis_api_partners pa
+      ON u.partner_id::VARCHAR = pa.cms_id
+    JOIN acronis_trt_keys k
+      ON k.charge_sku_key      = UPPER(TRIM(u.charge_sku))
+     AND k.sku_match_group_key = pa.sku_match_group_key
+        WHERE u.on_date >  DATEADD('day', 20, DATEADD('month', -1, pa.billing_month))::DATE
+            AND u.on_date <= DATEADD('day', 20, pa.billing_month)::DATE
+    GROUP BY 1, 2, 3, 4, 5
+),
+
+acronis_api_rollup AS (
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        MAX(IFF(on_date = snapshot_date, day_quantity, NULL)) AS api_quantity,
+        AVG(day_quantity)                                     AS avg_api_quantity
+    FROM acronis_api_daily
+    GROUP BY 1, 2, 3
 )
 
 SELECT
@@ -846,6 +830,8 @@ SELECT
     s.zuora_skus,
     s.marketplace_skus,
     s.billing_source_mix,
+    api.api_quantity,
+    api.avg_api_quantity,
     s.vendor_quantity,
     s.vendor_unit_price,
     s.vendor_amount,
@@ -940,6 +926,10 @@ LEFT JOIN ACRONIS_CONTRACT_RATES cr
     ON cr.vendor_product = s.sku_match_group
     AND s.billing_month BETWEEN cr.valid_from AND cr.valid_to
     AND cr.currency = 'USD'
+LEFT JOIN acronis_api_rollup api
+    ON api.sf_id = s.sf_id
+   AND api.billing_month = s.billing_month
+   AND api.sku_match_group = s.sku_match_group
 QUALIFY ROW_NUMBER() OVER (PARTITION BY s.sf_id, s.billing_month, s.sku_match_group ORDER BY cr.contract_cost_rate DESC NULLS LAST) = 1;
 
 -- =============================================================================
@@ -1011,16 +1001,22 @@ ORDER BY BILLING_MONTH;
 CREATE OR REPLACE TABLE ACRONIS_RAW_PARTNER_COVERAGE AS
 WITH merged_account_resolver AS (
     SELECT old_sf_id, canonical_sf_id, merge_effective_month
-    FROM ACCOUNT_MERGE_RESOLVER
+    FROM RECON_ACCOUNT_MERGE_RESOLVER
 ),
 partner_map AS (
     SELECT
+        pm.billing_month::DATE AS billing_month,
         TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(pm.partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS pn_norm,
-        ANY_VALUE(COALESCE(mr.canonical_sf_id, pm.sf_id)) AS sf_id
-    FROM RECON_PARTNER_MAP pm
-    LEFT JOIN merged_account_resolver mr ON mr.old_sf_id = pm.sf_id
+        pm.sf_id AS sf_id
+    FROM RECON_PARTNER_MAP_MONTHLY pm
     WHERE pm.sf_id ILIKE 'ACT-%' AND pm.partner_name IS NOT NULL
-    GROUP BY 1
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY pm.billing_month::DATE,
+                     TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(pm.partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
+        ORDER BY IFF(pm.cms_id IS NULL OR TRIM(pm.cms_id) IN ('', '-'), 0, 1) DESC,
+                 IFF(pm.zuora_name IS NULL OR TRIM(pm.zuora_name) IN ('', '-'), 0, 1) DESC,
+                 pm.sf_id
+    ) = 1
 ),
 combined_map AS (
     SELECT
@@ -1029,7 +1025,8 @@ combined_map AS (
         UPPER(TRIM(cm.VENDOR_SKU)) AS vendor_sku,
         ANY_VALUE(
             COALESCE(
-                CASE WHEN cm.BILLING_MONTH::DATE >= mr.merge_effective_month
+                CASE WHEN mr.old_sf_id IS NOT NULL
+                          AND (mr.merge_effective_month IS NULL OR cm.BILLING_MONTH::DATE >= mr.merge_effective_month)
                      THEN mr.canonical_sf_id END,
                 cm.SF_ID
             )
@@ -1044,33 +1041,17 @@ raw AS (
         u.BILLING_MONTH::DATE AS billing_month,
         UPPER(TRIM(u.VENDOR_PRODUCT_SKU)) AS vendor_sku,
         COALESCE(u.QUANTITY, 0) AS quantity,
-        COALESCE(
-            CASE
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('elevity it') THEN 'ACT-00238028'
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('flr spectron', 'flr spectron ltd') THEN 'ACT-00012675'
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('onecom', 'onecom ltd') THEN 'ACT-00224155'
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('bulletproof infotech inc') THEN 'ACT-00239634'
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('circle technologies ltd') THEN 'ACT-00246156'
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('extech ltd 1010936') THEN 'ACT-00095923'
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('staley technologies cyber managed it services', 'staley technologies cyber managed it services hogantaylor') THEN 'ACT-00175494'
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('scotiacomp technologies') THEN 'ACT-00065309'
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('commercial networks ltd') THEN 'ACT-00107189'
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('cwl systems ltd') THEN 'ACT-00184685'
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('officeanyplace ltd') THEN 'ACT-00011794'
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('cmit south brevard 179') THEN 'ACT-00245679'
-                WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN ('cmit solutions of oak park hinsdale and oak brook 887 107') THEN 'ACT-00240756'
-            END,
-            cm.sf_id,
-            p.sf_id
-        ) AS sf_id
-    FROM ACRONIS_USAGE u
+        COALESCE(cm.sf_id, p.sf_id) AS sf_id
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
     LEFT JOIN combined_map cm
         ON cm.billing_month = u.BILLING_MONTH::DATE
        AND cm.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
        AND cm.vendor_sku = UPPER(TRIM(u.VENDOR_PRODUCT_SKU))
     LEFT JOIN partner_map p
-        ON p.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
-    WHERE COALESCE(u.QUANTITY, 0) > 0
+                ON p.billing_month = u.BILLING_MONTH::DATE
+             AND p.pn_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
+    WHERE u.VENDOR = 'Acronis'
+      AND COALESCE(u.QUANTITY, 0) > 0
       AND u.VENDOR_PRODUCT_SKU IS NOT NULL
 )
 SELECT
@@ -1090,16 +1071,15 @@ ORDER BY billing_month;
 CREATE OR REPLACE TABLE ACRONIS_SOURCE_COVERAGE_AUDIT AS
 WITH usage_qty AS (
     SELECT BILLING_MONTH::DATE AS billing_month, SUM(QUANTITY) AS vendor_usage_quantity
-    FROM ACRONIS_USAGE
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+    WHERE VENDOR = 'Acronis'
     GROUP BY 1
 ),
 zuora_base AS (
-    SELECT BILLING_MONTH::DATE AS billing_month, SUM(QUANTITY) AS zuora_posted_billrun_quantity
-    FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE
-    WHERE VENDOR_NAME = 'Acronis'
-      AND INVOICE_STATUS = 'Posted'
-      AND INVOICE_SOURCE = 'BillRun'
-      AND BILLING_MONTH >= '2026-01-01'
+        SELECT billing_month::DATE AS billing_month, SUM(qty) AS zuora_posted_billrun_quantity
+        FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
+        WHERE vendor = 'Acronis'
+            AND billing_month >= '2026-01-01'
     GROUP BY 1
 ),
 resolved AS (

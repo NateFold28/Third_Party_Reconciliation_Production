@@ -2,7 +2,7 @@
 -- STEP 2: AUVIK FINAL RECONCILIATION
 -- =============================================================================
 -- Proofpoint-style reconciliation adapted for Auvik:
---   Vendor side: normalized AUVIK_USAGE, retaining raw QUANTITY and
+--   Vendor side: shared vendor usage filtered to Auvik, retaining raw QUANTITY and
 --                OVERAGE_QUANTITY, while reconciling on billed quantity
 --                recovered from AMOUNT / UNIT_PRICE when available.
 --   Billing side: Zuora is the primary reconciliation source; Marketplace is
@@ -78,8 +78,12 @@ contract_group_rates AS (
 ),
 usage_deduped AS (
     SELECT *
-    FROM AUVIK_USAGE
-    WHERE COALESCE(quantity, 0) <> 0
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+    WHERE VENDOR = 'Auvik'
+      AND COALESCE(quantity, 0) <> 0
+            -- Internal regional/corporate tenants are not customer-billable partners.
+            AND UPPER(TRIM(vendor_partner_name)) NOT LIKE 'CONNECTWISE%'
+            AND UPPER(TRIM(vendor_partner_name)) NOT LIKE 'CONTINUUM - %'
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY
             billing_month,
@@ -172,15 +176,35 @@ vendor_agg AS (
         sf_id,
         partner_recon_key,
         billing_month,
-        sku_match_group,
-        auvik_product_group,
+        CASE
+            WHEN sku_match_group IN ('AUVIK_ESSENTIALS', 'AUVIK_PERFORMANCE') THEN 'AUVIK_ANM_NETWORK'
+            ELSE sku_match_group
+        END AS sku_match_group,
+        CASE
+            WHEN sku_match_group IN ('AUVIK_ESSENTIALS', 'AUVIK_PERFORMANCE') THEN 'ANM_NETWORK'
+            ELSE auvik_product_group
+        END AS auvik_product_group,
         LISTAGG(DISTINCT vendor_partner_name, ' | ') WITHIN GROUP (ORDER BY vendor_partner_name) AS vendor_partner_name,
         LISTAGG(DISTINCT auvik_product, ' | ') WITHIN GROUP (ORDER BY auvik_product) AS auvik_product,
         LISTAGG(DISTINCT vendor_entity, ' | ') WITHIN GROUP (ORDER BY vendor_entity) AS vendor_entities,
         LISTAGG(DISTINCT currency, ' | ') WITHIN GROUP (ORDER BY currency) AS currencies,
         SUM(vendor_raw_quantity) AS vendor_raw_quantity,
         SUM(vendor_overage_quantity) AS vendor_overage_quantity,
-        SUM(vendor_billable_quantity) AS vendor_quantity,
+        -- Auvik Performance Add-On rows are amount-bearing add-ons to the ANM
+        -- device base, not separate billable device seats in the manual recon.
+        -- Keep their dollars, but do not double-count their quantities.
+        SUM(
+            CASE
+                WHEN sku_match_group = 'AUVIK_PERFORMANCE'
+                 AND (
+                        auvik_product ILIKE '%PERFORMANCE ADD%ON%'
+                     OR auvik_product ILIKE '%PERFORMANCE ADD-ON%'
+                     OR auvik_product ILIKE '%ADDON%'
+                 )
+                    THEN 0
+                ELSE vendor_billable_quantity
+            END
+        ) AS vendor_quantity,
         AVG(NULLIF(unit_price, 0)) AS vendor_unit_price,
         SUM(amount) AS vendor_amount,
         COUNT(DISTINCT usage_row_id) AS vendor_row_count,
@@ -201,7 +225,11 @@ vendor_cw_skus AS (
         ARRAY_AGG(DISTINCT m.cw_sku) WITHIN GROUP (ORDER BY m.cw_sku) AS cw_skus
     FROM vendor_agg v
     LEFT JOIN (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'Auvik') m
-        ON REGEXP_REPLACE(m.sku_match_key, '^AUVIK_(CMS|CW)_', 'AUVIK_') = v.sku_match_group
+        ON CASE
+               WHEN REGEXP_REPLACE(m.sku_match_key, '^AUVIK_(CMS|CW)_', 'AUVIK_') IN ('AUVIK_ESSENTIALS', 'AUVIK_PERFORMANCE')
+                   THEN 'AUVIK_ANM_NETWORK'
+               ELSE REGEXP_REPLACE(m.sku_match_key, '^AUVIK_(CMS|CW)_', 'AUVIK_')
+           END = v.sku_match_group
        AND m.cw_sku IS NOT NULL
     GROUP BY 1, 2, 3
 ),
@@ -244,6 +272,13 @@ auvik_zuora_rows AS (
                         ELSE 1::NUMBER
                 END AS billing_qty_multiplier,
                 COALESCE(z.qty, 0) AS zuora_native_quantity,
+                COUNT_IF(
+                    UPPER(TRIM(z.product_sku)) <> 'AUVIKPERFORMANCADDON'
+                    AND NOT (
+                        UPPER(z.product_sku) LIKE '%ASM%'
+                        OR UPPER(z.product_sku) LIKE '%SAM%'
+                    )
+                ) OVER (PARTITION BY z.sf_id, z.billing_month) AS non_addon_anm_line_count,
                 COALESCE(z.qty, 0) *
                 CASE
                         WHEN COALESCE(z.qty, 0) = 1
@@ -264,6 +299,9 @@ auvik_zuora_rows AS (
         WHERE z.vendor = 'Auvik'
             AND z.sf_id ILIKE 'ACT-%'
             AND COALESCE(z.qty, 0) <> 0
+            -- Corporate Auvik Invent charges are internal vendor-account
+            -- economics, not partner device billing.
+            AND UPPER(TRIM(z.product_sku)) <> 'AUVIK-INVENT-BILLING'
 ),
 auvik_marketplace_rows AS (
         SELECT
@@ -291,12 +329,19 @@ auvik_marketplace_rows AS (
                         ELSE 'ESSENTIALS'
                 END AS auvik_product_group,
                 UPPER(TRIM(m.product_sku)) AS product_sku,
+                COUNT_IF(
+                    UPPER(TRIM(m.product_sku)) <> 'AUVIKPERFORMANCADDON'
+                    AND NOT (
+                        UPPER(m.product_sku) LIKE '%ASM%'
+                        OR UPPER(m.product_sku) LIKE '%SAM%'
+                    )
+                ) OVER (PARTITION BY m.sf_id, m.billing_month) AS non_addon_anm_line_count,
                 COALESCE(m.qty, 0) AS marketplace_quantity,
                 COALESCE(m.amount, 0) AS marketplace_amount,
                 1::NUMBER AS marketplace_row_count,
                 m.transaction_source AS marketplace_transaction_sources
         FROM THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD m
-        INNER JOIN cw_sku_map cw
+        LEFT JOIN cw_sku_map cw
             ON cw.cw_sku_key = UPPER(TRIM(m.product_sku))
         WHERE m.vendor = 'Auvik'
             AND m.sf_id ILIKE 'ACT-%'
@@ -306,34 +351,62 @@ zuora_agg AS (
     SELECT
         b.sf_id,
         b.billing_month,
-        REGEXP_REPLACE(b.sku_match_group, '^AUVIK_(CMS|CW)_', 'AUVIK_') AS sku_match_group,
-        ANY_VALUE(b.auvik_product_group) AS auvik_product_group,
+        CASE
+            WHEN REGEXP_REPLACE(b.sku_match_group, '^AUVIK_(CMS|CW)_', 'AUVIK_') IN ('AUVIK_ESSENTIALS', 'AUVIK_PERFORMANCE') THEN 'AUVIK_ANM_NETWORK'
+            ELSE REGEXP_REPLACE(b.sku_match_group, '^AUVIK_(CMS|CW)_', 'AUVIK_')
+        END AS sku_match_group,
+        CASE
+            WHEN REGEXP_REPLACE(b.sku_match_group, '^AUVIK_(CMS|CW)_', 'AUVIK_') IN ('AUVIK_ESSENTIALS', 'AUVIK_PERFORMANCE') THEN 'ANM_NETWORK'
+            ELSE b.auvik_product_group
+        END AS auvik_product_group,
         ARRAY_AGG(DISTINCT b.product_sku) WITHIN GROUP (ORDER BY b.product_sku) AS zuora_skus,
         LISTAGG(DISTINCT b.charge_names, ' | ') WITHIN GROUP (ORDER BY b.charge_names) AS zuora_charge_names,
         LISTAGG(DISTINCT b.billing_unit_types, ' | ') WITHIN GROUP (ORDER BY b.billing_unit_types) AS zuora_billing_unit_types,
         MAX(b.billing_qty_multiplier) AS max_zuora_billing_qty_multiplier,
         SUM(b.zuora_native_quantity) AS zuora_native_quantity,
-        SUM(b.zuora_quantity) AS zuora_quantity,
+        SUM(
+            CASE
+                WHEN REGEXP_REPLACE(b.sku_match_group, '^AUVIK_(CMS|CW)_', 'AUVIK_') = 'AUVIK_PERFORMANCE'
+                 AND UPPER(TRIM(b.product_sku)) = 'AUVIKPERFORMANCADDON'
+                 AND b.non_addon_anm_line_count > 0
+                    THEN 0
+                ELSE b.zuora_quantity
+            END
+        ) AS zuora_quantity,
         AVG(NULLIF(b.zuora_unit_price, 0)) AS zuora_unit_price,
         SUM(b.zuora_charge_amount) AS zuora_amount,
         SUM(b.billing_row_count) AS zuora_row_count
     FROM auvik_zuora_rows b
-    GROUP BY 1, 2, 3
+    GROUP BY 1, 2, 3, 4
 ),
 marketplace_agg AS (
     SELECT
         b.sf_id,
         b.billing_month,
-        REGEXP_REPLACE(b.sku_match_group, '^AUVIK_(CMS|CW)_', 'AUVIK_') AS sku_match_group,
-        ANY_VALUE(b.auvik_product_group) AS auvik_product_group,
+        CASE
+            WHEN REGEXP_REPLACE(b.sku_match_group, '^AUVIK_(CMS|CW)_', 'AUVIK_') IN ('AUVIK_ESSENTIALS', 'AUVIK_PERFORMANCE') THEN 'AUVIK_ANM_NETWORK'
+            ELSE REGEXP_REPLACE(b.sku_match_group, '^AUVIK_(CMS|CW)_', 'AUVIK_')
+        END AS sku_match_group,
+        CASE
+            WHEN REGEXP_REPLACE(b.sku_match_group, '^AUVIK_(CMS|CW)_', 'AUVIK_') IN ('AUVIK_ESSENTIALS', 'AUVIK_PERFORMANCE') THEN 'ANM_NETWORK'
+            ELSE b.auvik_product_group
+        END AS auvik_product_group,
         ARRAY_AGG(DISTINCT b.product_sku) WITHIN GROUP (ORDER BY b.product_sku) AS marketplace_skus,
-        SUM(b.marketplace_quantity) AS marketplace_quantity,
+        SUM(
+            CASE
+                WHEN REGEXP_REPLACE(b.sku_match_group, '^AUVIK_(CMS|CW)_', 'AUVIK_') = 'AUVIK_PERFORMANCE'
+                 AND UPPER(TRIM(b.product_sku)) = 'AUVIKPERFORMANCADDON'
+                 AND b.non_addon_anm_line_count > 0
+                    THEN 0
+                ELSE b.marketplace_quantity
+            END
+        ) AS marketplace_quantity,
         SUM(b.marketplace_amount) AS marketplace_amount,
         SUM(b.marketplace_row_count) AS marketplace_row_count,
         LISTAGG(DISTINCT b.marketplace_transaction_sources, ' | ')
             WITHIN GROUP (ORDER BY b.marketplace_transaction_sources) AS marketplace_transaction_sources
     FROM auvik_marketplace_rows b
-    GROUP BY 1, 2, 3
+    GROUP BY 1, 2, 3, 4
 ),
 same_month_any_billing AS (
     SELECT sf_id, billing_month, SUM(zuora_quantity) AS any_zuora_quantity, SUM(zuora_amount) AS any_zuora_amount, COUNT(*) AS any_zuora_row_count
@@ -522,6 +595,111 @@ detail_pre AS (
         ON cr.auvik_product_group = s.auvik_product_group
        AND cr.currency = 'USD'
        AND s.billing_month BETWEEN cr.valid_from AND cr.valid_to
+),
+
+-- =============================================================================
+-- Auvik API usage (direct-from-raw architecture, 2026-08-30)
+-- ---------------------------------------------------------------------------
+-- Replaces the retired legacy TRT_PROD bridge with a direct read off the raw
+-- daily-usage table:
+--   ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE
+-- Join keys (governed):
+--   * partner_id (usage) = cms_id from RECON_PARTNER_MAP (keyed by sf_id).
+--   * product_sku (usage) = TRT_MATCH_KEY from RECON_SKU_MAP (Auvik).
+--     For Auvik, TRT_MATCH_KEY = CW_SKU (post-2026-08-30 SKU-map rebuild:
+--     seed-derived rows carry the real product_sku as both CW_SKU and
+--     TRT_MATCH_KEY; 336 CW SKUs across 3 families now cover the 25/25
+--     Zuora-billed SKUs in June).
+-- Cycle window: Auvik invoice = day 21 of each month, so a billing_month M
+--   accumulates on_date rows in (M-1 + 20 days, M + 20 days].
+--   snapshot_date = DATEADD('day', 20, billing_month) (i.e. day 21).
+-- Grain: (sf_id, billing_month, sku_match_group) -- matches vendor_agg /
+--        detail_pre. sku_match_group is family-only (AUVIK_ESSENTIALS,
+--        AUVIK_PERFORMANCE, AUVIK_ASM); CMS/CW modifier collapsed here to
+--        match vendor-side rollup.
+-- =============================================================================
+auvik_trt_keys AS (
+    -- Distinct TRT product_sku values Auvik maps to, plus the sku_match_group
+    -- they roll up to. Uppercased for the join. CMS/CW modifier stripped so
+    -- that the API-side join grain matches the vendor_agg grain.
+    SELECT DISTINCT
+        UPPER(TRIM(trt_match_key)) AS product_sku_key,
+        CASE
+            WHEN REGEXP_REPLACE(sku_match_key, '^AUVIK_(CMS|CW)_', 'AUVIK_') IN ('AUVIK_ESSENTIALS', 'AUVIK_PERFORMANCE') THEN 'AUVIK_ANM_NETWORK'
+            ELSE REGEXP_REPLACE(sku_match_key, '^AUVIK_(CMS|CW)_', 'AUVIK_')
+        END AS sku_match_group
+    FROM RECON_SKU_MAP
+    WHERE vendor = 'Auvik'
+      AND trt_match_key IS NOT NULL
+      AND TRIM(trt_match_key) <> ''
+      AND sku_match_key IS NOT NULL
+      AND REGEXP_SUBSTR(sku_match_key, 'AUVIK_(CMS|CW)_', 1, 1, 'e', 1) IS NOT NULL
+),
+
+auvik_api_partners AS (
+    -- sf_ids that actually appear in the Auvik recon for a given
+    -- billing_month, joined to their cms_id via RECON_PARTNER_MAP.
+    SELECT DISTINCT
+        d.sf_id,
+        d.billing_month,
+        d.sku_match_group,
+        pm.cms_id
+    FROM detail_pre d
+        JOIN RECON_PARTNER_MAP pm
+      ON pm.sf_id = d.sf_id
+    WHERE d.sf_id IS NOT NULL
+      AND d.sku_match_group IS NOT NULL
+      AND pm.cms_id IS NOT NULL
+      AND TRIM(pm.cms_id) <> ''
+),
+
+auvik_api_daily AS (
+    -- One row per (sf_id, billing_month, sku_match_group, on_date). The
+    -- window predicate binds each on_date to exactly one billing_month.
+    -- day_quantity sums AGENT_CNT across all CHARGE_SKU variants that roll
+    -- up to the same PRODUCT_SKU (CW invoice-line splits).
+    SELECT
+        pa.sf_id,
+        pa.billing_month,
+        pa.sku_match_group,
+        DATEADD('day', 20, pa.billing_month)::DATE  AS snapshot_date,
+        u.on_date::DATE                              AS on_date,
+        SUM(COALESCE(u.agent_cnt, 0))                AS day_quantity
+    FROM auvik_api_partners pa
+    JOIN auvik_trt_keys k
+      ON k.sku_match_group = pa.sku_match_group
+    JOIN ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+      ON u.partner_id::VARCHAR = pa.cms_id
+     AND UPPER(TRIM(u.product_sku)) = k.product_sku_key
+     AND u.on_date::DATE >  DATEADD('day', 20, DATEADD('month', -1, pa.billing_month))::DATE
+     AND u.on_date::DATE <= DATEADD('day', 20, pa.billing_month)::DATE
+    GROUP BY 1, 2, 3, 4, 5
+),
+
+auvik_api_usage AS (
+    -- Roll up to recon grain. api_quantity = day-21 snapshot value (the
+    -- Auvik invoice snapshot day). avg_api_quantity = mean across the
+    -- window, used to smooth mid-cycle add/drop noise.
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        MAX(IFF(on_date = snapshot_date, day_quantity, NULL)) AS api_quantity,
+        AVG(day_quantity)                                     AS avg_api_quantity
+    FROM auvik_api_daily
+    GROUP BY 1, 2, 3
+),
+
+detail_with_api AS (
+    SELECT
+        d.*,
+        a.api_quantity::FLOAT     AS api_quantity,
+        a.avg_api_quantity::FLOAT AS avg_api_quantity
+    FROM detail_pre d
+    LEFT JOIN auvik_api_usage a
+        ON a.sf_id           = d.sf_id
+       AND a.billing_month   = d.billing_month
+       AND a.sku_match_group = d.sku_match_group
 )
 SELECT
     billing_month,
@@ -545,6 +723,8 @@ SELECT
         WHEN marketplace_quantity IS NOT NULL THEN 'MARKETPLACE_FALLBACK'
         ELSE 'NO_BILLING_SOURCE'
     END AS billing_source_mix,
+    api_quantity,
+    avg_api_quantity,
     vendor_raw_quantity,
     vendor_overage_quantity,
     vendor_quantity,
@@ -664,7 +844,7 @@ SELECT
         ELSE 'UNDER_CONTRACT'
     END AS vendor_vs_contract_flag,
     CASE WHEN contract_cost_rate IS NULL OR vendor_unit_price IS NULL THEN NULL ELSE (vendor_unit_price - contract_cost_rate) * vendor_quantity END AS vendor_vs_contract_dollar_impact
-FROM detail_pre;
+FROM detail_with_api;
 
 CREATE OR REPLACE TABLE AUVIK_RECON_SUMMARY AS
 SELECT

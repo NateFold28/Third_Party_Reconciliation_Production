@@ -10,6 +10,10 @@ TARGET
     ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES
       BILLING_MONTH      DATE
       VENDOR             VARCHAR
+            INVOICE_ID         VARCHAR
+            INVOICE_DESCRIPTION VARCHAR
+            NETSUITE_TRANSACTION_ID VARCHAR
+            NETSUITE_URL       VARCHAR
       PARTNER            VARCHAR
       VENDOR_PRODUCT_SKU VARCHAR
       DESCRIPTION        VARCHAR
@@ -46,6 +50,9 @@ from TEMPLATES.Python.connection import get_snowflake_connection  # noqa: E402
 
 TARGET_TABLE = "ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES"
 DEFAULT_FROM_MONTH = "2026-01"
+NETSUITE_BILL_URL_PREFIX = (
+    "https://6230579.app.netsuite.com/app/accounting/transactions/vendbill.nl?id="
+)
 
 VENDOR_NAME_MAP: dict[str, str] = {
     "acronis":     "Acronis",
@@ -68,6 +75,43 @@ def _month_from_path(file_path: str) -> str | None:
     if m:
         return f"{m.group(1)}-{m.group(2)}-01"
     return None
+
+
+def _invoice_id(file_path: str, text: str, source_record_id: object) -> str:
+    """Return a stable vendor invoice identifier without vendor-specific schema."""
+    filename = str(file_path or "").rsplit("/", 1)[-1]
+    patterns = (
+        r"(?i)(INV[A-Z]*-?\d+[A-Z]?)",
+        r"(?i)(CF[AM]I\d+)",
+        r"(?i)(?:INVOICE[_ -])([0-9]{5,})",
+        r"(?i)\bNumber\s*:?\s*([A-Z0-9-]{5,})",
+        r"(?i)\bInvoice\s*(?:No\.?|Number|#)\s*:?\s*([A-Z0-9-]{5,})",
+    )
+    for source in (filename, text[:5000]):
+        for pattern in patterns:
+            match = re.search(pattern, source)
+            if match:
+                return match.group(1).upper()
+    return f"SOURCE-{source_record_id}" if source_record_id is not None else filename
+
+
+def _invoice_description(vendor: str | None, text: str, file_path: str) -> str:
+    """Derive a concise invoice label for filtering and app display."""
+    if str(vendor or "").upper() == "KEEPIT":
+        if re.search(r"TAKEOUT", text, flags=re.IGNORECASE):
+            return "Takeout"
+        if re.search(r"\bMAIN\b", text, flags=re.IGNORECASE):
+            return "Main"
+    filename = str(file_path or "").rsplit("/", 1)[-1]
+    return re.sub(r"\.pdf$", "", filename, flags=re.IGNORECASE)
+
+
+def _netsuite_url(source_record_id: object) -> str | None:
+    """Return the direct NetSuite vendor-bill URL for a numeric transaction ID."""
+    transaction_id = str(source_record_id or "").strip()
+    if not re.fullmatch(r"\d+", transaction_id):
+        return None
+    return f"{NETSUITE_BILL_URL_PREFIX}{transaction_id}&whence="
 
 
 def _month_from_service_period(text: str | None) -> str | None:
@@ -968,7 +1012,7 @@ def fetch_raw(cur, vendor_filter: str | None, month_filter: str | None,
         tok = month_filter[:7].replace("-", "_")
         clauses.append(f"FILE_PATH ILIKE '%{tok}%'")
     where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
-    sql = f"SELECT VENDOR_NAME, FILE_PATH, PARSED_DOCUMENT FROM NETSUITE.DBO.PARSED_VENDOR_DATA {where} ORDER BY FILE_PATH"
+    sql = f"SELECT TRANSACTION_ID, VENDOR_NAME, FILE_PATH, PARSED_DOCUMENT FROM NETSUITE.DBO.PARSED_VENDOR_DATA {where} ORDER BY FILE_PATH"
     print(f"Fetching invoice files ... ", end="", flush=True)
     cur.execute(sql)
     rows = cur.fetchall()
@@ -979,19 +1023,26 @@ def fetch_raw(cur, vendor_filter: str | None, month_filter: str | None,
 def parse_all(rows: list[tuple]) -> pd.DataFrame:
     records: list[dict] = []
     skipped = 0
-    for vendor_name, file_path, parsed_doc in rows:
+    for source_record_id, vendor_name, file_path, parsed_doc in rows:
         vendor  = _canonical_vendor(vendor_name)
         billing = _month_from_path(file_path)
         if not billing:
             skipped += 1
             continue
         text   = _extract_text(parsed_doc)
+        invoice_id = _invoice_id(file_path, text, source_record_id)
+        invoice_description = _invoice_description(vendor, text, file_path)
+        netsuite_transaction_id = str(source_record_id or "").strip() or None
         parser = _get_parser(vendor)
         items  = parser(text, file_path)
         for item in items:
             records.append({
                 "BILLING_MONTH":      item.get("billing_month") or billing,
                 "VENDOR":             vendor,
+                "INVOICE_ID":         invoice_id,
+                "INVOICE_DESCRIPTION": invoice_description,
+                "NETSUITE_TRANSACTION_ID": netsuite_transaction_id,
+                "NETSUITE_URL":       _netsuite_url(source_record_id),
                 "PARTNER":            item.get("partner"),
                 "VENDOR_PRODUCT_SKU": (item.get("sku") or "UNKNOWN").strip(),
                 "DESCRIPTION":        (item.get("description") or "").strip(),
@@ -1004,7 +1055,9 @@ def parse_all(rows: list[tuple]) -> pd.DataFrame:
         print(f"  Skipped {skipped} files (no YYYY_MM/ billing month in path).")
     if not records:
         return pd.DataFrame(columns=[
-            "BILLING_MONTH", "VENDOR", "PARTNER", "VENDOR_PRODUCT_SKU",
+            "BILLING_MONTH", "VENDOR", "INVOICE_ID", "INVOICE_DESCRIPTION",
+            "NETSUITE_TRANSACTION_ID", "NETSUITE_URL",
+            "PARTNER", "VENDOR_PRODUCT_SKU",
             "DESCRIPTION", "QUANTITY", "UNIT_PRICE", "AMOUNT", "FILE_PATH",
         ])
     df = pd.DataFrame(records)
@@ -1127,6 +1180,10 @@ def write_to_snowflake(conn, cur, df: pd.DataFrame, append: bool) -> None:
             CREATE OR REPLACE TABLE {TARGET_TABLE} (
                 BILLING_MONTH      DATE,
                 VENDOR             VARCHAR,
+                INVOICE_ID         VARCHAR,
+                INVOICE_DESCRIPTION VARCHAR,
+                NETSUITE_TRANSACTION_ID VARCHAR,
+                NETSUITE_URL       VARCHAR,
                 PARTNER            VARCHAR,
                 VENDOR_PRODUCT_SKU VARCHAR,
                 DESCRIPTION        VARCHAR,

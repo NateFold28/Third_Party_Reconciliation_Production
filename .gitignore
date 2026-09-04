@@ -8,10 +8,14 @@ __pycache__/
 venv/
 
 outputs/
+output/
 *.xlsx
 *.xls
 *.csv.tmp
 *.log
+
+logs/*.txt
+logs/*.json
 
 .env
 .env.*

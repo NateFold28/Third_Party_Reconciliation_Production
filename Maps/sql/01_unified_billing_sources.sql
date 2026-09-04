@@ -18,7 +18,7 @@ USE WAREHOUSE REPORTING_WH;
 USE DATABASE ANALYTICS_DEV;
 USE SCHEMA DBT_NFOLD_TRANSFORMATION;
 
-CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SOURCE_ZUORA_PROD AS
+CREATE OR REPLACE VIEW THIRD_PARTY_RECON_SOURCE_ZUORA_PROD AS
 WITH fx_rates AS (
     SELECT UPPER(currency_id) AS currency_id, budget_ex_rate
     FROM analytics.dbo_seed_files.seed__fpa_budget_exchange_rates
@@ -50,20 +50,92 @@ zuora_base AS (
                 THEN 'sfdc_account_number_non_act'
             ELSE 'unresolved'
         END AS raw_sf_id_source
-    FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE z
+    FROM ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2 z
+),
+month_offsets AS (
+    -- Supports annual and multi-year service periods without a calendar-table
+    -- dependency. The source currently contains no terms approaching 120 months.
+    SELECT ROW_NUMBER() OVER (ORDER BY SEQ4()) - 1 AS month_offset
+    FROM TABLE(GENERATOR(ROWCOUNT => 120))
+),
+zuora_recon_rows AS (
+    -- Ordinary invoice lines retain their source billing month and amount.
+    SELECT
+        z.*,
+        z.BILLING_MONTH::DATE AS recon_billing_month,
+        z.UNIT_PRICE AS recon_unit_price,
+        z.CHARGE_AMOUNT AS recon_charge_amount,
+        'SOURCE_BILLING_MONTH'::VARCHAR AS billing_period_method
+    FROM zuora_base z
+    WHERE NOT (
+        UPPER(TRIM(z.VENDOR_NAME)) = 'AUVIK'
+        AND z.SERVICE_START_DATE IS NOT NULL
+        AND z.SERVICE_END_DATE IS NOT NULL
+        AND DATEDIFF(day, z.SERVICE_START_DATE, z.SERVICE_END_DATE) >= 60
+    )
+
+    UNION ALL
+
+    -- Auvik annual commitments are invoiced once in advance but represent
+    -- quantity and economics for every covered service month. Expanding and
+    -- amortizing them prevents false "No CW Billing" exceptions after the
+    -- invoice month while preserving the original invoice audit fields.
+    SELECT
+        z.*,
+        DATEADD(month, mo.month_offset, DATE_TRUNC('month', z.SERVICE_START_DATE))::DATE
+            AS recon_billing_month,
+        z.UNIT_PRICE / NULLIF(
+            DATEDIFF(
+                month,
+                DATE_TRUNC('month', z.SERVICE_START_DATE),
+                DATE_TRUNC('month', z.SERVICE_END_DATE)
+            ) + 1,
+            0
+        ) AS recon_unit_price,
+        z.CHARGE_AMOUNT / NULLIF(
+            DATEDIFF(
+                month,
+                DATE_TRUNC('month', z.SERVICE_START_DATE),
+                DATE_TRUNC('month', z.SERVICE_END_DATE)
+            ) + 1,
+            0
+        ) AS recon_charge_amount,
+        'SERVICE_PERIOD_AMORTIZED'::VARCHAR AS billing_period_method
+    FROM zuora_base z
+    JOIN month_offsets mo
+        ON mo.month_offset <= DATEDIFF(
+            month,
+            DATE_TRUNC('month', z.SERVICE_START_DATE),
+            DATE_TRUNC('month', z.SERVICE_END_DATE)
+        )
+    WHERE UPPER(TRIM(z.VENDOR_NAME)) = 'AUVIK'
+      AND z.SERVICE_START_DATE IS NOT NULL
+      AND z.SERVICE_END_DATE IS NOT NULL
+      AND DATEDIFF(day, z.SERVICE_START_DATE, z.SERVICE_END_DATE) >= 60
 )
 SELECT
-    z.VENDOR_NAME AS vendor,
+    CASE UPPER(TRIM(z.VENDOR_NAME))
+        WHEN 'PROOFPOINT' THEN 'Proofpoint'
+        WHEN 'SENTINELONE' THEN 'SentinelOne'
+        WHEN 'WEBROOT' THEN 'Webroot'
+        WHEN 'ACRONIS' THEN 'Acronis'
+        WHEN 'KEEPIT' THEN 'KeepIT'
+        WHEN 'AUVIK' THEN 'Auvik'
+        WHEN 'BITDEFENDER' THEN 'Bitdefender'
+        WHEN 'ESET' THEN 'ESET'
+        WHEN 'EXIUM' THEN 'Exium'
+        ELSE z.VENDOR_NAME
+    END AS vendor,
     CASE
         WHEN am.old_sf_id IS NOT NULL
-         AND (am.merge_effective_month IS NULL OR z.BILLING_MONTH::DATE >= am.merge_effective_month)
+         AND (am.merge_effective_month IS NULL OR z.recon_billing_month >= am.merge_effective_month)
             THEN am.canonical_sf_id
         ELSE z.raw_sf_id
     END AS sf_id,
     CASE
         WHEN am.old_sf_id IS NOT NULL
          AND am.canonical_source = 'MERGED_ACCOUNT_MAP'
-         AND (am.merge_effective_month IS NULL OR z.BILLING_MONTH::DATE >= am.merge_effective_month)
+            AND (am.merge_effective_month IS NULL OR z.recon_billing_month >= am.merge_effective_month)
             THEN z.raw_sf_id_source || '_merged_account_map'
         WHEN am.old_sf_id IS NOT NULL
          AND am.canonical_source = 'PARENT_ROLLUP'
@@ -72,37 +144,55 @@ SELECT
         ELSE z.raw_sf_id_source
     END AS sf_id_source,
     z.ACCOUNT_CONTINUUM_ID::VARCHAR AS cms_id,
+    UPPER(TRIM(z.ENTITY)) AS billing_entity,
     z.ACCOUNT_NUMBER AS zuora_account_number,
     z.ACCOUNT_NAME AS zuora_account_name,
     z.SUBSCRIPTION_SOLD_TO_SFDC_ID AS subscription_sold_to_sf_id_raw,
     z.SUBSCRIPTION_SOLD_TO_ACCOUNT_NAME AS subscription_sold_to_account_name,
-    z.BILLING_MONTH::DATE AS billing_month,
+    z.recon_billing_month AS billing_month,
+    z.BILLING_MONTH::DATE AS source_billing_month,
     z.INVOICE_NUMBER,
     z.INVOICE_ID,
+    z.INVOICE_DATE::DATE AS invoice_date,
     z.PRODUCT_SKU,
     z.PRODUCT_NAME,
     z.CHARGE_NAME,
+    z.INVOICE_ITEM_SKU,
+    z.SUBSCRIPTION_NAME,
     z.QUANTITY AS qty,
-    z.UNIT_PRICE * COALESCE(fx.budget_ex_rate, 1) AS unit_price_usd,
-    z.CHARGE_AMOUNT * COALESCE(fx.budget_ex_rate, 1) AS charge_amount_usd,
+    z.recon_unit_price * COALESCE(fx.budget_ex_rate, 1) AS unit_price_usd,
+    z.recon_charge_amount * COALESCE(fx.budget_ex_rate, 1) AS charge_amount_usd,
+    z.ITEM_TAX_AMOUNT * COALESCE(fx.budget_ex_rate, 1) AS item_tax_amount_usd,
+    z.CHARGE_DATE,
+    z.SERVICE_START_DATE::DATE AS service_start_date,
+    z.SERVICE_END_DATE::DATE AS service_end_date,
+    z.billing_period_method,
     z.ACCOUNT_CURRENCY,
     z.INVOICE_SOURCE,
     z.INVOICE_STATUS
-FROM zuora_base z
+FROM zuora_recon_rows z
 LEFT JOIN fx_rates fx
     ON fx.currency_id = UPPER(z.ACCOUNT_CURRENCY)
 LEFT JOIN RECON_ACCOUNT_MERGE_RESOLVER am
     ON am.old_sf_id = z.raw_sf_id
-WHERE z.VENDOR_NAME IN (
-    'Proofpoint', 'SentinelOne', 'Webroot', 'Acronis', 'KeepIT',
-    'Auvik', 'Bitdefender', 'ESET', 'Exium'
+WHERE UPPER(TRIM(z.VENDOR_NAME)) IN (
+    'PROOFPOINT', 'SENTINELONE', 'WEBROOT', 'ACRONIS', 'KEEPIT',
+    'AUVIK', 'BITDEFENDER', 'ESET', 'EXIUM'
 )
   AND z.INVOICE_STATUS = 'Posted'
   AND z.INVOICE_SOURCE = 'BillRun'
-  AND z.BILLING_MONTH >= '2026-01-01'
-    AND COALESCE(z.CHARGE_AMOUNT, 0) <> 0;
+    AND z.recon_billing_month >= '2026-01-01'
+    AND (
+                COALESCE(z.CHARGE_AMOUNT, 0) <> 0
+                OR (
+                        UPPER(TRIM(z.VENDOR_NAME)) = 'ACRONIS'
+                        AND COALESCE(z.QUANTITY, 0) <> 0
+                        AND COALESCE(z.CHARGE_AMOUNT, 0) = 0
+                        AND UPPER(TRIM(COALESCE(z.PRODUCT_SKU, ''))) <> 'NOCSRVACRCYBPROTSERV'
+                )
+            );
 
-CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD AS
+CREATE OR REPLACE VIEW THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD AS
 WITH carr_base AS (
     SELECT
         'Auvik' AS vendor,
@@ -119,9 +209,9 @@ WITH carr_base AS (
     WHERE c.transaction_source IN (
             'Netsuite Evergreen Usage CW', 'Netsuite Evergreen Usage',
             'Netsuite Evergreen Credit Memos CW', 'Netsuite Evergreen Credit Memos')
-      AND (c.prod_sku ILIKE '%AUVIK%' OR c.prod_sku ILIKE 'CULC%' OR c.prod_sku ILIKE 'CWANN%'
-           OR c.prod_sku ILIKE '3RDPARTYSAAS%' OR c.prod_sku ILIKE '3PARTYSAAS%'
-           OR c.prod_sku ILIKE 'SRM-SAM%')
+        -- CARR vendor ownership is authoritative. The former broad 3RDPARTYSAAS
+        -- pattern also admitted Webroot, Perch, Veeam, and Gozynta transactions.
+        AND UPPER(TRIM(c.vendor)) = 'AUVIK'
       AND DATE_TRUNC('month', c.month_year)::DATE >= '2026-01-01'
       AND COALESCE(c.ns_usage_qty, 0) <> 0
 
@@ -164,9 +254,10 @@ WITH carr_base AS (
     WHERE c.transaction_source IN (
             'Netsuite Evergreen Usage CW', 'Netsuite Evergreen Usage',
             'Netsuite Evergreen Credit Memos CW', 'Netsuite Evergreen Credit Memos')
-      AND (c.prod_sku ILIKE '%WEBROOT%' OR c.prod_sku ILIKE '%WRSEC%' OR c.prod_sku ILIKE '%SEWRS%'
-           OR c.prod_sku ILIKE '%3P-SAAS3002%' OR c.prod_sku ILIKE '%3RDPARTYSAASIIT%'
-           OR c.prod_sku ILIKE 'CU-WEBROOT%')
+                -- CARR vendor ownership is authoritative. The Webroot catalog includes
+                -- legacy names and newer CWP/CMS codes that cannot be covered safely by
+                -- a fixed collection of SKU patterns.
+            AND UPPER(TRIM(c.vendor)) = 'WEBROOT'
       AND DATE_TRUNC('month', c.month_year)::DATE >= '2026-01-01'
       AND COALESCE(c.ns_usage_qty, 0) <> 0
 
@@ -210,7 +301,9 @@ WITH carr_base AS (
         ON p.cw_sku = c.prod_sku
     WHERE c.transaction_source IN (
             'Netsuite Evergreen Usage CW', 'Netsuite Evergreen Usage',
-            'Netsuite Evergreen Credit Memos CW', 'Netsuite Evergreen Credit Memos')
+            'Netsuite Evergreen Credit Memos CW', 'Netsuite Evergreen Credit Memos',
+            'Salesforce Contract',
+            'Min Commit Salesforce Contract and NetSuite Invoice')
       AND DATE_TRUNC('month', c.month_year)::DATE >= '2026-01-01'
 
     UNION ALL
@@ -324,261 +417,48 @@ carr_normalized AS (
 )
 SELECT *
 FROM carr_normalized
-WHERE COALESCE(qty, 0) <> 0;
+WHERE COALESCE(qty, 0) <> 0
+    OR (
+          vendor = 'Proofpoint'
+     AND transaction_source = 'Salesforce Contract'
+     AND COALESCE(amount, 0) <> 0
+    );
 
 -- =============================================================================
--- THIRD_PARTY_RECON_SOURCE_TRT_PROD (cycle-aware, seed-scoped)
+-- THIRD_PARTY_RECON_SOURCE_TRT_PROD -- RETIRED 2026-08-29
 -- -----------------------------------------------------------------------------
--- Cycle-billed vendors: SentinelOne, Bitdefender, Webroot, Auvik.
--- All four vendors' manual recon workbooks (S1 "ConnectWise Usage", Webroot
--- "DNS_SAT", Bitdefender "Usage", Auvik CMS) are built from this raw table:
---
+-- This view (and the pass-through THIRD_PARTY_RECON_TRT_BILLING_PROD, plus the
+-- unused WEBROOT_TRT_PROD base table) have been dropped. All vendor scripts
+-- now source usage directly from
 --     ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE
---
--- with the same filter shape:
---     WHERE on_date = <cycle_day of billing_month>
---       AND partner_id = <CW numeric partner id>
---       AND product_sku IN (SELECT prod_sku FROM seed__product_categorization
---                           WHERE vendor      ILIKE '%<vendor>%'
---                              OR sub_category ILIKE '%<vendor>%')
---       [AND is_server = '']   -- Webroot DNS/SAT product only
---
--- Vendor cycle snapshot days (agent counts on this day drive the invoice):
---   SentinelOne   21    Bitdefender   21    Webroot   19    Auvik   21
---
--- Cycle window used for AVG_API_QUANTITY (matches the invoice period):
---   (previous cycle_day, current cycle_day]     e.g. Webroot Jun 2026 = 5/20 - 6/19
---
--- SF_ID bridge: partner_id in the raw table is numeric (e.g. 15431), matching
--- ZUORA.ACCOUNT_CONTINUUM_ID. Two lookup paths are combined, preferring the
--- curated map:
---   1. THIRD_PARTY_RECON_PARTNER_MAP_PROD.CMS_ID = raw.partner_id (curated per-vendor)
---   2. ZUORA_THIRD_PARTY_RECON_BASE.ACCOUNT_CONTINUUM_ID -> SFDC_ACCOUNT_NUMBER
---      (all-vendor Zuora bridge — daily-refreshed, ACT-* preferred)
---
--- Zuora bridge coverage: ~98% of BD partners, 100% of S1/Auvik/Webroot partners.
--- The prior CORE__RPT_CMS_USAGE fallback was stale (max ON_DATE = 2023-03-12)
--- and has been removed.
---
--- Output columns (used by downstream vendor reconciliations):
---   VENDOR, sf_id, cms_id (numeric partner_id), billing_month, snapshot_date,
---   trt_quantity        - point-in-time agent_cnt on snapshot_date (== vendor invoice qty)
---   avg_api_quantity    - daily average across the cycle window
---   max_api_quantity    - peak daily count in the cycle
---   min_api_quantity    - trough daily count in the cycle
---   days_reporting      - # distinct days in the cycle with any usage row for the partner
+-- via inline direct-from-live CTEs. Non-wired vendors (Auvik, Bitdefender,
+-- ESET) leave API_QUANTITY / AVG_API_QUANTITY NULL until they are re-wired.
 -- =============================================================================
-CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SOURCE_TRT_PROD AS
-WITH vendor_config AS (
-    -- Cycle day + vendor pattern for seed__product_categorization scope.
-    -- To enroll another cycle-billed vendor, add a row here plus a matching
-    -- config row and re-run the pipeline; no other code changes required.
-    SELECT 'SentinelOne'::VARCHAR AS vendor, 21::INT AS cycle_day, '%sentinel%'::VARCHAR    AS vendor_pattern, FALSE AS is_server_blank_only
-    UNION ALL SELECT 'Bitdefender'::VARCHAR, 21::INT, '%bitdefender%'::VARCHAR, FALSE
-    UNION ALL SELECT 'Webroot'::VARCHAR,     19::INT, '%webroot%'::VARCHAR,     TRUE   -- SAT/DNS product uses is_server=''
-    UNION ALL SELECT 'Auvik'::VARCHAR,       21::INT, '%auvik%'::VARCHAR,       FALSE
-),
-vendor_skus AS (
-    -- Canonical SKU set per vendor. We combine two SKU sources for maximum
-    -- coverage of the raw TRT feed:
-    --   (a) seed__product_categorization matched by vendor / sub_category
-    --   (b) any SKU that Zuora has invoiced under this vendor since 2026-01-01
-    -- Path (b) catches partners billed under vendor-specific SKUs whose seed
-    -- rows haven't caught up to the current catalog (e.g. Webroot GSM=SEWRS*,
-    -- WSADNS*, WRSECGSM*). This widens API coverage without duplicating logic
-    -- across vendors.
-    SELECT vendor, prod_sku FROM (
-        SELECT
-            vc.vendor,
-            p.prod_sku
-        FROM vendor_config vc
-        JOIN analytics.dbo_transformation.seed__product_categorization p
-          ON p.vendor       ILIKE vc.vendor_pattern
-          OR p.sub_category ILIKE vc.vendor_pattern
-        UNION
-        SELECT DISTINCT
-            vc.vendor,
-            z.PRODUCT_SKU AS prod_sku
-        FROM vendor_config vc
-        JOIN ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE z
-          ON UPPER(z.VENDOR_NAME) = UPPER(vc.vendor)
-        WHERE z.PRODUCT_SKU IS NOT NULL
-          AND z.INVOICE_STATUS = 'Posted'
-          AND z.BILLING_MONTH >= '2026-01-01'
-    )
-    GROUP BY 1, 2
-),
-raw_usage AS (
-    -- Filter raw table to only vendor-relevant SKUs. Apply Webroot's
-    -- is_server = '' guard for the SAT/DNS product line (endpoints are the
-    -- N/Y is_server rows and are billed via RMM, not the DNS SAT cycle).
-    SELECT
-        vc.vendor,
-        u.partner_id::VARCHAR      AS partner_id,
-        u.on_date::DATE            AS on_date,
-        u.product_sku,
-        u.agent_cnt::FLOAT         AS agent_cnt
-    FROM ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
-    JOIN vendor_skus vs
-      ON vs.prod_sku = u.product_sku
-    JOIN vendor_config vc
-      ON vc.vendor = vs.vendor
-    WHERE u.on_date::DATE >= '2025-12-01'
-      AND (NOT vc.is_server_blank_only OR COALESCE(u.is_server, '') = '')
-),
-partner_daily AS (
-    -- One row per (vendor, partner_id, on_date). Sum across product SKUs and
-    -- sites — the cycle count is the total active agents for the account.
-    SELECT
-        vendor,
-        partner_id,
-        on_date,
-        SUM(agent_cnt) AS agent_cnt
-    FROM raw_usage
-    GROUP BY 1, 2, 3
-),
-month_spine AS (
-    SELECT DATEADD('month', SEQ4(), '2026-01-01')::DATE AS billing_month
-    FROM TABLE(GENERATOR(ROWCOUNT => 36))
-),
-cycles AS (
-    -- Snapshot date + prior-snapshot date for each vendor/billing_month.
-    SELECT
-        v.vendor,
-        v.cycle_day,
-        s.billing_month,
-        DATEADD('day', v.cycle_day - 1, s.billing_month)::DATE               AS snapshot_date,
-        DATEADD('day', v.cycle_day - 1, DATEADD('month', -1, s.billing_month))::DATE
-                                                                             AS prev_snapshot_date
-    FROM month_spine s
-    CROSS JOIN vendor_config v
-    WHERE DATEADD('day', v.cycle_day - 1, s.billing_month)::DATE <= CURRENT_DATE()
-),
-point_in_time AS (
-    -- Point-in-time agent_cnt on the snapshot day (matches vendor invoice).
-    SELECT
-        c.vendor,
-        c.billing_month,
-        c.snapshot_date,
-        pd.partner_id,
-        pd.agent_cnt AS trt_quantity
-    FROM cycles c
-    JOIN partner_daily pd
-      ON pd.vendor  = c.vendor
-     AND pd.on_date = c.snapshot_date
-),
-cycle_avg AS (
-    -- Daily avg / max / min across (prev_snapshot, snapshot].
-    SELECT
-        c.vendor,
-        c.billing_month,
-        c.snapshot_date,
-        pd.partner_id,
-        AVG(pd.agent_cnt)          AS avg_api_quantity,
-        MAX(pd.agent_cnt)          AS max_api_quantity,
-        MIN(pd.agent_cnt)          AS min_api_quantity,
-        COUNT(DISTINCT pd.on_date) AS days_reporting
-    FROM cycles c
-    JOIN partner_daily pd
-      ON pd.vendor  = c.vendor
-     AND pd.on_date >  c.prev_snapshot_date
-     AND pd.on_date <= c.snapshot_date
-    GROUP BY 1, 2, 3, 4
-),
-merged AS (
-    SELECT
-        COALESCE(p.vendor,        a.vendor)        AS vendor,
-        COALESCE(p.partner_id,    a.partner_id)    AS partner_id,
-        COALESCE(p.billing_month, a.billing_month) AS billing_month,
-        COALESCE(p.snapshot_date, a.snapshot_date) AS snapshot_date,
-        p.trt_quantity                             AS trt_quantity,
-        a.avg_api_quantity                         AS avg_api_quantity,
-        a.max_api_quantity                         AS max_api_quantity,
-        a.min_api_quantity                         AS min_api_quantity,
-        a.days_reporting                           AS days_reporting
-    FROM point_in_time p
-    FULL OUTER JOIN cycle_avg a
-      ON p.vendor        = a.vendor
-     AND p.partner_id    = a.partner_id
-     AND p.billing_month = a.billing_month
-),
-zuora_bridge AS (
-    -- Bridge CW numeric partner_id -> SFDC_ACCOUNT_NUMBER using Zuora directly.
-    -- ZUORA.ACCOUNT_CONTINUUM_ID is the CW partner_id and SFDC_ACCOUNT_NUMBER is
-    -- the salesforce ACT- id we want on every row. This replaces the previous
-    -- CORE__RPT_CMS_USAGE fallback which stopped refreshing in March 2023.
-    -- Zuora refreshes daily, so this bridge is always current.
-    --   * Include ALL vendor invoices (posted) so a partner billed for any
-    --     third-party product resolves — not just the vendor being reconciled.
-    --   * Prefer ACT- form and the most recent billing_month per partner.
-    SELECT partner_id, sf_id
-    FROM (
-        SELECT
-            ACCOUNT_CONTINUUM_ID::VARCHAR AS partner_id,
-            SFDC_ACCOUNT_NUMBER            AS sf_id,
-            ROW_NUMBER() OVER (
-                PARTITION BY ACCOUNT_CONTINUUM_ID
-                ORDER BY CASE WHEN SFDC_ACCOUNT_NUMBER ILIKE 'ACT-%' THEN 0 ELSE 1 END,
-                         BILLING_MONTH DESC
-            ) AS rk
-        FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE
-        WHERE SFDC_ACCOUNT_NUMBER IS NOT NULL
-          AND TRIM(SFDC_ACCOUNT_NUMBER) <> ''
-          AND INVOICE_STATUS = 'Posted'
-    )
-    WHERE rk = 1
-)
-SELECT
-    m.vendor                                                       AS VENDOR,
-    CASE
-        WHEN am.old_sf_id IS NOT NULL
-         AND (am.merge_effective_month IS NULL OR m.billing_month >= am.merge_effective_month)
-            THEN am.canonical_sf_id
-        ELSE COALESCE(pm.SF_ID, zb.sf_id)
-    END                                                            AS sf_id,
-    m.partner_id                                                   AS cms_id,
-    m.billing_month                                                AS billing_month,
-    m.snapshot_date                                                AS snapshot_date,
-    COALESCE(m.trt_quantity, 0)::FLOAT                             AS trt_quantity,
-    m.avg_api_quantity::FLOAT                                      AS avg_api_quantity,
-    m.max_api_quantity::FLOAT                                      AS max_api_quantity,
-    m.min_api_quantity::FLOAT                                      AS min_api_quantity,
-    m.days_reporting::INT                                          AS days_reporting,
-    -- Bridge audit column: which lookup path resolved the SF_ID.
-    CASE
-        WHEN pm.SF_ID IS NOT NULL
-         AND am.old_sf_id IS NOT NULL
-         AND am.canonical_source = 'MERGED_ACCOUNT_MAP'
-         AND (am.merge_effective_month IS NULL OR m.billing_month >= am.merge_effective_month) THEN 'partner_map_monthly_merged'
-        WHEN pm.SF_ID IS NOT NULL
-         AND am.old_sf_id IS NOT NULL
-         AND am.canonical_source = 'PARENT_ROLLUP'
-         AND am.canonical_sf_id <> COALESCE(pm.SF_ID, zb.sf_id) THEN 'partner_map_monthly_parent_rollup'
-        WHEN pm.SF_ID IS NOT NULL THEN 'partner_map_monthly'
-        WHEN zb.sf_id IS NOT NULL
-         AND am.old_sf_id IS NOT NULL
-         AND am.canonical_source = 'MERGED_ACCOUNT_MAP'
-         AND (am.merge_effective_month IS NULL OR m.billing_month >= am.merge_effective_month) THEN 'zuora_bridge_merged'
-        WHEN zb.sf_id IS NOT NULL
-         AND am.old_sf_id IS NOT NULL
-         AND am.canonical_source = 'PARENT_ROLLUP'
-         AND am.canonical_sf_id <> COALESCE(pm.SF_ID, zb.sf_id) THEN 'zuora_bridge_parent_rollup'
-        WHEN zb.sf_id IS NOT NULL THEN 'zuora_bridge'
-        ELSE 'unresolved'
-    END::VARCHAR                                                   AS sf_id_source
-FROM merged m
-LEFT JOIN RECON_PARTNER_MAP_MONTHLY pm
-       ON pm.CMS_ID              = m.partner_id
-      AND pm.BILLING_MONTH       = m.billing_month
-    -- Partner map is now vendor-agnostic (no VENDOR column).
-    -- Resolve by CMS_ID and let vendor context come from TRT stream.
-LEFT JOIN zuora_bridge zb
-       ON zb.partner_id = m.partner_id
-LEFT JOIN RECON_ACCOUNT_MERGE_RESOLVER am
-       ON am.old_sf_id = COALESCE(pm.SF_ID, zb.sf_id)
-WHERE m.billing_month >= '2026-01-01';
+DROP VIEW  IF EXISTS THIRD_PARTY_RECON_TRT_BILLING_PROD;
+DROP VIEW  IF EXISTS THIRD_PARTY_RECON_SOURCE_TRT_PROD;
+DROP TABLE IF EXISTS WEBROOT_TRT_PROD;
 
-CREATE OR REPLACE TABLE THIRD_PARTY_RECON_SOURCE_ROYALTIES_PROD AS
+-- =============================================================================
+-- Retired 2026-08-30: WEBROOT_TRT_USAGE_MONTHLY was an intermediate view that
+-- packaged raw BASE_CW_DP_TRT into per-partner/per-month agent-day rows for the
+-- Webroot recon script.  That logic is now inlined directly inside
+--     PROJECTS/Third_Party_Reconciliation/Combined_Recon_Prod_Pipeline/
+--         Reconciliation/Webroot_Reconciliation_Script_Prod.sql
+-- (see the `webroot_trt_*` CTEs feeding `trt_agg`).  The view + its NULL-stub
+-- companion WEBROOT_TRT_ENDPOINT_RMM_DISCOUNT_MONTHLY have been dropped so no
+-- intermediate state sits between raw TRT and the recon output.  This DROP is
+-- idempotent (both objects are already gone after the initial rewire commit).
+-- =============================================================================
+DROP VIEW IF EXISTS WEBROOT_TRT_USAGE_MONTHLY;
+DROP VIEW IF EXISTS WEBROOT_TRT_ENDPOINT_RMM_DISCOUNT_MONTHLY;
+
+-- Archived SQL for WEBROOT_TRT_USAGE_MONTHLY was intentionally removed.
+-- Source of truth is now the inline `webroot_trt_*` CTE stack in
+-- Reconciliation/Webroot_Reconciliation_Script_Prod.sql.
+
+
+
+CREATE OR REPLACE VIEW THIRD_PARTY_RECON_SOURCE_ROYALTIES_PROD AS
 WITH royalties_base AS (
     SELECT
         COALESCE(seed_vendor, vendor) AS vendor,

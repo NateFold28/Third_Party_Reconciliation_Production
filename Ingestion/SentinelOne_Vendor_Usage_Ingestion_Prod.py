@@ -33,6 +33,7 @@ Semantics:
 from __future__ import annotations
 
 import argparse
+import csv
 import datetime as dt
 import io
 import re
@@ -49,7 +50,7 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 
 SENTINELONE_ROOT = Path(__file__).resolve().parents[2]
-WORKSPACE_ROOT = SENTINELONE_ROOT.parents[2]
+WORKSPACE_ROOT = next((p for p in (SENTINELONE_ROOT, *SENTINELONE_ROOT.parents) if (p / "TEMPLATES").exists()), SENTINELONE_ROOT)
 OUTPUT_DIR = SENTINELONE_ROOT / "outputs"
 
 DEFAULT_SOURCE_ROOT = Path(
@@ -633,6 +634,35 @@ def write_audit(df: pd.DataFrame, label: str) -> Path:
 # Snowflake load
 # ---------------------------------------------------------------------------
 
+def _fetch_existing_vendor_months() -> set[str]:
+    """Return existing billing months for SentinelOne already in the target table."""
+    sys.path.insert(0, str(WORKSPACE_ROOT))
+    from TEMPLATES.Python.connection import get_snowflake_connection
+
+    conn = get_snowflake_connection(
+        role="DEVELOPER",
+        warehouse="REPORTING_WH",
+        database=TARGET_DATABASE,
+        schema=TARGET_SCHEMA,
+    )
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT DISTINCT BILLING_MONTH FROM {FQN} "
+            "WHERE UPPER(COALESCE(VENDOR, '')) = UPPER(%s)",
+            (TARGET_VENDOR,),
+        )
+        return {
+            (row[0].isoformat() if hasattr(row[0], "isoformat") else str(row[0]))
+            for row in cur.fetchall()
+            if row and row[0] is not None
+        }
+    except Exception:
+        # If lookup fails (table missing, etc.), proceed with normal parse/load flow.
+        return set()
+    finally:
+        conn.close()
+
 def snowflake_ddl() -> str:
     return f"""
 CREATE TABLE IF NOT EXISTS {FQN} (
@@ -732,6 +762,26 @@ def main() -> None:
         raise FileNotFoundError(f"Source root does not exist: {source_root}")
 
     months = list(discover_month_folders(source_root).keys()) if args.all_months else [args.month]
+
+    # Fast no-op path: skip expensive workbook parsing for months already loaded.
+    if not args.dry_run and not args.reset:
+        existing_months = _fetch_existing_vendor_months()
+        if existing_months:
+            pending_months: list[str] = []
+            skipped_months: list[str] = []
+            for month in months:
+                month_first = f"{month}-01"
+                if month_first in existing_months:
+                    skipped_months.append(month)
+                else:
+                    pending_months.append(month)
+            if skipped_months:
+                print(f"Skipping already-loaded months before parse: {skipped_months}")
+            if not pending_months:
+                print("All requested months already loaded; nothing to parse or load.")
+                return
+            months = pending_months
+
     frames = [parse_month(source_root, m) for m in months]
     skipped = [m for m, f in zip(months, frames) if f.empty]
     if skipped:

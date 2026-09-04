@@ -2,7 +2,7 @@
 -- STEP 2: SENTINELONE FINAL RECONCILIATION
 -- =============================================================================
 -- Proofpoint-style contract adapted to SentinelOne:
---   Vendor usage truth  = SENTINELONE_USAGE product quantities.
+--   Vendor usage truth  = THIRD_PARTY_RECON_VENDOR_USAGE_PROD SentinelOne product quantities.
 --   Billing truth       = Zuora Posted BillRun + Marketplace.
 --   TRT/internal meter  = supporting validation only; it never fills billing.
 --
@@ -13,7 +13,7 @@
 --   duplicate billed quantity.
 --
 -- Vendor matching rules:
---   * SENTINELONE_USAGE already resolves the invoice-match product into
+--   * SentinelOne ingestion already resolves the invoice-match product into
 --     VENDOR_PRODUCT_SKU during ingestion.
 --   * Total Active Agents is loaded as Complete / Control / Core.
 --   * Data Retention is loaded as "Data Retention - <tier>".
@@ -69,9 +69,10 @@ sku_map AS (
             ELSE SKU_MATCH_KEY
         END                         AS sku_match_group,
         MAPPING_NOTES              AS mapping_source,
-        CW_RETAIL_RATE             AS vendor_invoice_unit_price,
+        VENDOR_UNIT_PRICE          AS vendor_invoice_unit_price,
         VENDOR_SKU                 AS vendor_invoice_sku,
-        'RECON_SKU_MAP'            AS vendor_invoice_rate_source
+        'RECON_SKU_MAP'            AS vendor_invoice_rate_source,
+        TRT_MATCH_KEY              AS trt_match_key
     FROM (SELECT * FROM RECON_SKU_MAP WHERE VENDOR = 'SentinelOne')
     WHERE SKU_MATCH_KEY IS NOT NULL
 ),
@@ -130,11 +131,15 @@ cw_sku_group_map AS (
 partner_map AS (
     -- V5 map is pre-canonicalized in 00_reference_maps.sql, so sf_id here is
     -- already the current Salesforce canonical id.
-    SELECT TRIM(partner_name) AS partner_name, sf_id, zuora_name
+    SELECT
+        TRIM(partner_name) AS partner_name,
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_norm,
+        sf_id,
+        zuora_name
     FROM RECON_PARTNER_MAP
     WHERE sf_id IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY UPPER(TRIM(partner_name))
+        PARTITION BY TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
         ORDER BY zuora_name DESC NULLS LAST
     ) = 1
 ),
@@ -182,21 +187,40 @@ mapped_sf_ids AS (
     WHERE old_sf_id IS NOT NULL
 ),
 
+manual_partner_map AS (
+    SELECT
+        TRIM(partner_name) AS partner_name,
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_norm,
+        sf_id
+    FROM RECON_VENDOR_PARTNER_MANUAL_MAP
+    WHERE UPPER(TRIM(vendor)) = 'SENTINELONE'
+      AND sf_id ILIKE 'ACT-%'
+      AND partner_name IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(partner_name), '[^a-z0-9]+', ' '), '\\s+', ' '))
+        ORDER BY COALESCE(updated_at, CURRENT_TIMESTAMP()) DESC, sf_id
+    ) = 1
+),
+
+sentinel_child_sfid_lock AS (
+    SELECT DISTINCT sf_id
+    FROM manual_partner_map
+),
+
 partner_map_monthly AS (
-    -- Unified partner map (no billing_month dimension — RECON_PARTNER_MAP is
-    -- partner-level). Canonicalize merged sf_ids via SENTINELONE_SF_ID_RESOLVER.
+    -- Unified monthly map preserves the old SF ID before a merge becomes
+    -- effective and uses the canonical SF ID from the effective month onward.
     SELECT
         TRIM(s.PARTNER_NAME)  AS partner_name,
-        NULL::DATE            AS billing_month,   -- not applicable in unified map
-        COALESCE(mr.canonical_sf_id, s.sf_id)    AS sf_id,
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(s.PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS partner_name_norm,
+        s.billing_month,
+        s.sf_id,
         s.ZUORA_NAME          AS zuora_name
-    FROM RECON_PARTNER_MAP s
-    LEFT JOIN merged_account_resolver mr
-        ON mr.old_sf_id = s.sf_id
+    FROM RECON_PARTNER_MAP_MONTHLY s
     WHERE s.sf_id IS NOT NULL
       AND s.PARTNER_NAME IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY UPPER(TRIM(s.PARTNER_NAME))
+        PARTITION BY s.billing_month, TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(s.PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
         ORDER BY s.ZUORA_NAME DESC NULLS LAST
     ) = 1
 ),
@@ -222,13 +246,16 @@ vendor_usage_normalized AS (
     SELECT
         u.BILLING_MONTH::DATE AS billing_month,
         u.VENDOR_PARTNER_NAME,
-        COALESCE(pm_month.sf_id, pm_exact.sf_id, pm_accent.sf_id, pm_prefix.sf_id) AS raw_sf_id,
+        -- Prefer the governed month-effective identity over an undated manual
+        -- override so merged accounts switch on the authoritative month.
+        COALESCE(pm_month.sf_id, mpm.sf_id, pm_exact.sf_id, pm_accent.sf_id, pm_prefix.sf_id) AS raw_sf_id,
         TRIM(u.VENDOR_PRODUCT_SKU) AS source_vendor_product,
         NULL::VARCHAR AS entity,
         NULL::VARCHAR AS retention_desc,
         TRIM(u.VENDOR_PRODUCT_SKU) AS vendor_product,
         CASE
             WHEN pm_month.sf_id IS NOT NULL THEN 'MONTHLY_PARTNER_MAP'
+            WHEN mpm.sf_id IS NOT NULL THEN 'MANUAL_VENDOR_PARTNER_MAP'
             WHEN pm_exact.sf_id IS NOT NULL THEN 'PARTNER_MAP_EXACT'
             WHEN pm_accent.sf_id IS NOT NULL THEN 'PARTNER_MAP_ACCENT_NORM'
             WHEN pm_prefix.sf_id IS NOT NULL THEN 'PARTNER_MAP_PREFIX'
@@ -236,32 +263,52 @@ vendor_usage_normalized AS (
         END AS partner_match_method,
         SUM(u.QUANTITY) AS quantity,
         COUNT(*) AS source_row_count
-    FROM SENTINELONE_USAGE u
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD u
+    LEFT JOIN manual_partner_map mpm
+        ON mpm.partner_name_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
     LEFT JOIN partner_map_monthly pm_month
-        ON UPPER(pm_month.partner_name) = UPPER(TRIM(u.VENDOR_PARTNER_NAME))
+        ON pm_month.partner_name_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
        AND pm_month.billing_month = u.BILLING_MONTH::DATE
     LEFT JOIN partner_map pm_exact
-        ON pm_month.sf_id IS NULL
-       AND UPPER(pm_exact.partner_name) = UPPER(TRIM(u.VENDOR_PARTNER_NAME))
+        ON mpm.sf_id IS NULL
+       AND pm_month.sf_id IS NULL
+       AND pm_exact.partner_name_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.VENDOR_PARTNER_NAME), '[^a-z0-9]+', ' '), '\\s+', ' '))
     -- Accent-normalized fallback: translates common diacritics to ASCII so
     -- PARROINFODÃ‰VELOPPEMENT matches PARROINFODEVELOPPEMENT.
     LEFT JOIN partner_map pm_accent
-        ON pm_month.sf_id IS NULL
+        ON mpm.sf_id IS NULL
+       AND pm_month.sf_id IS NULL
        AND pm_exact.sf_id IS NULL
        AND UPPER(TRANSLATE(pm_accent.partner_name,
            'Ã Ã¡Ã¢Ã£Ã¤Ã¥Ã¨Ã©ÃªÃ«Ã¬Ã­Ã®Ã¯Ã²Ã³Ã´ÃµÃ¶Ã¹ÃºÃ»Ã¼Ã½Ã€ÃÃ‚ÃƒÃ„Ã…ÃˆÃ‰ÃŠÃ‹ÃŒÃÃŽÃÃ’Ã“Ã”Ã•Ã–Ã™ÃšÃ›ÃœÃ',
            'aaaaaaeeeeiiiiooooouuuuyAAAAAAEEEEIIIIOOOOOUUUUY'))
            = UPPER(TRIM(u.VENDOR_PARTNER_NAME))
     LEFT JOIN partner_map pm_prefix
-        ON pm_month.sf_id IS NULL
+        ON mpm.sf_id IS NULL
+       AND pm_month.sf_id IS NULL
        AND pm_exact.sf_id IS NULL
        AND pm_accent.sf_id IS NULL
-       AND UPPER(pm_prefix.partner_name) = UPPER(TRIM(SPLIT_PART(u.VENDOR_PARTNER_NAME, '-', 1)))
+       AND pm_prefix.partner_name_norm = TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(SPLIT_PART(u.VENDOR_PARTNER_NAME, '-', 1)), '[^a-z0-9]+', ' '), '\\s+', ' '))
        AND LENGTH(TRIM(SPLIT_PART(u.VENDOR_PARTNER_NAME, '-', 1))) >= 3
        AND CONTAINS(u.VENDOR_PARTNER_NAME, '-')
-    WHERE u.BILLING_MONTH >= '2026-01-01'
+    WHERE u.VENDOR = 'SentinelOne'
+      AND u.BILLING_MONTH >= '2026-01-01'
       AND COALESCE(u.QUANTITY, 0) > 0
       AND u.VENDOR_PARTNER_NAME IS NOT NULL
+      -- Exclude CW internal dev/test accounts that are never real partner billing.
+      -- These accounts appear with consistently unmappable names and pollute the
+      -- Unmapped Partner bucket with pipe-concatenated strings that change monthly.
+      -- 2026-08-31: identified from recurring Unmapped Partner audit.
+      AND UPPER(TRIM(u.VENDOR_PARTNER_NAME)) NOT IN (
+          'CONTINUUM-TEST', 'CW AUTOMATE', 'PMT-TEST', 'MP-AMARTEST1',
+          'MRGA', 'NJTECH', 'RUSHAB', 'MAHESH-TEST', 'SAHIL',
+          'TEAM-40-AI-TEST', 'CAISOFTWARE-COVID731ACCESS', 'BCDR NOC',
+          'SECURENETWORKS (PALMETTO TECH)', 'JD_ELITESUPPORT', 'TISDALE_DEMO',
+          'ONENET', 'RD_ELITESUPPORT'
+      )
+      AND UPPER(TRIM(u.VENDOR_PARTNER_NAME)) NOT LIKE 'CW DEV%'
+      AND UPPER(TRIM(u.VENDOR_PARTNER_NAME)) NOT LIKE 'CW DEV EMEA%'
+      AND UPPER(TRIM(u.VENDOR_PARTNER_NAME)) NOT LIKE 'PARROINFODEVELOPPEMENT%'
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
 ),
 
@@ -319,38 +366,34 @@ zuora_billing AS (
     -- that was actually billed (that's historical truth).
     SELECT
         COALESCE(
-            CASE WHEN z.BILLING_MONTH::DATE >= mr.merge_effective_month
+            CASE WHEN z.billing_month::DATE >= mr.merge_effective_month
                  THEN mr.canonical_sf_id END,
-            z.SFDC_ACCOUNT_NUMBER
+            z.sf_id
         ) AS sf_id,
-        z.BILLING_MONTH::DATE AS billing_month,
+        z.billing_month::DATE AS billing_month,
         m.sku_match_group,
-        ARRAY_AGG(DISTINCT z.PRODUCT_SKU) WITHIN GROUP (ORDER BY z.PRODUCT_SKU) AS zuora_skus,
-        ARRAY_AGG(DISTINCT z.INVOICE_NUMBER) WITHIN GROUP (ORDER BY z.INVOICE_NUMBER) AS zuora_invoice_numbers,
-        SUM(COALESCE(z.QUANTITY, 0)) AS zuora_quantity,
-        AVG(NULLIF(z.UNIT_PRICE * COALESCE(fx.budget_ex_rate, 1), 0)) AS zuora_unit_price,
-        SUM(COALESCE(z.CHARGE_AMOUNT, 0) * COALESCE(fx.budget_ex_rate, 1)) AS zuora_amount,
+        ARRAY_AGG(DISTINCT z.product_sku) WITHIN GROUP (ORDER BY z.product_sku) AS zuora_skus,
+        ARRAY_AGG(DISTINCT z.invoice_number) WITHIN GROUP (ORDER BY z.invoice_number) AS zuora_invoice_numbers,
+        SUM(COALESCE(z.qty, 0)) AS zuora_quantity,
+        AVG(NULLIF(z.unit_price_usd, 0)) AS zuora_unit_price,
+        SUM(COALESCE(z.charge_amount_usd, 0)) AS zuora_amount,
         -- MDR decomposition: what portion of billing comes from MDR-bundled SKUs
         SUM(CASE WHEN bc.billing_category = 'MDR_BUNDLE'
-            THEN COALESCE(z.CHARGE_AMOUNT, 0) * COALESCE(fx.budget_ex_rate, 1) ELSE 0 END) AS mdr_bundle_amount,
+            THEN COALESCE(z.charge_amount_usd, 0) ELSE 0 END) AS mdr_bundle_amount,
         SUM(CASE WHEN bc.billing_category = 'MDR_BUNDLE'
-            THEN COALESCE(z.QUANTITY, 0) ELSE 0 END) AS mdr_bundle_quantity,
+            THEN COALESCE(z.qty, 0) ELSE 0 END) AS mdr_bundle_quantity,
         -- Dominant billing category for this (sf_id, month, sku_group) grain
         MODE(bc.billing_category) AS dominant_billing_category
-    FROM ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE z
+    FROM THIRD_PARTY_RECON_SOURCE_ZUORA_PROD z
     LEFT JOIN merged_account_resolver mr
-        ON mr.old_sf_id = z.SFDC_ACCOUNT_NUMBER
+        ON mr.old_sf_id = z.sf_id
     JOIN cw_sku_group_map m
-        ON m.cw_sku = UPPER(TRIM(z.PRODUCT_SKU))
-    LEFT JOIN fx_rates fx
-        ON fx.currency_id = UPPER(z.ACCOUNT_CURRENCY)
+        ON m.cw_sku = UPPER(TRIM(z.product_sku))
     LEFT JOIN billing_category_map bc
-        ON bc.product_sku = UPPER(TRIM(z.PRODUCT_SKU))
-    WHERE z.VENDOR_NAME = 'SentinelOne'
-      AND z.INVOICE_STATUS = 'Posted'
-      AND z.INVOICE_SOURCE = 'BillRun'
-      AND z.BILLING_MONTH >= '2026-01-01'
-      AND z.SFDC_ACCOUNT_NUMBER IS NOT NULL
+        ON bc.product_sku = UPPER(TRIM(z.product_sku))
+    WHERE z.vendor = 'SentinelOne'
+      AND z.billing_month >= '2026-01-01'
+      AND z.sf_id IS NOT NULL
     GROUP BY 1, 2, 3
 ),
 
@@ -419,6 +462,7 @@ vendor_usage_mapped AS (
         COALESCE(
             IFF(
                 v.raw_sf_id IS NOT NULL
+                AND scl.sf_id IS NULL
                 AND COALESCE(child_billing.total_billing_quantity, 0) = 0
                 AND COALESCE(parent_billing.total_billing_quantity, 0) > 0,
                 pr.parent_sf_id,
@@ -438,7 +482,8 @@ vendor_usage_mapped AS (
         LISTAGG(DISTINCT
             CASE
                 WHEN v.raw_sf_id IS NULL THEN 'UNMAPPED'
-                WHEN COALESCE(child_billing.total_billing_quantity, 0) = 0
+                WHEN scl.sf_id IS NULL
+                 AND COALESCE(child_billing.total_billing_quantity, 0) = 0
                  AND COALESCE(parent_billing.total_billing_quantity, 0) > 0 THEN 'VENDOR_PORTAL|PARENT_ROLLUP'
                 ELSE v.partner_match_method
             END,
@@ -446,7 +491,8 @@ vendor_usage_mapped AS (
         ) WITHIN GROUP (ORDER BY
             CASE
                 WHEN v.raw_sf_id IS NULL THEN 'UNMAPPED'
-                WHEN COALESCE(child_billing.total_billing_quantity, 0) = 0
+                WHEN scl.sf_id IS NULL
+                 AND COALESCE(child_billing.total_billing_quantity, 0) = 0
                  AND COALESCE(parent_billing.total_billing_quantity, 0) > 0 THEN 'VENDOR_PORTAL|PARENT_ROLLUP'
                 ELSE v.partner_match_method
             END
@@ -454,6 +500,8 @@ vendor_usage_mapped AS (
     FROM vendor_usage_mapped_pre v
     LEFT JOIN parent_rollup pr
         ON pr.child_sf_id = v.raw_sf_id
+    LEFT JOIN sentinel_child_sfid_lock scl
+        ON scl.sf_id = v.raw_sf_id
     LEFT JOIN product_billing child_billing
         ON child_billing.sf_id = v.raw_sf_id
        AND child_billing.billing_month = v.billing_month
@@ -719,6 +767,98 @@ detail_pre AS (
     FROM product_joined pj
     LEFT JOIN sku_group_invoice_rate sgir
         ON sgir.sku_match_group = pj.sku_match_group
+),
+
+-- =============================================================================
+-- SentinelOne API usage (direct-from-raw architecture, 2026-08-28)
+-- ---------------------------------------------------------------------------
+-- Replaces the stale THIRD_PARTY_RECON_SOURCE_TRT_PROD bridge with a direct
+-- read from the raw daily-usage table:
+--   ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE
+-- Join keys (governed):
+--   * partner_id (usage) = cms_id from RECON_PARTNER_MAP_MONTHLY.
+--   * product_sku (usage) = TRT_MATCH_KEY from RECON_SKU_MAP (SentinelOne).
+--     For SentinelOne, TRT_MATCH_KEY = CW_SKU (verified 2026-08-28: 17 CW_SKUs
+--     have direct 1:1 coverage in raw TRT for a 120-day window).
+-- Cycle window: SentinelOne API snapshot = day 20 of each month, so a
+--   billing_month M accumulates on_date rows in (M-1 + 20 days, M + 20 days].
+-- Grain: (sf_id, billing_month, sku_match_group).
+-- =============================================================================
+s1_trt_keys AS (
+    -- All raw-TRT product_sku values SentinelOne maps to, plus the
+    -- sku_match_group they roll up to. Distinct so join fan-out matches
+    -- the recon grain. Uppercased for the join.
+    SELECT DISTINCT
+        UPPER(TRIM(sm.trt_match_key)) AS product_sku_key,
+        sm.sku_match_group
+    FROM sku_map sm
+    WHERE sm.trt_match_key IS NOT NULL
+      AND TRIM(sm.trt_match_key) <> ''
+      AND sm.sku_match_group IS NOT NULL
+),
+
+s1_api_partners AS (
+    -- sf_ids that actually appear in the SentinelOne recon for a given
+    -- billing_month, joined to their month-effective cms_id.
+    SELECT DISTINCT
+        d.sf_id,
+        d.billing_month,
+        d.sku_match_group,
+        pm.cms_id
+    FROM detail_pre d
+                JOIN RECON_PARTNER_MAP_MONTHLY_SF_UNIQUE pm
+      ON pm.sf_id = d.sf_id
+         AND pm.billing_month = d.billing_month
+    WHERE d.sf_id IS NOT NULL
+      AND d.sku_match_group IS NOT NULL
+      AND pm.cms_id IS NOT NULL
+      AND TRIM(pm.cms_id) <> ''
+),
+
+s1_api_daily AS (
+    -- One row per (sf_id, billing_month, sku_match_group, on_date). The
+    -- window predicate binds each on_date to exactly one billing_month.
+    SELECT
+        pa.sf_id,
+        pa.billing_month,
+        pa.sku_match_group,
+        DATEADD('day', 20, pa.billing_month)::DATE            AS snapshot_date,
+        u.on_date::DATE                                        AS on_date,
+        SUM(COALESCE(u.agent_cnt, 0))                          AS day_quantity
+    FROM s1_api_partners pa
+    JOIN s1_trt_keys k
+      ON k.sku_match_group = pa.sku_match_group
+    JOIN ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE u
+      ON u.partner_id::VARCHAR = pa.cms_id
+     AND UPPER(TRIM(u.product_sku)) = k.product_sku_key
+     AND u.on_date::DATE >  DATEADD('day', 20, DATEADD('month', -1, pa.billing_month))::DATE
+     AND u.on_date::DATE <= DATEADD('day', 20, pa.billing_month)::DATE
+    GROUP BY 1, 2, 3, 4, 5
+),
+
+s1_api_rollup AS (
+    -- Roll up to recon grain. api_quantity = day-20 snapshot value.
+    -- avg_api_quantity = mean across the full cycle window.
+    SELECT
+        sf_id,
+        billing_month,
+        sku_match_group,
+        MAX(IFF(on_date = snapshot_date, day_quantity, NULL)) AS api_quantity,
+        AVG(day_quantity)                                     AS avg_api_quantity
+    FROM s1_api_daily
+    GROUP BY 1, 2, 3
+),
+
+detail_pre_with_api AS (
+    SELECT
+        d.*,
+        a.api_quantity,
+        a.avg_api_quantity
+    FROM detail_pre d
+    LEFT JOIN s1_api_rollup a
+      ON a.sf_id = d.sf_id
+     AND a.billing_month = d.billing_month
+     AND a.sku_match_group = d.sku_match_group
 )
 
 SELECT
@@ -734,6 +874,8 @@ SELECT
     zuora_skus,
     marketplace_skus,
     billing_source_mix,
+    api_quantity,
+    avg_api_quantity,
     ARRAY_TO_STRING(zuora_invoice_numbers, ' | ') AS zuora_inv,
     ARRAY_TO_STRING(marketplace_transaction_ids, ' | ') AS mp_inv,
     vendor_quantity,
@@ -847,7 +989,7 @@ SELECT
             THEN ROUND((total_billing_amount - vendor_amount) / NULLIF(total_billing_amount, 0) * 100, 1)
         ELSE NULL
     END AS s1_license_margin_pct
-FROM detail_pre;
+FROM detail_pre_with_api;
 
 -- =============================================================================
 -- ADD-ON AUDIT DETAIL

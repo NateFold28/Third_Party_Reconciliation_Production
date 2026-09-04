@@ -1,48 +1,27 @@
 -- =============================================================================
--- 02_unified_reference_maps.sql   (idempotent v3.1 — HYBRID VIEW/TABLE LAYOUT)
+-- 02_unified_reference_maps.sql   (idempotent v2)
 --
--- 2026-08-31 rewrite: converted the governed-map layer to reduce sprawl and
--- guarantee seed edits land immediately. Layout:
+-- Builds:
+--   RECON_PARTNER_MAP   (VENDOR, PARTNER_NAME, PARENT_COMPANY, SF_ID, CMS_ID, ZUORA_NAME)
+--   RECON_SKU_MAP      (VENDOR, VENDOR_PRODUCT, VENDOR_SKU, CW_SKU, SKU_MATCH_KEY,
+--                       MAPPING_NOTES, CONTRACT_COST_RATE, VENDOR_UNIT_PRICE, CW_UNIT_PRICE,
+--                       PRICEBOOK_BILLING_TYPE, PRICEBOOK_TIERNUM,
+--                       PRICEBOOK_TIER_LOWER, PRICEBOOK_TIER_UPPER,
+--                       PRICEBOOK_VENDOR_UNIT_PRICE, PRICEBOOK_CW_UNIT_PRICE,
+--                       PRICEBOOK_PRODUCT_NAME, PRICEBOOK_FAMILY, PRICEBOOK_STATUS)
+--   V_RECON_PRICEBOOK_TIER_LOOKUP  (view for quantity-aware tier price lookup)
 --
---   OBJECT                            | KIND  | RATIONALE
---   ----------------------------------|-------|-----------------------------
---   RECON_ACCOUNT_MERGE_RESOLVER      | TABLE | recursive walk of merged_account_map
---                                     |       | (too expensive as a view; rebuilt
---                                     |       |  automatically at pipeline STEP 0)
---   RECON_PARTNER_MAP                 | TABLE | joins resolver + manual overrides;
---                                     |       |  rebuilt at pipeline STEP 0
---   RECON_PARTNER_MAP_MONTHLY         | TABLE | RECON_PARTNER_MAP × 240-month spine
---                                     |       | (~1.7M rows; rebuilt at STEP 0)
---   V_RECON_PARTNER_MAP_MONTHLY_NORM  | VIEW  | normalized-name fallback
---   RECON_SKU_MAP                     | VIEW  | live over seed + pricebook
---   V_RECON_PRICEBOOK_TIER_LOOKUP     | VIEW  | quantity-aware tier price lookup
+-- Sources unioned into RECON_PARTNER_MAP:
+--   THIRD_PARTY_RECON_PARTNER_MAP_PROD            (production partner map source of truth)
+--   RECON_MANUAL_SEED_PARTNER_MAP                 (manual curated additions)
 --
--- User-facing guarantee: any edit to `THIRD_PARTY_RECON_PARTNER_MAP_PROD` or
--- `THIRD_PARTY_RECON_SKU_MAP_PROD` lands in the next pipeline run automatically.
--- The 3 governed tables are rebuilt as pipeline STEP 0 (`run_repo_sql_file` of
--- this script, invoked by `_run_skeleton_pipeline.py`). No manual step required.
+-- Sources for RECON_SKU_MAP:
+--   THIRD_PARTY_RECON_SKU_MAP_PROD                (production SKU map source of truth)
+--   RECON_PRICEBOOK                               (base-tier price enrichment)
 --
--- Prior version (all 4 as materialized tables, rebuilt manually) is archived at:
---   Maps/sql/_archive_20260831_governed_view_migration/02_unified_reference_maps_PRE_VIEW_MIGRATION.sql
---
--- Sources:
---   THIRD_PARTY_RECON_PARTNER_MAP_PROD  (production partner map source of truth)
---   THIRD_PARTY_RECON_SKU_MAP_PROD      (production SKU map source of truth)
---   ANALYTICS.DBO.CW_DW__MERGED_ACCOUNT_MAP  (upstream merge history — live)
---   ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT  (parent rollup — live)
---   RECON_PRICEBOOK                     (base-tier price enrichment, loaded via
---                                        tools/load_pricebook_to_snowflake.py)
---
--- Also kept:
---   RECON_VENDOR_PARTNER_MANUAL_MAP  (manually-populated table — still a TABLE)
---
+-- No vendor-specific V5 compatibility views are emitted by this script.
 -- Active reconciliation SQL consumes RECON_PARTNER_MAP and RECON_SKU_MAP directly.
 -- =============================================================================
-
-USE ROLE DEVELOPER;
-USE WAREHOUSE REPORTING_WH;
-USE DATABASE ANALYTICS_DEV;
-USE SCHEMA DBT_NFOLD_TRANSFORMATION;
 
 USE ROLE DEVELOPER;
 USE WAREHOUSE REPORTING_WH;
@@ -72,9 +51,6 @@ CREATE TABLE IF NOT EXISTS RECON_VENDOR_PARTNER_MANUAL_MAP (
 --   3) Emit RECON_PARTNER_MAP_MONTHLY so vendor SQL can resolve sf_id by
 --      BILLING_MONTH: pre-merge months keep RAW_SF_ID; post-merge months use
 --      canonical SF_ID.
---
--- 2026-08-31 (v3.1): kept as TABLE (rebuilt automatically at pipeline STEP 0)
--- because the recursive walk is too expensive to run as a live view per query.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE TABLE RECON_ACCOUNT_MERGE_RESOLVER AS
 WITH merge_edges AS (
@@ -176,41 +152,28 @@ resolved_parent AS (
     ) = 1
 ),
 manual_account_overrides AS (
-    -- Explicit Oryx correction retained for compatibility, but use the
-    -- authoritative Salesforce merge timestamp so historical rows remain on
-    -- the old identity until the May 2026 merge becomes effective.
+    -- Explicit CW-side account correction: Zuora/CW billing currently carries
+    -- Oryx billing under ACT-00169474, while vendor usage and Salesforce source
+    -- of truth are ACT-00188468 / CMS 500001120.
     SELECT
-        SF_ID::VARCHAR AS old_sf_id,
-        CURRENT_SF_ID::VARCHAR AS canonical_sf_id,
-        MERGED_DATE::TIMESTAMP_NTZ AS merge_effective_ts,
-        DATE_TRUNC('MONTH', MERGED_DATE)::DATE AS merge_effective_month,
+        'ACT-00169474'::VARCHAR AS old_sf_id,
+        'ACT-00188468'::VARCHAR AS canonical_sf_id,
+        NULL::TIMESTAMP_NTZ AS merge_effective_ts,
+        NULL::DATE AS merge_effective_month,
         1 AS resolver_depth,
         'MANUAL_ACCOUNT_OVERRIDE'::VARCHAR AS canonical_source
-    FROM MASTER_SF_PARTNER_LIST
-    WHERE SF_ID = 'ACT-00169474'
-      AND CURRENT_SF_ID = 'ACT-00188468'
-      AND MERGED_DATE IS NOT NULL
 ),
 identity_ids AS (
     SELECT DISTINCT SF_ID AS sf_id
     FROM THIRD_PARTY_RECON_PARTNER_MAP_PROD
     WHERE SF_ID ILIKE 'ACT-%'
     UNION
-    -- Resolver coverage must not depend on whether a stale/deleted source ID
-    -- still appears in the current partner map. Billing sources can retain
-    -- either endpoint of a historical Salesforce merge.
-    SELECT old_sf_id AS sf_id
-    FROM merge_edges
-    UNION
-    SELECT new_sf_id AS sf_id
-    FROM merge_edges
-    UNION
     SELECT old_sf_id AS sf_id
     FROM manual_account_overrides
 )
 SELECT
     i.sf_id AS old_sf_id,
-    COALESCE(m.canonical_sf_id, r.canonical_sf_id, i.sf_id) AS canonical_sf_id,
+    COALESCE(m.canonical_sf_id, r.canonical_sf_id, rp.canonical_parent_sf_id, i.sf_id) AS canonical_sf_id,
     CASE
         WHEN m.old_sf_id IS NOT NULL THEN m.merge_effective_ts
         ELSE r.merge_effective_ts
@@ -223,6 +186,7 @@ SELECT
     CASE
         WHEN m.old_sf_id IS NOT NULL THEN m.canonical_source
         WHEN r.old_sf_id IS NOT NULL THEN 'MERGED_ACCOUNT_MAP'
+        WHEN rp.old_sf_id IS NOT NULL THEN 'PARENT_ROLLUP'
         ELSE 'IDENTITY'
     END AS canonical_source
 FROM identity_ids i
@@ -233,19 +197,11 @@ LEFT JOIN resolved r
 LEFT JOIN resolved_parent rp
   ON rp.old_sf_id = i.sf_id;
 
--- 2026-08-31 (v3.1): kept as TABLE (rebuilt automatically at pipeline STEP 0).
 CREATE OR REPLACE TABLE RECON_PARTNER_MAP AS
 WITH manual_partner_overrides AS (
     SELECT *
     FROM (
         SELECT 'Gurusis Inc'::VARCHAR AS PARTNER_NAME, NULL::VARCHAR AS PARENT_COMPANY, 'ACT-00383480'::VARCHAR AS RAW_SF_ID, NULL::VARCHAR AS CMS_ID, NULL::VARCHAR AS ZUORA_NAME
-        -- KeepIT billing identities verified by persistent, complementary
-        -- vendor-only/billing-only workload pairs across Jan-Aug 2026.
-        UNION ALL SELECT 'DuraVent, Inc'::VARCHAR, NULL::VARCHAR, 'ACT-00444183'::VARCHAR, '29771'::VARCHAR, 'ATS (DuraVent Billing)'::VARCHAR
-        UNION ALL SELECT 'DynaSis, division of Novatech'::VARCHAR, NULL::VARCHAR, 'ACT-00149048'::VARCHAR, '19752'::VARCHAR, 'Nova Technology Solutions LLC'::VARCHAR
-        UNION ALL SELECT 'Mainstay Technologies, LLC'::VARCHAR, NULL::VARCHAR, 'ACT-00039440'::VARCHAR, '25151'::VARCHAR, 'Mainstay Technologies, Inc.'::VARCHAR
-        UNION ALL SELECT 'Calmira B.V.'::VARCHAR, NULL::VARCHAR, 'ACT-00285405'::VARCHAR, '26634'::VARCHAR, 'Calmira B.V.'::VARCHAR
-        UNION ALL SELECT 'Vodafone IT Hub South Wales'::VARCHAR, NULL::VARCHAR, 'ACT-00192982'::VARCHAR, '500000677'::VARCHAR, 'Vodafone'::VARCHAR
         UNION ALL SELECT 'Kimmit Ltd'::VARCHAR, NULL::VARCHAR, 'ACT-00287424'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
         UNION ALL SELECT 'Riviera Networks Limited'::VARCHAR, NULL::VARCHAR, 'ACT-00242673'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
         UNION ALL SELECT 'JEVSUPPORT, LLC'::VARCHAR, NULL::VARCHAR, 'ACT-00292117'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
@@ -307,11 +263,7 @@ WITH manual_partner_overrides AS (
         UNION ALL SELECT 'De Ert IT Olution 1'::VARCHAR, NULL::VARCHAR, 'ACT-00057174'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
         UNION ALL SELECT 'Terling Technology Olution'::VARCHAR, NULL::VARCHAR, 'ACT-00131379'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
         UNION ALL SELECT 'Re Onant Technology Partner LLC'::VARCHAR, NULL::VARCHAR, 'ACT-00171734'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
-        UNION ALL SELECT 'Resolution IT'::VARCHAR, NULL::VARCHAR, 'ACT-00225101'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
-        -- Auvik aliases: CTMS quantities track Computer Technology Management
-        -- Services; Torix transitions to the existing AzteQ/Torix account.
-        UNION ALL SELECT 'CTMS LLC'::VARCHAR, NULL::VARCHAR, 'ACT-00010651'::VARCHAR, NULL::VARCHAR, 'Computer Technology Management Services'::VARCHAR
-        UNION ALL SELECT 'Torix Managed Services'::VARCHAR, NULL::VARCHAR, 'ACT-00203141'::VARCHAR, '16758'::VARCHAR, 'AzteQ Group Ltd'::VARCHAR
+        UNION ALL SELECT 'Resolution IT'::VARCHAR, NULL::VARCHAR, 'ACT-00020131'::VARCHAR, NULL::VARCHAR, NULL::VARCHAR
         UNION ALL SELECT 'Founders Innovative Technology'::VARCHAR, NULL::VARCHAR, 'ACT-00257034'::VARCHAR, '27653'::VARCHAR, 'Founders Innovative Technology (FIT)'::VARCHAR
         UNION ALL SELECT 'Founders IT Group'::VARCHAR, NULL::VARCHAR, 'ACT-00431740'::VARCHAR, '31329'::VARCHAR, 'Founders IT Group'::VARCHAR
         UNION ALL SELECT 'Meritech'::VARCHAR, NULL::VARCHAR, 'ACT-00245304'::VARCHAR, '15302'::VARCHAR, 'DEX Imaging (formerly North American)'::VARCHAR
@@ -420,10 +372,6 @@ manual_child_sfid_lock AS (
         UNION ALL SELECT 'Founders IT Group'::VARCHAR
         UNION ALL SELECT 'Meritech'::VARCHAR
         UNION ALL SELECT 'Merit Technologies - Customer Management'::VARCHAR
-        UNION ALL SELECT 'SECUR-SERV INC.'::VARCHAR
-        UNION ALL SELECT 'SECUR-SERV INC'::VARCHAR
-        UNION ALL SELECT 'Secur-Serv'::VARCHAR
-        UNION ALL SELECT 'SECURSERV'::VARCHAR
     )
 ),
 base_src AS (
@@ -479,8 +427,8 @@ resolved_candidates AS (
         CASE
             WHEN TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(s.partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) IN (SELECT pn_norm FROM manual_child_sfid_lock)
                 THEN 'MANUAL_CHILD_LOCK'
-            WHEN r.canonical_source IN ('MERGED_ACCOUNT_MAP', 'MANUAL_ACCOUNT_OVERRIDE')
-                THEN r.canonical_source
+            WHEN r.old_sf_id IS NOT NULL
+                THEN 'MERGED_ACCOUNT_MAP'
             ELSE 'SOURCE'
         END AS SF_ID_SOURCE,
         r.merge_effective_ts,
@@ -526,8 +474,6 @@ QUALIFY ROW_NUMBER() OVER (
              SF_ID
 ) = 1;
 
--- 2026-08-31 (v3.1): kept as TABLE (rebuilt automatically at pipeline STEP 0).
--- ~1.7M rows; a live view forces the 240-month cross join per query.
 CREATE OR REPLACE TABLE RECON_PARTNER_MAP_MONTHLY AS
 WITH month_spine AS (
     SELECT DATEADD('MONTH', SEQ4(), '2020-01-01'::DATE)::DATE AS billing_month
@@ -538,32 +484,21 @@ SELECT
     p.PARTNER_NAME,
     p.PARENT_COMPANY,
     CASE
-        WHEN p.SF_ID_SOURCE IN ('MERGED_ACCOUNT_MAP', 'MANUAL_ACCOUNT_OVERRIDE')
+        WHEN p.SF_ID_SOURCE = 'MERGED_ACCOUNT_MAP'
          AND p.merge_effective_month IS NOT NULL
          AND m.billing_month < p.merge_effective_month
             THEN p.RAW_SF_ID
         ELSE p.SF_ID
     END AS SF_ID,
-    CASE
-        WHEN p.SF_ID_SOURCE IN ('MERGED_ACCOUNT_MAP', 'MANUAL_ACCOUNT_OVERRIDE')
-         AND p.merge_effective_month IS NOT NULL
-         AND m.billing_month < p.merge_effective_month
-            THEN p.CMS_ID
-        WHEN p.SF_ID_SOURCE IN ('MERGED_ACCOUNT_MAP', 'MANUAL_ACCOUNT_OVERRIDE')
-            THEN COALESCE(current_account.CURRENT_CMS_ID, p.CMS_ID)
-        ELSE p.CMS_ID
-    END AS CMS_ID,
+    p.CMS_ID,
     p.ZUORA_NAME,
     p.RAW_SF_ID,
-    p.CMS_ID AS RAW_CMS_ID,
     p.SF_ID_SOURCE,
     p.merge_effective_ts,
     p.merge_effective_month,
     p.PARTNER_NAME_NORMALIZED
 FROM RECON_PARTNER_MAP p
-CROSS JOIN month_spine m
-LEFT JOIN MASTER_SF_PARTNER_LIST current_account
-       ON current_account.SF_ID = p.SF_ID;
+CROSS JOIN month_spine m;
 
 -- -----------------------------------------------------------------------------
 -- V_RECON_PARTNER_MAP_MONTHLY_NORM  (normalized-key alignment view, 2026-08-30)
@@ -590,7 +525,6 @@ SELECT
     CMS_ID,
     ZUORA_NAME,
     RAW_SF_ID,
-    RAW_CMS_ID,
     SF_ID_SOURCE
 FROM RECON_PARTNER_MAP_MONTHLY
 WHERE PARTNER_NAME_NORMALIZED IS NOT NULL
@@ -604,36 +538,6 @@ QUALIFY ROW_NUMBER() OVER (
         PARTNER_NAME,
         SF_ID
 ) = 1;
-
--- API enrichment joins often begin with only (billing_month, sf_id). Expose
--- only mappings whose CMS identity is unambiguous at that grain; omitting an
--- ambiguous API enrichment is safer than multiplying billing/recon rows.
-DROP VIEW IF EXISTS V_RECON_PARTNER_MAP_MONTHLY_SF_UNIQUE;
-DROP VIEW IF EXISTS V_RECON_PARTNER_MAP_MONTHLY_CMS_UNIQUE;
-
-CREATE OR REPLACE TABLE RECON_PARTNER_MAP_MONTHLY_SF_UNIQUE AS
-SELECT
-        billing_month,
-        sf_id,
-        MIN(cms_id) AS cms_id
-FROM RECON_PARTNER_MAP_MONTHLY
-WHERE sf_id IS NOT NULL
-    AND cms_id IS NOT NULL
-    AND TRIM(cms_id) <> ''
-GROUP BY billing_month, sf_id
-HAVING COUNT(DISTINCT cms_id) = 1;
-
-CREATE OR REPLACE TABLE RECON_PARTNER_MAP_MONTHLY_CMS_UNIQUE AS
-SELECT
-        billing_month,
-        cms_id,
-        MIN(sf_id) AS sf_id
-FROM RECON_PARTNER_MAP_MONTHLY
-WHERE cms_id IS NOT NULL
-    AND TRIM(cms_id) <> ''
-    AND sf_id IS NOT NULL
-GROUP BY billing_month, cms_id
-HAVING COUNT(DISTINCT sf_id) = 1;
 
 -- -----------------------------------------------------------------------------
 -- 2) SKU map  (source of truth: THIRD_PARTY_RECON_SKU_MAP_PROD)
@@ -649,11 +553,8 @@ HAVING COUNT(DISTINCT sf_id) = 1;
 --
 -- Full tier-aware lookup (pick price by seat count) is available via the
 -- helper view V_RECON_PRICEBOOK_TIER_LOOKUP defined further down.
---
--- 2026-08-31: converted from TABLE to VIEW so seed edits to
--- THIRD_PARTY_RECON_SKU_MAP_PROD land immediately.
 -- -----------------------------------------------------------------------------
-CREATE OR REPLACE VIEW RECON_SKU_MAP AS
+CREATE OR REPLACE TABLE RECON_SKU_MAP AS
 WITH sku_map_seed AS (
     SELECT DISTINCT
         VENDOR::VARCHAR             AS VENDOR,

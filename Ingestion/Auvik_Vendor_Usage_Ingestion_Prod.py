@@ -68,11 +68,16 @@ import pandas as pd
 
 AUVIK_ROOT = Path(__file__).resolve().parents[2]
 PROJECT_ROOT = AUVIK_ROOT.parent
-WORKSPACE_ROOT = PROJECT_ROOT.parents[1]
+WORKSPACE_ROOT = next((p for p in (PROJECT_ROOT, *PROJECT_ROOT.parents) if (p / "TEMPLATES").exists()), PROJECT_ROOT)
 
 DEFAULT_SOURCE_ROOT_CW = Path(
     r"C:\Users\Nate.Fold\OneDrive - ConnectWise, Inc"
     r"\THIRD_PARTY_RECONCILIATION\2026 - Vendor Files\Auvik CW"
+)
+
+DEFAULT_SOURCE_ROOT_CMS = Path(
+    r"C:\Users\Nate.Fold\OneDrive - ConnectWise, Inc"
+    r"\THIRD_PARTY_RECONCILIATION\2026 - Vendor Files\Auvik CMS"
 )
 
 OUTPUT_DIR = AUVIK_ROOT / "outputs"
@@ -813,11 +818,12 @@ def parse_usage_workbook(
 
 def build_usage(
     source_root_cw: Path,
+    source_root_cms: Path | None = None,
     month_filter: str | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Scan the CW folder, parse every qualifying workbook, and return
-    (usage_df, audit_df).  Content-hash deduplication prevents double-loading
-    if identical files are discovered more than once.
+    """Scan the CW and optionally CMS folders, parse every qualifying workbook,
+    and return (usage_df, audit_df).  Content-hash deduplication prevents
+    double-loading if identical files are discovered more than once.
     """
     ingested_at = dt.datetime.now(dt.UTC).replace(tzinfo=None)
     files = discover_source_files(source_root_cw, month_filter=month_filter)
@@ -827,11 +833,18 @@ def build_usage(
             + (f" for month {month_filter}" if month_filter else "")
         )
 
+    # Also scan CMS folder if provided
+    cms_files = []
+    if source_root_cms and source_root_cms.exists():
+        cms_files = discover_source_files(source_root_cms, month_filter=month_filter)
+    
+    all_files = files + cms_files
+
     usage_frames: list[pd.DataFrame] = []
     audit_frames: list[pd.DataFrame] = []
     seen_hashes: set[str] = set()
 
-    for source in files:
+    for source in all_files:
         print(
             f"Parsing {source.path.parent.name}/{source.path.name} ...",
             flush=True,
@@ -1203,7 +1216,7 @@ def main() -> None:
 
     month_filter: str | None = args.month
 
-    usage_df, audit_df = build_usage(source_root, month_filter=month_filter)
+    usage_df, audit_df = build_usage(source_root, source_root_cms=DEFAULT_SOURCE_ROOT_CMS, month_filter=month_filter)
 
     # Apply start/end-month bounds when using --all-months
     if args.all_months and (args.start_month or args.end_month):
