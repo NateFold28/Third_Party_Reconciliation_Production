@@ -216,6 +216,20 @@ def _billing_month_from_source(path: Path, billing_date: dt.date | None) -> dt.d
     return _first_day(billing_date)
 
 
+def _source_period_mismatch(path: Path, billing_date: dt.date | None) -> str | None:
+    """Describe a folder/source billing-month conflict that must block loading."""
+    folder_month = _month_from_folder(path)
+    if not folder_month or billing_date is None:
+        return None
+    billing_date_month = billing_date.strftime("%Y-%m")
+    if folder_month == billing_date_month:
+        return None
+    return (
+        f"Source folder month {folder_month} disagrees with embedded billing "
+        f"date month {billing_date_month}."
+    )
+
+
 def _canonical_row(values: Iterable[object]) -> str:
     return "\t".join(_clean_text(v) or "" for v in values)
 
@@ -332,7 +346,22 @@ def parse_aggregator_file(source: SourceFile, *, ingested_at: dt.datetime) -> tu
 
     billing_dates = data_df["Billing Date"].map(_to_date)
     order_dates = data_df["Order Date"].map(_to_date)
-    billing_month = _billing_month_from_source(source.path, billing_dates.dropna().iloc[0] if not billing_dates.dropna().empty else None)
+    first_billing_date = billing_dates.dropna().iloc[0] if not billing_dates.dropna().empty else None
+    period_error = _source_period_mismatch(source.path, first_billing_date)
+    if period_error:
+        audit_df = _build_audit(
+            source=source,
+            sheet_name=sheet_name,
+            source_content_hash=source_content_hash,
+            data_df=data_df,
+            subtotal_df=subtotal_df,
+            load_status="FAILED_PERIOD_MISMATCH",
+            error_message=period_error,
+            ingested_at=ingested_at,
+        )
+        return pd.DataFrame(columns=USAGE_COLUMNS), audit_df
+
+    billing_month = _billing_month_from_source(source.path, first_billing_date)
     billing_months = pd.Series([billing_month] * len(data_df), index=data_df.index)
     usage_df = pd.DataFrame(
         {
@@ -466,17 +495,26 @@ def build_usage(source_root_cw: Path, source_root_cms: Path) -> tuple[pd.DataFra
 
     usage_frames: list[pd.DataFrame] = []
     audit_frames: list[pd.DataFrame] = []
-    seen_content_keys: set[tuple[str, object, str]] = set()
+    seen_content_months: dict[tuple[str, str], object] = {}
     for source in files:
         usage_df, audit_df = parse_aggregator_file(source, ingested_at=ingested_at)
         content_hash = audit_df["SOURCE_CONTENT_HASH"].iloc[0]
         billing_month_key = audit_df["BILLING_MONTH"].iloc[0] if not audit_df.empty else None
-        dedupe_key = (content_hash, billing_month_key, source.stream)
-        if dedupe_key in seen_content_keys:
-            audit_df["LOAD_STATUS"] = "SKIPPED_DUPLICATE_CONTENT"
+        content_key = (content_hash, source.stream)
+        prior_month = seen_content_months.get(content_key)
+        load_status = audit_df["LOAD_STATUS"].iloc[0]
+        if load_status == "LOADED" and prior_month is not None:
+            if prior_month == billing_month_key:
+                audit_df["LOAD_STATUS"] = "SKIPPED_DUPLICATE_CONTENT"
+            else:
+                audit_df["LOAD_STATUS"] = "FAILED_DUPLICATE_PERIOD_CONTENT"
+                audit_df["ERROR_MESSAGE"] = (
+                    f"Content duplicates {source.stream} source data already assigned "
+                    f"to {prior_month}; refusing to assign it to {billing_month_key}."
+                )
             usage_df = pd.DataFrame(columns=USAGE_COLUMNS)
         elif not usage_df.empty:
-            seen_content_keys.add(dedupe_key)
+            seen_content_months[content_key] = billing_month_key
         audit_frames.append(audit_df)
         usage_frames.append(usage_df)
 
@@ -693,7 +731,7 @@ CREATE OR REPLACE TABLE {TARGET_DATABASE}.{TARGET_SCHEMA}.{PARTNER_SEED_TABLE} (
                     f"AND BILLING_MONTH IN ({month_list})",
                     (TARGET_VENDOR,),
                 )
-            df = _fill_missing_prices(df, 'Webroot', conn=conn)
+                df = _fill_missing_prices(df, "Webroot", conn=conn)
             success, _, rows, output = write_pandas(
                 conn,
                 df,
