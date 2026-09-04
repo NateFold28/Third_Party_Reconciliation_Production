@@ -15,6 +15,7 @@ TARGET
             NETSUITE_TRANSACTION_ID VARCHAR
             NETSUITE_URL       VARCHAR
       PARTNER            VARCHAR
+            SOURCE_STREAM      VARCHAR
       VENDOR_PRODUCT_SKU VARCHAR
       DESCRIPTION        VARCHAR
       QUANTITY           NUMBER(18,6)
@@ -116,6 +117,16 @@ def _netsuite_url(source_record_id: object) -> str | None:
     if not re.fullmatch(r"\d+", transaction_id):
         return None
     return f"{NETSUITE_BILL_URL_PREFIX}{transaction_id}&whence="
+
+
+def _webroot_source_stream(text: str) -> str | None:
+    """Identify which Webroot usage stream an OpenText invoice bills."""
+    header = text.split("|", 1)[0]
+    if re.search(r"\b10551253\b|Continuum\s+Holdco", header, flags=re.IGNORECASE):
+        return "CMS"
+    if re.search(r"\b10309662\b|ConnectWise\s+LLC", header, flags=re.IGNORECASE):
+        return "CW"
+    return None
 
 
 def _month_from_service_period(text: str | None) -> str | None:
@@ -928,6 +939,7 @@ def _parse_sentinelone(text: str, file_path: str) -> list[dict]:
 def _parse_webroot(text: str, file_path: str) -> list[dict]:
     """Parse OpenText invoices that carry the Webroot product portfolio."""
     results: list[dict] = []
+    source_stream = _webroot_source_stream(text)
     rows = _parse_markdown_table(text)
     header_idx = None
     for i, row in enumerate(rows):
@@ -983,6 +995,7 @@ def _parse_webroot(text: str, file_path: str) -> list[dict]:
             continue
         results.append({
             "partner": None,
+            "source_stream": source_stream,
             "sku": sku,
             "description": desc,
             "quantity": qty,
@@ -1079,6 +1092,7 @@ def parse_all(rows: list[tuple]) -> pd.DataFrame:
                 "NETSUITE_TRANSACTION_ID": netsuite_transaction_id,
                 "NETSUITE_URL":       _netsuite_url(source_record_id),
                 "PARTNER":            item.get("partner"),
+                "SOURCE_STREAM":      item.get("source_stream"),
                 "VENDOR_PRODUCT_SKU": (item.get("sku") or "UNKNOWN").strip(),
                 "DESCRIPTION":        (item.get("description") or "").strip(),
                 "QUANTITY":           item.get("quantity"),
@@ -1092,7 +1106,7 @@ def parse_all(rows: list[tuple]) -> pd.DataFrame:
         return pd.DataFrame(columns=[
             "BILLING_MONTH", "VENDOR", "INVOICE_ID", "INVOICE_DESCRIPTION",
             "NETSUITE_TRANSACTION_ID", "NETSUITE_URL",
-            "PARTNER", "VENDOR_PRODUCT_SKU",
+            "PARTNER", "SOURCE_STREAM", "VENDOR_PRODUCT_SKU",
             "DESCRIPTION", "QUANTITY", "UNIT_PRICE", "AMOUNT", "FILE_PATH",
         ])
     df = pd.DataFrame(records)
@@ -1220,6 +1234,7 @@ def write_to_snowflake(conn, cur, df: pd.DataFrame, append: bool) -> None:
                 NETSUITE_TRANSACTION_ID VARCHAR,
                 NETSUITE_URL       VARCHAR,
                 PARTNER            VARCHAR,
+                SOURCE_STREAM      VARCHAR,
                 VENDOR_PRODUCT_SKU VARCHAR,
                 DESCRIPTION        VARCHAR,
                 QUANTITY           NUMBER(18,6),

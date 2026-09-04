@@ -3524,19 +3524,6 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
     if selected_invoice != "All Sources":
         work = work[work["INVOICE_ID"] == selected_invoice].copy()
 
-    comparison_grains = sorted(
-        {value for value in work["COMPARISON_GRAIN"].astype(str) if value.strip()}
-    )
-    if is_auvik:
-        st.caption("Display grain: Vendor × Invoice × SKU")
-    elif comparison_grains:
-        st.caption(f"Comparison grain: {', '.join(comparison_grains)}")
-    if (work["SOURCE_STATUS"] == "UNALLOCATED_USAGE_POOL").any():
-        st.caption(
-            f"Unallocated {usage_source_label.lower()} rows have no parsed invoice "
-            "for the same month, lane, and SKU; they are retained as source-coverage gaps."
-        )
-
     usage_seats_label = f"{usage_source_label} Seats"
     usage_amount_label = f"{usage_source_label} Amount"
 

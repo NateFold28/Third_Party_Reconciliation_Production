@@ -61,7 +61,10 @@ class WebrootInvoiceParserTests(unittest.TestCase):
     def test_routes_open_text_to_webroot_target_schema(self) -> None:
         parsed_document = {
             "pages": [{
-                "content": "SMB Invoice\nBilling Doc. #: 9006222523\n" + self.line_table,
+                "content": (
+                    "Invoice To:\nCONNECTWISE LLC\nCustomer ID:\n10309662\n"
+                    "SMB Invoice\nBilling Doc. #: 9006222523\n" + self.line_table
+                ),
             }]
         }
 
@@ -82,6 +85,23 @@ class WebrootInvoiceParserTests(unittest.TestCase):
             "vendbill.nl?id=101459330&whence=",
         )
         self.assertIsNone(first["PARTNER"])
+        self.assertEqual(first["SOURCE_STREAM"], "CW")
+
+    def test_identifies_continuum_invoice_as_cms_stream(self) -> None:
+        parsed_document = {
+            "pages": [{
+                "content": (
+                    "Invoice To:\nContinuum Holdco 1, LLC\nCustomer ID:\n10551253\n"
+                    "SMB Invoice\nBilling Doc. #: 9006231323\n" + self.line_table
+                ),
+            }]
+        }
+
+        result = parse_all([
+            (101577439, "OpenText Inc", "2026_06/source.pdf", parsed_document),
+        ])
+
+        self.assertEqual(set(result["SOURCE_STREAM"]), {"CMS"})
 
 
 if __name__ == "__main__":

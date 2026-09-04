@@ -20,7 +20,8 @@
 --     product families used by the parsed Bitdefender invoice SKUs.
 --   * KeepIT compares within MAIN/TAKEOUT invoice-type lanes.
 --   * Webroot OpenText invoice SKUs are aligned to the GSM/DNS/SAT families
---     in Aggregator Order Details and compared at combined month/SKU grain.
+--     in Aggregator Order Details. The OpenText invoice account identifies
+--     its CW or CMS stream so each invoice remains individually selectable.
 --   * A lane with one invoice compares directly to that invoice.
 --   * Other multi-invoice lanes compare at combined month/SKU grain because
 --     raw usage has no defensible invoice attribution key.
@@ -154,6 +155,7 @@ invoice_source AS (
                 COALESCE(NULLIF(TRIM(v.INVOICE_ID), ''), 'UNIDENTIFIED_INVOICE') AS invoice_id,
                 NULLIF(TRIM(v.INVOICE_DESCRIPTION), '') AS invoice_description,
                 NULLIF(TRIM(v.NETSUITE_URL), '') AS netsuite_url,
+                NULLIF(UPPER(TRIM(v.SOURCE_STREAM)), '') AS source_stream,
                 COALESCE(b.comparison_partner, NULLIF(TRIM(v.PARTNER), '')) AS comparison_partner,
                 COALESCE(b.partner_key, NULLIF(UPPER(REGEXP_REPLACE(TRIM(v.PARTNER), '[^A-Za-z0-9]', '')), '')) AS partner_key,
             COALESCE(NULLIF(TRIM(v.VENDOR_PRODUCT_SKU), ''), '(MISSING SKU)') AS raw_sku,
@@ -189,6 +191,7 @@ invoice_lines AS (
         s.invoice_id,
         s.invoice_description,
         s.netsuite_url,
+        s.source_stream,
         s.comparison_partner,
         s.partner_key,
         COALESCE(
@@ -222,18 +225,33 @@ invoice_lane_registry AS (
     FROM invoice_lines
     GROUP BY 1, 2, 3
 ),
+webroot_invoice_stream_registry AS (
+    SELECT
+        vendor,
+        billing_month,
+        inv_type,
+        source_stream,
+        COUNT(DISTINCT invoice_id) AS invoice_count,
+        MIN(invoice_id) AS sole_invoice_id
+    FROM invoice_lines
+    WHERE UPPER(vendor) = 'WEBROOT'
+      AND source_stream IN ('CW', 'CMS')
+    GROUP BY 1, 2, 3, 4
+),
 invoice_prepared AS (
     SELECT
         i.*,
         CASE
             WHEN UPPER(i.vendor) = 'AUVIK' THEN 'PARTNER_SKU'
             WHEN UPPER(i.vendor) = 'KEEPIT' THEN 'INVOICE_TYPE_SKU'
+            WHEN UPPER(i.vendor) = 'WEBROOT' THEN 'INVOICE_SKU'
             WHEN r.invoice_count = 1 THEN 'INVOICE_SKU'
             ELSE 'MONTH_SKU'
         END AS comparison_grain,
         CASE
             WHEN UPPER(i.vendor) = 'AUVIK' THEN COALESCE(i.partner_key, '(MISSING PARTNER)')
             WHEN UPPER(i.vendor) = 'KEEPIT' THEN i.inv_type
+            WHEN UPPER(i.vendor) = 'WEBROOT' THEN i.invoice_id
             WHEN r.invoice_count = 1 THEN r.sole_invoice_id
             ELSE 'MONTH_SKU_SUMMARY'
         END AS comparison_key
@@ -283,6 +301,7 @@ usage_source AS (
              AND UPPER(COALESCE(MODIFIER, '')) IN ('TAKEOUT', 'PROMO') THEN 'TAKEOUT'
             ELSE 'MAIN'
         END AS inv_type,
+        NULLIF(UPPER(TRIM(MODIFIER)), '') AS source_stream,
         NULLIF(TRIM(VENDOR_PARTNER_NAME), '') AS comparison_partner,
         NULLIF(UPPER(REGEXP_REPLACE(TRIM(VENDOR_PARTNER_NAME), '[^A-Za-z0-9]', '')), '') AS partner_key,
         COALESCE(NULLIF(TRIM(VENDOR_PRODUCT_SKU), ''), '(MISSING SKU)') AS raw_sku,
@@ -314,12 +333,16 @@ usage_lines AS (
         CASE
             WHEN UPPER(s.vendor) = 'AUVIK' THEN 'PARTNER_SKU'
             WHEN UPPER(s.vendor) = 'KEEPIT' THEN 'INVOICE_TYPE_SKU'
+            WHEN UPPER(s.vendor) = 'WEBROOT' AND w.invoice_count = 1 THEN 'INVOICE_SKU'
+            WHEN UPPER(s.vendor) = 'WEBROOT' THEN 'MONTH_SKU'
             WHEN r.invoice_count = 1 THEN 'INVOICE_SKU'
             ELSE 'MONTH_SKU'
         END AS comparison_grain,
         CASE
             WHEN UPPER(s.vendor) = 'AUVIK' THEN COALESCE(s.partner_key, '(MISSING PARTNER)')
             WHEN UPPER(s.vendor) = 'KEEPIT' THEN s.inv_type
+            WHEN UPPER(s.vendor) = 'WEBROOT' AND w.invoice_count = 1 THEN w.sole_invoice_id
+            WHEN UPPER(s.vendor) = 'WEBROOT' THEN 'WEBROOT_' || COALESCE(s.source_stream, 'UNKNOWN') || '_USAGE'
             WHEN r.invoice_count = 1 THEN r.sole_invoice_id
             ELSE 'MONTH_SKU_SUMMARY'
         END AS comparison_key,
@@ -356,6 +379,11 @@ usage_lines AS (
         ON s.vendor = r.vendor
        AND s.billing_month = r.billing_month
        AND s.inv_type = r.inv_type
+    LEFT JOIN webroot_invoice_stream_registry w
+        ON s.vendor = w.vendor
+       AND s.billing_month = w.billing_month
+       AND s.inv_type = w.inv_type
+       AND s.source_stream = w.source_stream
 ),
 usage_rollup AS (
     SELECT
@@ -447,4 +475,4 @@ WHERE billing_month >= '2026-01-01'::DATE
 ORDER BY vendor, billing_month, inv_type, invoice_id, sku;
 
 COMMENT ON TABLE THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD IS
-    'Vendor invoice vs raw usage reconciliation at an evidenced vendor-aware grain: Auvik partner/SKU, KeepIT invoice-type/SKU, Webroot OpenText invoice SKUs aligned to Aggregator Order Details families, direct invoice/SKU for one-invoice lanes, and combined month/SKU otherwise. Unmatched usage is shown once; delta is raw usage minus parsed invoice.';
+    'Vendor invoice vs raw usage reconciliation at an evidenced vendor-aware grain: Auvik partner/SKU, KeepIT invoice-type/SKU, Webroot OpenText invoices individually aligned to their CW/CMS Aggregator Order Details stream, direct invoice/SKU for one-invoice lanes, and combined month/SKU otherwise. Unmatched usage is shown once; delta is raw usage minus parsed invoice.';
