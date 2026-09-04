@@ -200,6 +200,12 @@ def _month_from_keepit_description(desc: str | None, file_path: str) -> str | No
         if not fallback:
             return None
         year = int(fallback[:4])
+        fallback_month = int(fallback[5:7])
+        # NetSuite's January export contains the prior December invoice. When
+        # the description omits a year, keep the inferred month chronologically
+        # at or before the export folder instead of assigning next December.
+        if int(mo.month) > fallback_month:
+            year -= 1
 
     return f"{year:04d}-{int(mo.month):02d}-01"
 

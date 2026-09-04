@@ -3442,7 +3442,9 @@ def _sum_preserve_null(series: pd.Series) -> float:
 
 
 def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
-    st.markdown("### Vendor Invoice vs. Vendor Raw Usage Files")
+    is_bitdefender = vendor_name.strip().upper() == "BITDEFENDER"
+    usage_source_label = "Royalty Report" if is_bitdefender else "Vendor Raw Usage"
+    st.markdown(f"### Vendor Invoice vs. {usage_source_label}")
 
     raw = _load_vendor_invoice_usage_intra(
         vendor_name,
@@ -3455,6 +3457,13 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
             unsafe_allow_html=True,
         )
         return
+
+    if is_bitdefender:
+        st.caption(
+            "Bitdefender has no product-telemetry usage feed. This control compares "
+            "the parsed vendor invoice with the Product Management royalty report at "
+            "month/SKU-family grain."
+        )
 
     work = raw.copy()
     work["INV_TYPE"] = work.get("INV_TYPE", pd.Series("UNCLASSIFIED", index=work.index)).fillna("UNCLASSIFIED").astype(str)
@@ -3509,6 +3518,14 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
     )
     if comparison_grains:
         st.caption(f"Comparison grain: {', '.join(comparison_grains)}")
+    if (work["SOURCE_STATUS"] == "UNALLOCATED_USAGE_POOL").any():
+        st.caption(
+            f"Unallocated {usage_source_label.lower()} rows have no parsed invoice "
+            "for the same month, lane, and SKU; they are retained as source-coverage gaps."
+        )
+
+    usage_seats_label = f"{usage_source_label} Seats"
+    usage_amount_label = f"{usage_source_label} Amount"
 
     sku_rollup = (
         work.groupby(
@@ -3518,9 +3535,9 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
         .agg(
             **{
                 "Vendor Invoice Seats": ("VENDOR_INVOICE_SEATS", _sum_preserve_null),
-                "Vendor Raw Usage Seats": ("VENDOR_RAW_USAGE_SEATS", _sum_preserve_null),
+                usage_seats_label: ("VENDOR_RAW_USAGE_SEATS", _sum_preserve_null),
                 "Vendor Invoice Amount": ("VENDOR_INVOICE_AMOUNT", _sum_preserve_null),
-                "Vendor Raw Usage Amount": ("VENDOR_RAW_USAGE_AMOUNT", _sum_preserve_null),
+                usage_amount_label: ("VENDOR_RAW_USAGE_AMOUNT", _sum_preserve_null),
                 "Invoice Link Keys": ("INVOICE_LINK_KEYS", "first"),
             }
         )
@@ -3533,11 +3550,11 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
         )
     )
     sku_rollup["Delta Seats"] = (
-        sku_rollup["Vendor Raw Usage Seats"].fillna(0)
+        sku_rollup[usage_seats_label].fillna(0)
         - sku_rollup["Vendor Invoice Seats"].fillna(0)
     )
     sku_rollup["Delta Amount"] = (
-        sku_rollup["Vendor Raw Usage Amount"].fillna(0)
+        sku_rollup[usage_amount_label].fillna(0)
         - sku_rollup["Vendor Invoice Amount"].fillna(0)
     )
     sku_rollup["_abs_delta_amount"] = sku_rollup["Delta Amount"].abs()
@@ -3553,16 +3570,16 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
         "Invoice ID": "",
         "Invoice Link Keys": "",
         "Vendor Invoice Seats": _sum_preserve_null(sku_rollup["Vendor Invoice Seats"]),
-        "Vendor Raw Usage Seats": _sum_preserve_null(sku_rollup["Vendor Raw Usage Seats"]),
+        usage_seats_label: _sum_preserve_null(sku_rollup[usage_seats_label]),
         "Vendor Invoice Amount": _sum_preserve_null(sku_rollup["Vendor Invoice Amount"]),
-        "Vendor Raw Usage Amount": _sum_preserve_null(sku_rollup["Vendor Raw Usage Amount"]),
+        usage_amount_label: _sum_preserve_null(sku_rollup[usage_amount_label]),
     }
     total["Delta Seats"] = (
-        (0 if pd.isna(total["Vendor Raw Usage Seats"]) else total["Vendor Raw Usage Seats"])
+        (0 if pd.isna(total[usage_seats_label]) else total[usage_seats_label])
         - (0 if pd.isna(total["Vendor Invoice Seats"]) else total["Vendor Invoice Seats"])
     )
     total["Delta Amount"] = (
-        (0 if pd.isna(total["Vendor Raw Usage Amount"]) else total["Vendor Raw Usage Amount"])
+        (0 if pd.isna(total[usage_amount_label]) else total[usage_amount_label])
         - (0 if pd.isna(total["Vendor Invoice Amount"]) else total["Vendor Invoice Amount"])
     )
     display = pd.concat([sku_rollup, pd.DataFrame([total])], ignore_index=True)
@@ -3571,9 +3588,9 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
         "SKU",
         "Invoice ID",
         "Vendor Invoice Seats",
-        "Vendor Raw Usage Seats",
+        usage_seats_label,
         "Vendor Invoice Amount",
-        "Vendor Raw Usage Amount",
+        usage_amount_label,
         "Delta Seats",
         "Delta Amount",
     ]
@@ -3612,8 +3629,8 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
     ) + "</tr>"
     body = []
     numeric_columns = {
-        "Vendor Invoice Seats", "Vendor Raw Usage Seats", "Delta Seats",
-        "Vendor Invoice Amount", "Vendor Raw Usage Amount", "Delta Amount",
+        "Vendor Invoice Seats", usage_seats_label, "Delta Seats",
+        "Vendor Invoice Amount", usage_amount_label, "Delta Amount",
     }
     money_columns = {
         "Vendor Invoice Amount", "Vendor Raw Usage Amount", "Delta Amount",

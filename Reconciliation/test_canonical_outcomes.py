@@ -183,6 +183,22 @@ class StrictOutcomeCaseTests(unittest.TestCase):
         self.assertIn("m.transaction_source", acronis)
         self.assertIn("m.marketplace_invoice_id", acronis)
 
+    def test_invoice_usage_control_has_vendor_specific_alignment(self) -> None:
+        repo = Path(__file__).resolve().parents[1]
+        intra = (
+            repo / "Reconciliation" / "10_vendor_invoice_usage_intra_prod.sql"
+        ).read_text(encoding="utf-8")
+        invoice_ingestion = (
+            repo / "Ingestion" / "Netsuite_Invoice_JSON_Ingestion_Prod.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("auvik_partner_bridge AS", intra)
+        self.assertIn("'^(OVERAGE)?ANM(ESSENTIALS|PERFORMANCEADDONS?)EVERGREEN$'", intra)
+        self.assertIn("s.raw_sku ILIKE '%ATS & EDR%' THEN 'ATS EDR'", intra)
+        self.assertIn("s.raw_sku ILIKE '%Advanced Threat Security%' THEN 'ATS'", intra)
+        self.assertIn("s.raw_sku_key = 'BP 2765 ME LOY' THEN 'EMAIL'", intra)
+        self.assertIn("if int(mo.month) > fallback_month:", invoice_ingestion)
+
 
 if __name__ == "__main__":
     unittest.main()

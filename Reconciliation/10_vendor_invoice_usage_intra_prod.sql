@@ -13,8 +13,11 @@
 --   invoice-side fields stay NULL while the raw usage side remains visible.
 
 -- Comparison strategy:
---   * Auvik compares by normalized partner and SKU; invoice IDs are retained
---     only when that partner belongs to one document.
+--   * Auvik compares by normalized partner and SKU. Some Auvik invoice rows
+--     append a product/overage label to the partner field, so those rows are
+--     bridged to an exact raw-usage partner prefix from the same month.
+--   * Bitdefender royalties descriptions are collapsed to the same governed
+--     product families used by the parsed Bitdefender invoice SKUs.
 --   * KeepIT compares within MAIN/TAKEOUT invoice-type lanes.
 --   * A lane with one invoice compares directly to that invoice.
 --   * Other multi-invoice lanes compare at combined month/SKU grain because
@@ -82,43 +85,81 @@ sku_alias_map AS (
         ORDER BY alias_priority, has_mapping_notes, canonical_sku
     ) = 1
 ),
+auvik_usage_partners AS (
+    SELECT DISTINCT
+        BILLING_MONTH::DATE AS billing_month,
+        NULLIF(TRIM(VENDOR_PARTNER_NAME), '') AS comparison_partner,
+        NULLIF(UPPER(REGEXP_REPLACE(TRIM(VENDOR_PARTNER_NAME), '[^A-Za-z0-9]', '')), '') AS partner_key
+    FROM THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+    WHERE UPPER(TRIM(VENDOR)) = 'AUVIK'
+      AND BILLING_MONTH IS NOT NULL
+      AND NULLIF(TRIM(VENDOR_PARTNER_NAME), '') IS NOT NULL
+),
+auvik_invoice_partners AS (
+    SELECT DISTINCT
+        BILLING_MONTH::DATE AS billing_month,
+        NULLIF(UPPER(REGEXP_REPLACE(TRIM(PARTNER), '[^A-Za-z0-9]', '')), '') AS invoice_partner_key
+    FROM THIRD_PARTY_RECON_VENDOR_INVOICES
+    WHERE UPPER(TRIM(VENDOR)) = 'AUVIK'
+      AND BILLING_MONTH IS NOT NULL
+      AND NULLIF(TRIM(PARTNER), '') IS NOT NULL
+),
+auvik_partner_bridge AS (
+    SELECT
+        i.billing_month,
+        i.invoice_partner_key,
+        u.comparison_partner,
+        u.partner_key
+    FROM auvik_invoice_partners i
+    INNER JOIN auvik_usage_partners u
+        ON u.billing_month = i.billing_month
+       AND STARTSWITH(i.invoice_partner_key, u.partner_key)
+       AND REGEXP_LIKE(
+            SUBSTR(i.invoice_partner_key, LENGTH(u.partner_key) + 1),
+            '^(OVERAGE)?ANM(ESSENTIALS|PERFORMANCEADDONS?)EVERGREEN$'
+       )
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY i.billing_month, i.invoice_partner_key
+        ORDER BY LENGTH(u.partner_key) DESC, u.partner_key
+    ) = 1
+),
 invoice_source AS (
     SELECT
         CASE
             -- Exium invoice files are posted one month after the usage period.
             -- Align invoice-side month to usage-side month for intra control only.
-            WHEN UPPER(TRIM(VENDOR)) = 'EXIUM' THEN DATEADD('month', -1, BILLING_MONTH::DATE)
-            ELSE BILLING_MONTH::DATE
+                WHEN UPPER(TRIM(v.VENDOR)) = 'EXIUM' THEN DATEADD('month', -1, v.BILLING_MONTH::DATE)
+                ELSE v.BILLING_MONTH::DATE
         END AS billing_month,
-        NULLIF(TRIM(VENDOR), '') AS vendor,
-        UPPER(TRIM(VENDOR)) AS vendor_key,
+            NULLIF(TRIM(v.VENDOR), '') AS vendor,
+            UPPER(TRIM(v.VENDOR)) AS vendor_key,
                 CASE
-                        WHEN UPPER(TRIM(VENDOR)) = 'KEEPIT'
+                    WHEN UPPER(TRIM(v.VENDOR)) = 'KEEPIT'
                          AND (
-                                        UPPER(COALESCE(INVOICE_DESCRIPTION, '')) LIKE '%TAKEOUT%'
-                                 OR UPPER(COALESCE(DESCRIPTION, '')) LIKE '%TAKEOUT%'
-                                 OR UPPER(COALESCE(FILE_PATH, '')) LIKE '%TAKEOUT%'
+                            UPPER(COALESCE(v.INVOICE_DESCRIPTION, '')) LIKE '%TAKEOUT%'
+                         OR UPPER(COALESCE(v.DESCRIPTION, '')) LIKE '%TAKEOUT%'
+                         OR UPPER(COALESCE(v.FILE_PATH, '')) LIKE '%TAKEOUT%'
                          ) THEN 'TAKEOUT'
-                        WHEN UPPER(TRIM(VENDOR)) = 'KEEPIT'
+                    WHEN UPPER(TRIM(v.VENDOR)) = 'KEEPIT'
                          AND (
-                                        UPPER(COALESCE(INVOICE_DESCRIPTION, '')) LIKE '%MAIN%'
-                                 OR UPPER(COALESCE(DESCRIPTION, '')) LIKE '%MAIN%'
-                                 OR UPPER(COALESCE(FILE_PATH, '')) LIKE '%MAIN%'
+                            UPPER(COALESCE(v.INVOICE_DESCRIPTION, '')) LIKE '%MAIN%'
+                         OR UPPER(COALESCE(v.DESCRIPTION, '')) LIKE '%MAIN%'
+                         OR UPPER(COALESCE(v.FILE_PATH, '')) LIKE '%MAIN%'
                          ) THEN 'MAIN'
-                        WHEN UPPER(TRIM(VENDOR)) = 'KEEPIT' THEN 'OTHER'
+                    WHEN UPPER(TRIM(v.VENDOR)) = 'KEEPIT' THEN 'OTHER'
                         ELSE 'MAIN'
                 END AS inv_type,
-                COALESCE(NULLIF(TRIM(INVOICE_ID), ''), 'UNIDENTIFIED_INVOICE') AS invoice_id,
-                NULLIF(TRIM(INVOICE_DESCRIPTION), '') AS invoice_description,
-                NULLIF(TRIM(NETSUITE_URL), '') AS netsuite_url,
-                NULLIF(TRIM(PARTNER), '') AS comparison_partner,
-                NULLIF(UPPER(REGEXP_REPLACE(TRIM(PARTNER), '[^A-Za-z0-9]', '')), '') AS partner_key,
-        COALESCE(NULLIF(TRIM(VENDOR_PRODUCT_SKU), ''), '(MISSING SKU)') AS raw_sku,
+                COALESCE(NULLIF(TRIM(v.INVOICE_ID), ''), 'UNIDENTIFIED_INVOICE') AS invoice_id,
+                NULLIF(TRIM(v.INVOICE_DESCRIPTION), '') AS invoice_description,
+                NULLIF(TRIM(v.NETSUITE_URL), '') AS netsuite_url,
+                COALESCE(b.comparison_partner, NULLIF(TRIM(v.PARTNER), '')) AS comparison_partner,
+                COALESCE(b.partner_key, NULLIF(UPPER(REGEXP_REPLACE(TRIM(v.PARTNER), '[^A-Za-z0-9]', '')), '')) AS partner_key,
+            COALESCE(NULLIF(TRIM(v.VENDOR_PRODUCT_SKU), ''), '(MISSING SKU)') AS raw_sku,
         NULLIF(
             TRIM(
                 REGEXP_REPLACE(
                     REGEXP_REPLACE(
-                        UPPER(REGEXP_REPLACE(TRIM(VENDOR_PRODUCT_SKU), '[^A-Za-z0-9]+', ' ')),
+                    UPPER(REGEXP_REPLACE(TRIM(v.VENDOR_PRODUCT_SKU), '[^A-Za-z0-9]+', ' ')),
                         '^OVERAGE\\s+',
                         ''
                     ),
@@ -128,11 +169,15 @@ invoice_source AS (
             ),
             ''
         ) AS raw_sku_key,
-        QUANTITY::FLOAT AS quantity,
-        AMOUNT::FLOAT AS amount
-    FROM THIRD_PARTY_RECON_VENDOR_INVOICES
-    WHERE BILLING_MONTH IS NOT NULL
-      AND NULLIF(TRIM(VENDOR), '') IS NOT NULL
+                v.QUANTITY::FLOAT AS quantity,
+                v.AMOUNT::FLOAT AS amount
+        FROM THIRD_PARTY_RECON_VENDOR_INVOICES v
+        LEFT JOIN auvik_partner_bridge b
+                ON b.billing_month = v.BILLING_MONTH::DATE
+             AND b.invoice_partner_key = NULLIF(UPPER(REGEXP_REPLACE(TRIM(v.PARTNER), '[^A-Za-z0-9]', '')), '')
+             AND UPPER(TRIM(v.VENDOR)) = 'AUVIK'
+        WHERE v.BILLING_MONTH IS NOT NULL
+            AND NULLIF(TRIM(v.VENDOR), '') IS NOT NULL
 ),
 invoice_lines AS (
     SELECT
@@ -144,7 +189,16 @@ invoice_lines AS (
         s.netsuite_url,
         s.comparison_partner,
         s.partner_key,
-        COALESCE(m.canonical_sku, s.raw_sku_key, '(MISSING SKU)') AS sku,
+        COALESCE(
+            CASE
+                -- July's Bitdefender invoice uses the legacy ME_Loy code for
+                -- the same Email Security charge carried as BP_2765_EMS.
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku_key = 'BP 2765 ME LOY' THEN 'EMAIL'
+            END,
+            m.canonical_sku,
+            s.raw_sku_key,
+            '(MISSING SKU)'
+        ) AS sku,
         s.raw_sku AS vendor_invoice_sku,
         s.quantity,
         s.amount
@@ -265,7 +319,27 @@ usage_lines AS (
             ELSE 'MONTH_SKU_SUMMARY'
         END AS comparison_key,
         IFF(UPPER(s.vendor) = 'AUVIK', s.comparison_partner, NULL) AS comparison_partner,
-        COALESCE(m.canonical_sku, s.raw_sku_key, '(MISSING SKU)') AS sku,
+        COALESCE(
+            CASE
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE '%GravityZone Email Security%' THEN 'EMAIL'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE '%Email Security%' THEN 'EMAIL'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE '%ATS & EDR%' THEN 'ATS EDR'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE '%Advanced Threat Security%' THEN 'ATS'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE '%EDR (MSP Secure)%' THEN 'MSP SECURE'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE ANY ('%Secure Plus%', '%Secure Extra%') THEN 'MSP SECURE'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE ANY ('%Cloud Sec%GravityZone%', '%Cloud Security Gravity Zone%') THEN 'BD GRAVITYZONE'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE '%Security TSP CW Automate%' THEN 'BD GRAVITYZONE'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE '%Cloud Encryption%' THEN 'ENCRYPTION'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE '%Patch Management%' THEN 'PATCH'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE '%PHASR%' THEN 'PHASR'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE '%XDR%' THEN 'XDR'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE '%Mobile%' THEN 'MOBILE'
+                WHEN UPPER(s.vendor) = 'BITDEFENDER' AND s.raw_sku ILIKE '%Security for Virtualized%' THEN 'BD VE VS'
+            END,
+            m.canonical_sku,
+            s.raw_sku_key,
+            '(MISSING SKU)'
+        ) AS sku,
         s.raw_sku AS vendor_usage_sku,
         s.quantity,
         s.amount
