@@ -3501,22 +3501,12 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
     if selected_invoice != "All Sources":
         work = work[work["INVOICE_ID"] == selected_invoice].copy()
 
-    if vendor_name.strip().upper() == "AUVIK":
-        partner_options = sorted(
-            {value for value in work["COMPARISON_PARTNER"].astype(str) if value.strip()}
-        )
-        selected_partner = st.selectbox(
-            "Partner",
-            ["All Partners", *partner_options],
-            key=f"vendor-intra-partner-{vendor_name}",
-        )
-        if selected_partner != "All Partners":
-            work = work[work["COMPARISON_PARTNER"] == selected_partner].copy()
-
     comparison_grains = sorted(
         {value for value in work["COMPARISON_GRAIN"].astype(str) if value.strip()}
     )
-    if comparison_grains:
+    if vendor_name.strip().upper() == "AUVIK":
+        st.caption("Display grain: Vendor × Invoice × SKU")
+    elif comparison_grains:
         st.caption(f"Comparison grain: {', '.join(comparison_grains)}")
     if (work["SOURCE_STATUS"] == "UNALLOCATED_USAGE_POOL").any():
         st.caption(
@@ -3529,7 +3519,7 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
 
     sku_rollup = (
         work.groupby(
-            ["COMPARISON_PARTNER", "INVOICE_ID", "SKU"],
+            ["INVOICE_ID", "SKU"],
             dropna=False,
         )
         .agg(
@@ -3544,7 +3534,6 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
         .reset_index()
         .rename(
             columns={
-                "COMPARISON_PARTNER": "Partner",
                 "INVOICE_ID": "Invoice ID",
             }
         )
@@ -3560,13 +3549,12 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
     sku_rollup["_abs_delta_amount"] = sku_rollup["Delta Amount"].abs()
     sku_rollup["_abs_delta_seats"] = sku_rollup["Delta Seats"].abs()
     sku_rollup = sku_rollup.sort_values(
-        ["_abs_delta_amount", "_abs_delta_seats", "Partner", "Invoice ID", "SKU"],
-        ascending=[False, False, True, True, True],
+        ["_abs_delta_amount", "_abs_delta_seats", "Invoice ID", "SKU"],
+        ascending=[False, False, True, True],
     ).drop(columns=["_abs_delta_amount", "_abs_delta_seats"])
 
     total = {
         "SKU": "TOTAL",
-        "Partner": "",
         "Invoice ID": "",
         "Invoice Link Keys": "",
         "Vendor Invoice Seats": _sum_preserve_null(sku_rollup["Vendor Invoice Seats"]),
@@ -3594,8 +3582,6 @@ def render_vendor_invoice_usage_intra(vendor_name: str) -> None:
         "Delta Seats",
         "Delta Amount",
     ]
-    if vendor_name.strip().upper() == "AUVIK":
-        display_columns.insert(1, "Partner")
 
     def _invoice_links(link_keys: object, invoice_ids: object) -> str:
         url_by_invoice: dict[str, str] = {}
