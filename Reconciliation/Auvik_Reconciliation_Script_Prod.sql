@@ -113,8 +113,20 @@ vendor_base AS (
         u.vendor_partner_name,
         TRIM(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(u.vendor_partner_name), '[^a-z0-9]+', ' '), '\\s+', ' ')) AS vendor_partner_name_normalized,
         u.vendor_product_sku AS auvik_product,
-        u.quantity AS vendor_raw_quantity,
-        NULL::NUMBER AS vendor_overage_quantity,
+        -- Ingestion preserves committed + positive chargeable Usage overage
+        -- separately in JSON. Keep that decomposition for diagnosis while
+        -- vendor_billable_quantity below remains the reconciliation quantity.
+        COALESCE(
+            TRY_TO_NUMBER(TRY_PARSE_JSON(u.additional_info):committed_quantity::VARCHAR),
+            0
+        ) + COALESCE(
+            TRY_TO_NUMBER(TRY_PARSE_JSON(u.additional_info):billable_overage_quantity::VARCHAR),
+            u.quantity
+        ) AS vendor_raw_quantity,
+        COALESCE(
+            TRY_TO_NUMBER(TRY_PARSE_JSON(u.additional_info):billable_overage_quantity::VARCHAR),
+            0
+        ) AS vendor_overage_quantity,
         CASE
             WHEN COALESCE(u.unit_price, 0) > 0 AND COALESCE(u.amount, 0) > 0
                 THEN ROUND(u.amount / u.unit_price)

@@ -1,4 +1,4 @@
-"""Ingest Auvik Connectwise Usage Report workbooks into AUVIK_USAGE.
+"""Ingest Auvik Connectwise Usage Report workbooks into canonical usage.
 
 One ingestion architecture for both Auvik CW and Auvik CMS:
 
@@ -7,8 +7,8 @@ One ingestion architecture for both Auvik CW and Auvik CMS:
     June Invoices.xlsx"). The identical workbook is placed in both the
     Auvik CW and Auvik CMS subfolders, differing only in trivial metadata.
 
-  * ONLY the Auvik CW copy is read. Ingesting both copies would double-count
-    the entire month. This is the single most important rule in this module.
+    * The Auvik CW copy is authoritative, with Auvik CMS used only as a fallback
+        when a month is absent from CW. Both copies are never ingested together.
 
   * The CW/CMS entity split is taken from the Partner Name column:
       'ConnectWise Inc'  â†’ STREAM = 'CW'
@@ -19,44 +19,56 @@ One ingestion architecture for both Auvik CW and Auvik CMS:
     period start). The folder label and the filename are both unreliable â€”
     they name different months across 2026 and must not be trusted.
 
-  * Product Tenant ID is read as a text string before any numeric coercion
-    to preserve 19-digit precision. Excel stores it as a float and loses
-    the last ~4 digits if coerced (e.g. 1139453724789191421 â†’ 1.13945e+18).
+    * Product Tenant ID is preserved exactly when Excel supplies text. Numeric
+        cells are explicitly flagged as precision-limited because digits already
+        lost in the workbook cannot be reconstructed.
+
+    * Billable quantity follows the vendor invoice semantics validated against
+        the manual pivots: committed rows use Quantity, chargeable Usage rows use
+        positive Overage Quantity, and zero-dollar/negative overage rows contribute
+        zero. Exact source product and quantity decomposition remain in
+        ADDITIONAL_INFO for audit and downstream overage classification.
 
   * Load-time assertions (any failure raises RuntimeError):
-      1. Within a single file, Start Date / End Date hold exactly one
-         distinct pair (single usage period per workbook).
+        1. Within a normal monthly file, Start Date / End Date hold exactly one
+            distinct pair. The January supplemental file may contain its genuine
+            February one-day adjustment and retains the row-level Start Date.
       2. Invoice Date = first day of the month after End Date.
       3. Subtotal + Tax = Total Charge Amount on every data row.
       4. Entity totals from the ingested rows match the Summary tab to
          the cent (hard gate).
 
-  * Content-hash deduplication: if the same file is placed in both folders
-    and accidentally scanned, the second copy is silently skipped.
+    * Source-manifest and content-hash gates reject ambiguous primary files and
+        duplicate authoritative content before publication.
 
 Source layout:
     <SOURCE_ROOT>/Auvik CW/MM_MON_YYYY/<usage workbook>.xlsx
-    Workbook: Summary sheet (skipped) + one INV-* sheet per invoice.
+    <SOURCE_ROOT>/Auvik CMS/MM_MON_YYYY/<fallback usage workbook>.xlsx
+    Workbook: Summary control sheet + one INV-* sheet per invoice.
 
 Target tables:
-    AUVIK_USAGE            â€“ one row per invoice line
-    AUVIK_USAGE_FILE_AUDIT â€“ one row per source file with all control totals
+    THIRD_PARTY_RECON_VENDOR_USAGE_PROD â€“ normalized Auvik usage slice
+    AUVIK_USAGE_FILE_AUDIT              â€“ source-file control totals
+
+Both targets are staged before a transactional vendor-slice replacement.
 """
 
 from __future__ import annotations
 
 import argparse
-import csv
 import datetime as dt
 import hashlib
 import io
+import json
+import math
 import re
 import subprocess
 import sys
 import tempfile
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Any
 
 import openpyxl
 import pandas as pd
@@ -90,6 +102,10 @@ TARGET_VENDOR = "Auvik"
 
 # Folder naming: MM_MON_YYYY
 MONTH_FOLDER_RE = re.compile(r"^(?P<mm>\d{2})_[A-Z]{3}_(?P<yyyy>\d{4})$", re.IGNORECASE)
+MONTH_ABBREVIATIONS = {
+    1: "JAN", 2: "FEB", 3: "MAR", 4: "APR", 5: "MAY", 6: "JUN",
+    7: "JUL", 8: "AUG", 9: "SEP", 10: "OCT", 11: "NOV", 12: "DEC",
+}
 
 # ---------------------------------------------------------------------------
 # File-name noise exclusions.
@@ -145,6 +161,27 @@ USAGE_COLUMNS: tuple[str, ...] = (
     "UNIT_PRICE",
     "AMOUNT",
     "CURRENCY",
+    "ADDITIONAL_INFO",
+)
+
+INTERNAL_USAGE_COLUMNS: tuple[str, ...] = USAGE_COLUMNS + (
+    "_SOURCE_PRODUCT",
+    "_CHARGE_TYPE",
+    "_INVOICE_NAME",
+    "_SOURCE_FILE",
+    "_SOURCE_SHEET",
+    "_SOURCE_ROW_NUMBER",
+    "_PRIMARY_TENANT_ID",
+    "_PRODUCT_TENANT_ID",
+    "_PRODUCT_TENANT_ID_PRECISION_LIMITED",
+    "_DOMAIN_PREFIX",
+    "_START_DATE",
+    "_END_DATE",
+    "_INVOICE_DATE",
+    "_SOURCE_QUANTITY",
+    "_OVERAGE_QUANTITY",
+    "_SUBTOTAL",
+    "_TAX",
 )
 
 # ---------------------------------------------------------------------------
@@ -165,10 +202,17 @@ AUDIT_COLUMNS: tuple[str, ...] = (
     "CHARGEABLE_ROWS",
     "ZERO_AMOUNT_ROWS",
     "TOTAL_ROWS_EXCLUDED",      # summary/total rows dropped
+    "INVALID_ROWS",
+    "DUPLICATE_ROWS",
+    "INVOICE_SHEETS",
     "INGESTED_CW_TOTAL",        # sum(Total Charge Amount) for CW rows
     "INGESTED_CMS_TOTAL",       # sum(Total Charge Amount) for CMS rows
     "SUMMARY_CW_TOTAL",         # entity total from the Summary tab
     "SUMMARY_CMS_TOTAL",
+    "SUMMARY_GRAND_TOTAL",
+    "SUMMARY_ADJUSTMENT_TOTAL",
+    "SUMMARY_GRAND_TOTAL_DELTA",
+    "SUMMARY_NOTES",
     "CW_TOTAL_DELTA",
     "CMS_TOTAL_DELTA",
     "PERIOD_UNIQUE_CHECK",      # PASS / WARN / FAIL
@@ -247,18 +291,22 @@ def _read_file_bytes(path: Path) -> bytes:
 
 
 def _clean_text(value: object) -> str | None:
-    if value is None:
+    if value is None or value is pd.NA or value is pd.NaT:
+        return None
+    if isinstance(value, float) and math.isnan(value):
         return None
     if isinstance(value, dt.datetime):
         return value.isoformat(sep=" ")
     if isinstance(value, dt.date):
         return value.isoformat()
-    text = str(value).replace("\xa0", " ").strip()
+    text = re.sub(r"\s+", " ", str(value).replace("\xa0", " ")).strip()
     return text if text else None
 
 
 def _to_number(value: object) -> float | None:
-    if value is None:
+    if value is None or value is pd.NA or value is pd.NaT:
+        return None
+    if isinstance(value, float) and math.isnan(value):
         return None
     if isinstance(value, (int, float)):
         return float(value)
@@ -272,14 +320,16 @@ def _to_number(value: object) -> float | None:
 
 
 def _to_date(value: object) -> dt.date | None:
-    if value is None:
+    if value is None or value is pd.NA or value is pd.NaT:
+        return None
+    if isinstance(value, float) and math.isnan(value):
         return None
     if isinstance(value, dt.datetime):
         return value.date()
     if isinstance(value, dt.date):
         return value
-    ts = pd.to_datetime(value, errors="coerce")
-    return None if pd.isna(ts) else ts.date()
+    ts = pd.to_datetime(str(value), errors="coerce")
+    return ts.date() if isinstance(ts, pd.Timestamp) else None
 
 
 def _first_day(d: dt.date | None) -> dt.date | None:
@@ -287,10 +337,10 @@ def _first_day(d: dt.date | None) -> dt.date | None:
 
 
 def _vendor_product_sku(product: object) -> str | None:
-    text = _clean_text(product)
-    if text is None:
+    value = _clean_text(product)
+    if value is None:
         return None
-    return re.sub(r"^\s*Overage\s*-\s*", "", text, flags=re.IGNORECASE).strip() or None
+    return re.sub(r"^\s*Overage\s*-\s*", "", value, flags=re.IGNORECASE).strip()
 
 
 def _billable_quantity(
@@ -307,37 +357,42 @@ def _billable_quantity(
 
     charge = (_clean_text(charge_type) or "").lower()
     if charge == "usage":
-        return _to_number(overage_quantity)
+        overage = _to_number(overage_quantity)
+        return max(overage or 0.0, 0.0)
     return _to_number(quantity)
 
 
 def _month_from_folder(path: Path) -> str | None:
-    match = MONTH_FOLDER_RE.match(path.parent.name)
-    if not match:
-        return None
-    return f"{match.group('yyyy')}-{match.group('mm')}"
+    for parent in path.parents:
+        match = MONTH_FOLDER_RE.match(parent.name)
+        if not match:
+            continue
+        month_number = int(match.group("mm"))
+        abbreviation = parent.name.split("_", 2)[1].upper()
+        if MONTH_ABBREVIATIONS.get(month_number) != abbreviation:
+            raise ValueError(f"Invalid month folder name: {parent.name}")
+        return f"{match.group('yyyy')}-{month_number:02d}"
+    return None
 
 
-def _product_tenant_id_text(raw: object) -> str | None:
-    """Read Product Tenant ID as a lossless text string.
+def _month_argument(value: str) -> str:
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", value):
+        raise argparse.ArgumentTypeError("Month must use YYYY-MM.")
+    return value
 
-    Excel coerces the 19-digit integer to a float, destroying the last ~4
-    digits. openpyxl exposes it as a Python float (e.g. 1.95544e+17).
-    Converting to int before str() restores the full integer form.
-    """
-    if raw is None:
-        return None
+
+def _product_tenant_id_text(raw: object) -> tuple[str | None, bool]:
+    """Return the stored identifier and whether Excel precision may be lost."""
+    if raw is None or raw is pd.NA or raw is pd.NaT:
+        return None, False
+    if isinstance(raw, float) and math.isnan(raw):
+        return None, False
     if isinstance(raw, float):
-        # Convert via int to avoid scientific notation and trailing .0
-        return str(int(raw))
+        return format(raw, ".17g"), abs(raw) > 2**53
     if isinstance(raw, int):
-        return str(raw)
+        return str(raw), False
     text = str(raw).strip()
-    # If it looks like scientific notation, normalise it
-    try:
-        return str(int(float(text)))
-    except (ValueError, OverflowError):
-        return text or None
+    return (text or None), bool(re.search(r"[eE][+-]?\d+", text))
 
 
 def _content_hash_rows(all_rows: list[tuple[object, ...]]) -> str:
@@ -374,13 +429,11 @@ def _is_usage_report(path: Path) -> bool:
     return True
 
 
-def discover_source_files(source_root_cw: Path, month_filter: str | None = None) -> list[SourceFile]:
-    """Return all usage-report workbooks under the CW folder.
-
-    Only the CW folder is scanned. CMS is skipped entirely â€” the entity
-    split is done by Partner Name in the data, and both folders carry
-    the identical file.
-    """
+def discover_source_files(
+    source_root_cw: Path,
+    months: set[str] | None = None,
+) -> list[SourceFile]:
+    """Return eligible usage-report workbooks under one source root."""
     files: list[SourceFile] = []
     if not source_root_cw.exists():
         print(f"WARNING: CW source root does not exist: {source_root_cw}", flush=True)
@@ -388,14 +441,13 @@ def discover_source_files(source_root_cw: Path, month_filter: str | None = None)
     for month_dir in sorted(source_root_cw.iterdir()):
         if not month_dir.is_dir():
             continue
-        m = MONTH_FOLDER_RE.match(month_dir.name)
-        if not m:
+        folder_month = _month_from_folder(month_dir / "placeholder.xlsx")
+        if folder_month is None:
             continue
-        folder_month = f"{m.group('yyyy')}-{m.group('mm')}"
-        if month_filter and folder_month != month_filter:
+        if months is not None and folder_month not in months:
             continue
-        for path in sorted(month_dir.glob("*.xlsx")):
-            if _is_usage_report(path):
+        for path in sorted(month_dir.iterdir()):
+            if path.is_file() and _is_usage_report(path):
                 files.append(SourceFile(path=path, folder_month=folder_month))
     return files
 
@@ -404,8 +456,16 @@ def discover_source_files(source_root_cw: Path, month_filter: str | None = None)
 # Summary-tab parser (control totals)
 # ---------------------------------------------------------------------------
 
-def _parse_summary_totals(wb: openpyxl.Workbook) -> dict[str, float]:
-    """Read entity totals from the Summary sheet.
+@dataclass(frozen=True)
+class SummaryControls:
+    entity_totals: dict[str, float]
+    grand_total: float | None
+    adjustments: tuple[tuple[str, float], ...]
+    notes: tuple[str, ...]
+
+
+def _parse_summary_controls(wb: openpyxl.Workbook) -> SummaryControls:
+    """Read entity totals, grand total, adjustments, and notes from Summary.
 
     The June 2026 Summary sheet layout (confirmed):
         Col 0: None
@@ -414,36 +474,60 @@ def _parse_summary_totals(wb: openpyxl.Workbook) -> dict[str, float]:
 
     Entity name may be in col 0 or col 1 depending on how Auvik formats the
     sheet — this function checks both positions for robustness.
-    Returns dict keyed by 'ConnectWise Inc' and 'ConnectWise, LLC'.
+    Numeric non-total rows, such as separately issued credits, remain audit
+    controls rather than being allocated to unsupported partner/SKU rows.
     """
     totals: dict[str, float] = {}
+    grand_total: float | None = None
+    adjustments: list[tuple[str, float]] = []
+    notes: list[str] = []
     if "Summary" not in wb.sheetnames:
-        return totals
+        return SummaryControls(totals, grand_total, tuple(adjustments), tuple(notes))
     ws = wb["Summary"]
-    _entity_keys = {"connectwise inc", "connectwise, llc"}
+    entity_keys = {
+        "connectwise inc": "ConnectWise Inc",
+        "connectwise, llc": "ConnectWise, LLC",
+    }
     for row in ws.iter_rows(values_only=True):
         if not row:
             continue
-        # Find entity name: check cols 0 and 1 (layout has varied)
         entity: str | None = None
         for col_idx in (0, 1):
             if col_idx < len(row):
                 candidate = _clean_text(row[col_idx])
-                if candidate and candidate.lower() in _entity_keys:
-                    entity = candidate
+                if candidate and candidate.lower() in entity_keys:
+                    entity = entity_keys[candidate.lower()]
                     break
-        if entity is None:
-            continue
-        # Last non-None numeric cell in the row is the total amount
+        label = entity or next(
+            (
+                text
+                for cell in row
+                if (text := _clean_text(cell)) is not None
+                and _to_number(cell) is None
+            ),
+            None,
+        )
         amount = None
         for cell in reversed(row):
             v = _to_number(cell)
             if v is not None:
                 amount = v
                 break
-        if amount is not None:
+        if entity is not None and amount is not None:
             totals[entity] = amount
-    return totals
+        elif label is not None and amount is not None:
+            if "total" in label.lower():
+                grand_total = amount
+            else:
+                adjustments.append((label, amount))
+        elif label is not None and "credit" in label.lower():
+            notes.append(label)
+    return SummaryControls(
+        entity_totals=totals,
+        grand_total=grand_total,
+        adjustments=tuple(adjustments),
+        notes=tuple(notes),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -468,10 +552,8 @@ def parse_usage_workbook(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Parse a single Connectwise Usage Report workbook.
 
-    Returns (usage_df, audit_df).  Raises RuntimeError on hard-gate failures
-    (entity total mismatch).  Soft failures (period uniqueness, invoice date
-    offset, subtotal arithmetic) are recorded in the audit row and printed as
-    WARNINGs but do not abort the load.
+    Returns (usage_df, audit_df). Structural and reconciliation failures abort
+    the load; source-level credits that cannot be allocated safely are audited.
     """
     file_bytes = _read_file_bytes(source.path)
     file_hash = hashlib.sha256(file_bytes).hexdigest()
@@ -483,25 +565,38 @@ def parse_usage_workbook(
     all_content_rows: list[tuple[object, ...]] = []
 
     try:
-        summary_totals = _parse_summary_totals(wb)
-        invoice_sheets = [s for s in wb.sheetnames if s.lower() != "summary"]
+        summary = _parse_summary_controls(wb)
+        summary_totals = summary.entity_totals
+        is_supplemental = "additional accounts" in source.path.name.lower()
+        invoice_sheets = [
+            name for name in wb.sheetnames
+            if re.fullmatch(r"INV-\d+", name, flags=re.IGNORECASE)
+        ]
+        unexpected_sheets = [
+            name for name in wb.sheetnames
+            if name.lower() != "summary" and name not in invoice_sheets
+        ]
+        if unexpected_sheets:
+            raise RuntimeError(f"Unexpected non-invoice sheets: {unexpected_sheets}")
+        if not invoice_sheets:
+            raise RuntimeError("No INV-* invoice sheets found.")
+        if not is_supplemental and set(summary_totals) != {
+            "ConnectWise Inc",
+            "ConnectWise, LLC",
+        }:
+            raise RuntimeError(f"Summary totals are incomplete: {summary_totals}")
 
         for sheet_name in invoice_sheets:
             ws = wb[sheet_name]
-            sheet_rows = list(ws.iter_rows(values_only=True))
-            if not sheet_rows:
+            row_iter = ws.iter_rows(values_only=True)
+            header_raw = next(row_iter, None)
+            if header_raw is None:
                 continue
 
-            header_raw = sheet_rows[0]
             if not _validate_header(header_raw):
-                print(
-                    f"  WARNING: unexpected header in sheet '{sheet_name}' "
-                    f"of {source.path.name} â€” skipping sheet.",
-                    flush=True,
-                )
-                continue
+                raise RuntimeError(f"Unexpected header in sheet {sheet_name!r}.")
 
-            for sheet_row_num, raw_row in enumerate(sheet_rows[1:], start=2):
+            for sheet_row_num, raw_row in enumerate(row_iter, start=2):
                 if not raw_row or all(c is None for c in raw_row):
                     continue
 
@@ -551,10 +646,21 @@ def parse_usage_workbook(
                     "CHARGEABLE_ROWS": 0,
                     "ZERO_AMOUNT_ROWS": 0,
                     "TOTAL_ROWS_EXCLUDED": total_rows_excluded,
+                    "INVALID_ROWS": 0,
+                    "DUPLICATE_ROWS": 0,
+                    "INVOICE_SHEETS": ",".join(invoice_sheets),
                     "INGESTED_CW_TOTAL": None,
                     "INGESTED_CMS_TOTAL": None,
                     "SUMMARY_CW_TOTAL": summary_totals.get("ConnectWise Inc"),
                     "SUMMARY_CMS_TOTAL": summary_totals.get("ConnectWise, LLC"),
+                    "SUMMARY_GRAND_TOTAL": summary.grand_total,
+                    "SUMMARY_ADJUSTMENT_TOTAL": sum(value for _, value in summary.adjustments),
+                    "SUMMARY_GRAND_TOTAL_DELTA": None,
+                    "SUMMARY_NOTES": json.dumps(
+                        {"adjustments": summary.adjustments, "notes": summary.notes},
+                        separators=(",", ":"),
+                        allow_nan=False,
+                    ),
                     "CW_TOTAL_DELTA": None,
                     "CMS_TOTAL_DELTA": None,
                     "PERIOD_UNIQUE_CHECK": "N/A",
@@ -567,7 +673,7 @@ def parse_usage_workbook(
             ],
             columns=AUDIT_COLUMNS,
         )
-        return pd.DataFrame(columns=USAGE_COLUMNS), audit_df
+        return pd.DataFrame(columns=INTERNAL_USAGE_COLUMNS), audit_df
 
     raw_df = pd.DataFrame(data_records)
 
@@ -580,11 +686,39 @@ def parse_usage_workbook(
     raw_df["_invoice_date"] = raw_df["Invoice Date"].map(_to_date)
     raw_df["_start_date"] = raw_df["Start Date"].map(_to_date)
     raw_df["_end_date"] = raw_df["End Date"].map(_to_date)
-    raw_df["_product_tenant_id_text"] = raw_df["Product Tenant ID"].map(_product_tenant_id_text)
+    product_tenant_values = [
+        _product_tenant_id_text(value)
+        for value in raw_df["Product Tenant ID"].tolist()
+    ]
+    raw_df["_product_tenant_id_text"] = [value[0] for value in product_tenant_values]
+    raw_df["_product_tenant_id_precision_limited"] = [
+        value[1] for value in product_tenant_values
+    ]
 
     # BILLING_MONTH from Start Date (the authoritative usage period start)
     raw_df["_billing_month"] = raw_df["_start_date"].map(_first_day)
     raw_df["_invoice_month"] = raw_df["_invoice_date"].map(_first_day)
+
+    required_fields = pd.DataFrame(
+        {
+            "invoice_date": raw_df["_invoice_date"].notna(),
+            "invoice_name": raw_df["Invoice Name"].map(_clean_text).notna(),
+            "partner_name": raw_df["Partner Name"].map(_clean_text).notna(),
+            "shipping_account": raw_df["Shipping_Account"].map(_clean_text).notna(),
+            "product": raw_df["Product"].map(_clean_text).notna(),
+            "unit_price": raw_df["UnitPrice"].notna(),
+            "charge_type": raw_df["Charge Type"].map(_clean_text).notna(),
+            "start_date": raw_df["_start_date"].notna(),
+            "end_date": raw_df["_end_date"].notna(),
+            "quantity": raw_df["Quantity"].notna(),
+            "overage_quantity": raw_df["Overage Quantity"].notna(),
+            "subtotal": raw_df["Subtotal"].notna(),
+            "tax": raw_df["Tax"].notna(),
+            "total_charge": raw_df["Total Charge Amount"].notna(),
+        }
+    ).all(axis=1)
+    invalid_rows = int((~required_fields).sum())
+    duplicate_rows = int(raw_df.duplicated(list(SOURCE_COLUMNS), keep=False).sum())
 
     # STREAM from Partner Name
     def _resolve_stream(partner: object) -> str:
@@ -598,29 +732,6 @@ def parse_usage_workbook(
 
     raw_df["_stream"] = raw_df["Partner Name"].map(_resolve_stream)
 
-    if unknown_streams:
-        unique_unknown = sorted(set(unknown_streams))
-        print(
-            f"  WARNING: {source.path.name} â€” unrecognised Partner Name values "
-            f"(mapped to STREAM='UNKNOWN'): {unique_unknown}",
-            flush=True,
-        )
-
-    # PRODUCT_FAMILY
-    raw_df["_product_family"] = raw_df["Product"].map(_clean_text).map(classify_product_family)
-
-    # Flag new product family variants that classify to Billable but look
-    # unfamiliar (contain neither 'essentials', 'billable', 'license',
-    # 'continuum' nor 'plan') so the recon team can spot genuine new SKUs.
-    _known_billable_tokens = {"essentials", "billable", "license", "continuum", "plan", "addon", "add-on"}
-    for prod in raw_df.loc[raw_df["_product_family"] == "Billable", "Product"].map(_clean_text).dropna().unique():
-        if not any(t in prod.lower() for t in _known_billable_tokens):
-            print(
-                f"  INFO: {source.path.name} â€” product defaulted to Billable "
-                f"(consider adding mapping rule): '{prod}'",
-                flush=True,
-            )
-
     # CHARGEABLE_FLAG
     raw_df["_chargeable"] = raw_df["Total Charge Amount"].fillna(0.0).ne(0.0)
 
@@ -629,44 +740,65 @@ def parse_usage_workbook(
     # ------------------------------------------------------------------
     errors: list[str] = []
     warnings: list[str] = []
+    if invalid_rows:
+        errors.append(f"{invalid_rows} invoice rows are missing required fields.")
+    if duplicate_rows:
+        errors.append(f"{duplicate_rows} exact duplicate invoice rows found.")
+    if unknown_streams:
+        errors.append(
+            "Unrecognized Partner Name values: "
+            + ", ".join(sorted(set(unknown_streams)))
+        )
 
     # 1. Period uniqueness: one distinct (Start Date, End Date) pair per file
     period_pairs = raw_df[["_start_date", "_end_date"]].dropna().drop_duplicates()
     if len(period_pairs) == 0:
         period_check = "FAIL"
         errors.append("No valid Start Date / End Date pairs found.")
-    elif len(period_pairs) == 1:
+    elif len(period_pairs) == 1 or is_supplemental:
         period_check = "PASS"
     else:
-        period_check = "WARN"
-        warnings.append(
+        period_check = "FAIL"
+        errors.append(
             f"Multiple period pairs found ({len(period_pairs)}): "
             + "; ".join(
                 f"{row[0]}-{row[1]}" for row in period_pairs.itertuples(index=False, name=None)
             )
         )
 
-    # 2. Invoice Date = first day of month after End Date
+    row_months = {
+        value.strftime("%Y-%m")
+        for value in raw_df["_billing_month"].tolist()
+        if isinstance(value, dt.date)
+    }
+    if not is_supplemental and row_months != {source.folder_month}:
+        errors.append(
+            f"Folder month {source.folder_month} does not match row billing months "
+            f"{sorted(row_months)}."
+        )
+
+    # 2. Invoice Date must fall in the month after End Date. Supplemental
+    # adjustments may instead be invoiced in their one-day service month.
     invoice_date_check = "PASS"
-    period_end_dates = raw_df["_end_date"].dropna().unique()
-    invoice_dates = raw_df["_invoice_date"].dropna().unique()
-    if len(period_end_dates) == 1 and len(invoice_dates) == 1:
-        end_date = period_end_dates[0]
-        inv_date = invoice_dates[0]
-        # Expected invoice date: first day of month after end_date's month
+    invalid_invoice_dates = 0
+    for end_date, inv_date in zip(raw_df["_end_date"], raw_df["_invoice_date"], strict=True):
+        if end_date is None or inv_date is None:
+            invalid_invoice_dates += 1
+            continue
         if end_date.month == 12:
             expected_inv_month = dt.date(end_date.year + 1, 1, 1)
         else:
             expected_inv_month = dt.date(end_date.year, end_date.month + 1, 1)
-        if inv_date != expected_inv_month:
-            invoice_date_check = "WARN"
-            warnings.append(
-                f"Invoice Date {inv_date} is not the first day of the month "
-                f"after End Date {end_date} (expected {expected_inv_month})."
-            )
-    else:
-        invoice_date_check = "WARN"
-        warnings.append("Could not validate Invoice Date offset: multiple end/invoice dates.")
+        allowed_months = {expected_inv_month}
+        if is_supplemental:
+            allowed_months.add(dt.date(end_date.year, end_date.month, 1))
+        if _first_day(inv_date) not in allowed_months:
+            invalid_invoice_dates += 1
+    if invalid_invoice_dates:
+        invoice_date_check = "FAIL"
+        errors.append(
+            f"{invalid_invoice_dates} rows have an invalid invoice/service-period relationship."
+        )
 
     # 3. Subtotal + Tax == Total Charge Amount (tolerance $0.01)
     subtotal_ok = (
@@ -675,7 +807,7 @@ def parse_usage_workbook(
         .le(0.011)
         .all()
     )
-    subtotal_check = "PASS" if subtotal_ok else "WARN"
+    subtotal_check = "PASS" if subtotal_ok else "FAIL"
     if not subtotal_ok:
         n_bad = int(
             (
@@ -684,7 +816,7 @@ def parse_usage_workbook(
                 .gt(0.011)
             ).sum()
         )
-        warnings.append(f"Subtotal + Tax â‰  Total Charge Amount on {n_bad} row(s) (tolerance $0.01).")
+        errors.append(f"Subtotal + Tax does not equal Total Charge Amount on {n_bad} row(s).")
 
     # 4. Entity totals vs Summary tab (hard gate â€” $0.01 tolerance)
     cw_ingested = float(
@@ -714,8 +846,29 @@ def parse_usage_workbook(
                 f"Summary ${summary_cms:,.2f}, delta ${cms_delta:,.2f}."
             )
     else:
-        entity_check = "WARN"
-        warnings.append("Summary tab not found or totals not parsed â€” entity total check skipped.")
+        entity_check = "N/A" if is_supplemental else "FAIL"
+        if not is_supplemental:
+            errors.append("Summary totals are missing.")
+
+    adjustment_total = float(sum(value for _, value in summary.adjustments))
+    summary_grand_delta: float | None = None
+    if summary.grand_total is not None:
+        expected_grand_total = cw_ingested + cms_ingested + adjustment_total
+        summary_grand_delta = abs(expected_grand_total - summary.grand_total)
+        if summary_grand_delta > 0.011:
+            errors.append(
+                "Summary grand total mismatch: invoice lines plus listed "
+                f"adjustments ${expected_grand_total:,.2f}, Summary "
+                f"${summary.grand_total:,.2f}, delta ${summary_grand_delta:,.2f}."
+            )
+    if summary.adjustments:
+        warnings.append(
+            "Summary contains partner/SKU-unallocated adjustment(s) totaling "
+            f"${adjustment_total:,.2f}: "
+            + ", ".join(f"{label} (${amount:,.2f})" for label, amount in summary.adjustments)
+        )
+    if summary.notes:
+        warnings.append("Summary contains unallocated note(s): " + " | ".join(summary.notes))
 
     # ------------------------------------------------------------------
     # Build usage DataFrame
@@ -747,8 +900,26 @@ def parse_usage_workbook(
             "UNIT_PRICE": raw_df["UnitPrice"],
             "AMOUNT": raw_df["Total Charge Amount"],
             "CURRENCY": "USD",
+            "ADDITIONAL_INFO": None,
+            "_SOURCE_PRODUCT": raw_df["Product"].map(_clean_text),
+            "_CHARGE_TYPE": raw_df["Charge Type"].map(_clean_text),
+            "_INVOICE_NAME": raw_df["Invoice Name"].map(_clean_text),
+            "_SOURCE_FILE": source.path.name,
+            "_SOURCE_SHEET": raw_df["_sheet_name"],
+            "_SOURCE_ROW_NUMBER": raw_df["_source_row_number"],
+            "_PRIMARY_TENANT_ID": raw_df["Primary Tenant ID"].map(_clean_text),
+            "_PRODUCT_TENANT_ID": raw_df["_product_tenant_id_text"],
+            "_PRODUCT_TENANT_ID_PRECISION_LIMITED": raw_df["_product_tenant_id_precision_limited"],
+            "_DOMAIN_PREFIX": raw_df["Domain Prefix"].map(_clean_text),
+            "_START_DATE": raw_df["_start_date"],
+            "_END_DATE": raw_df["_end_date"],
+            "_INVOICE_DATE": raw_df["_invoice_date"],
+            "_SOURCE_QUANTITY": raw_df["Quantity"],
+            "_OVERAGE_QUANTITY": raw_df["Overage Quantity"],
+            "_SUBTOTAL": raw_df["Subtotal"],
+            "_TAX": raw_df["Tax"],
         },
-        columns=USAGE_COLUMNS,
+        columns=INTERNAL_USAGE_COLUMNS,
     )
 
     # ------------------------------------------------------------------
@@ -757,9 +928,7 @@ def parse_usage_workbook(
     period_start = raw_df["_start_date"].dropna().min() if not raw_df["_start_date"].dropna().empty else None
     period_end = raw_df["_end_date"].dropna().max() if not raw_df["_end_date"].dropna().empty else None
 
-    load_status = "LOADED"
-    if errors:
-        load_status = "LOADED_WITH_ERRORS"
+    load_status = "FAILED_VALIDATION" if errors else "LOADED_WITH_WARNING" if warnings else "LOADED"
 
     error_msg: str | None = None
     if errors or warnings:
@@ -783,10 +952,21 @@ def parse_usage_workbook(
                 "CHARGEABLE_ROWS": int(usage_df["AMOUNT"].fillna(0).ne(0).sum()),
                 "ZERO_AMOUNT_ROWS": int(usage_df["AMOUNT"].fillna(0).eq(0).sum()),
                 "TOTAL_ROWS_EXCLUDED": total_rows_excluded,
+                "INVALID_ROWS": invalid_rows,
+                "DUPLICATE_ROWS": duplicate_rows,
+                "INVOICE_SHEETS": ",".join(invoice_sheets),
                 "INGESTED_CW_TOTAL": round(cw_ingested, 2),
                 "INGESTED_CMS_TOTAL": round(cms_ingested, 2),
                 "SUMMARY_CW_TOTAL": summary_cw,
                 "SUMMARY_CMS_TOTAL": summary_cms,
+                "SUMMARY_GRAND_TOTAL": summary.grand_total,
+                "SUMMARY_ADJUSTMENT_TOTAL": round(adjustment_total, 4),
+                "SUMMARY_GRAND_TOTAL_DELTA": round(summary_grand_delta, 4) if summary_grand_delta is not None else None,
+                "SUMMARY_NOTES": json.dumps(
+                    {"adjustments": summary.adjustments, "notes": summary.notes},
+                    separators=(",", ":"),
+                    allow_nan=False,
+                ),
                 "CW_TOTAL_DELTA": round(cw_delta, 4) if summary_cw is not None else None,
                 "CMS_TOTAL_DELTA": round(cms_delta, 4) if summary_cms is not None else None,
                 "PERIOD_UNIQUE_CHECK": period_check,
@@ -800,9 +980,9 @@ def parse_usage_workbook(
         columns=AUDIT_COLUMNS,
     )
 
-    if entity_check == "FAIL":
+    if errors:
         raise RuntimeError(
-            f"Entity total hard-gate FAILED for {source.path.name}: {error_msg}"
+            f"Auvik source validation FAILED for {source.path.name}: {error_msg}"
         )
 
     if warnings:
@@ -819,32 +999,55 @@ def parse_usage_workbook(
 def build_usage(
     source_root_cw: Path,
     source_root_cms: Path | None = None,
-    month_filter: str | None = None,
+    months: set[str] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Scan the CW and optionally CMS folders, parse every qualifying workbook,
-    and return (usage_df, audit_df).  Content-hash deduplication prevents
-    double-loading if identical files are discovered more than once.
-    """
+    """Parse one authoritative workbook copy per monthly source file."""
     ingested_at = dt.datetime.now(dt.UTC).replace(tzinfo=None)
-    files = discover_source_files(source_root_cw, month_filter=month_filter)
+    cw_files = discover_source_files(source_root_cw, months)
+    cms_files = discover_source_files(source_root_cms, months) if source_root_cms else []
+
+    cw_by_month: dict[str, list[SourceFile]] = {}
+    cms_by_month: dict[str, list[SourceFile]] = {}
+    for source in cw_files:
+        cw_by_month.setdefault(source.folder_month or "", []).append(source)
+    for source in cms_files:
+        cms_by_month.setdefault(source.folder_month or "", []).append(source)
+
+    available_months = sorted(set(cw_by_month) | set(cms_by_month))
+    if months is not None:
+        missing_months = months - set(available_months)
+        if missing_months:
+            raise FileNotFoundError(f"Missing Auvik usage workbook(s) for {sorted(missing_months)}.")
+
+    files: list[SourceFile] = []
+    for month in available_months:
+        authoritative = cw_by_month.get(month) or cms_by_month.get(month) or []
+        primary = [s for s in authoritative if "additional accounts" not in s.path.name.lower()]
+        supplemental = [s for s in authoritative if "additional accounts" in s.path.name.lower()]
+        if len(primary) != 1:
+            raise RuntimeError(
+                f"Expected exactly one primary Auvik usage workbook for {month}, "
+                f"found {len(primary)} among: {[s.path.name for s in authoritative]}"
+            )
+        expected_supplemental = 1 if month == "2026-01" else 0
+        if len(supplemental) != expected_supplemental:
+            raise RuntimeError(
+                f"Expected {expected_supplemental} Additional Accounts workbook(s) "
+                f"for {month}, found {len(supplemental)}: {[s.path.name for s in supplemental]}"
+            )
+        files.extend(primary + supplemental)
+
     if not files:
         raise FileNotFoundError(
-            f"No Connectwise Usage Report workbooks found in {source_root_cw}"
-            + (f" for month {month_filter}" if month_filter else "")
+            "No Auvik Connectwise Usage Report workbooks found for the requested "
+            f"months: {sorted(months) if months else 'all'}"
         )
-
-    # Also scan CMS folder if provided
-    cms_files = []
-    if source_root_cms and source_root_cms.exists():
-        cms_files = discover_source_files(source_root_cms, month_filter=month_filter)
-    
-    all_files = files + cms_files
 
     usage_frames: list[pd.DataFrame] = []
     audit_frames: list[pd.DataFrame] = []
-    seen_hashes: set[str] = set()
+    seen_hashes: dict[str, str] = {}
 
-    for source in all_files:
+    for source in files:
         print(
             f"Parsing {source.path.parent.name}/{source.path.name} ...",
             flush=True,
@@ -852,15 +1055,12 @@ def build_usage(
         usage_df, audit_df = parse_usage_workbook(source, ingested_at=ingested_at)
         content_hash = audit_df["SOURCE_CONTENT_HASH"].iloc[0]
 
-        if content_hash in seen_hashes:
-            audit_df["LOAD_STATUS"] = "SKIPPED_DUPLICATE_CONTENT"
-            usage_df = pd.DataFrame(columns=USAGE_COLUMNS)
-            print(
-                f"  SKIPPED (duplicate content): {source.path.name}",
-                flush=True,
+        duplicate_of = seen_hashes.get(content_hash)
+        if duplicate_of is not None:
+            raise RuntimeError(
+                f"Duplicate Auvik invoice content: {source.path.name} duplicates {duplicate_of}."
             )
-        else:
-            seen_hashes.add(content_hash)
+        seen_hashes[content_hash] = source.path.name
 
         audit_frames.append(audit_df)
         usage_frames.append(usage_df)
@@ -884,61 +1084,108 @@ def build_usage(
     usage_all = (
         pd.concat(non_empty, ignore_index=True)
         if non_empty
-        else pd.DataFrame(columns=USAGE_COLUMNS)
+        else pd.DataFrame(columns=INTERNAL_USAGE_COLUMNS)
     )
     if not usage_all.empty:
-        usage_all = (
-            usage_all.groupby(
-                [
-                    "BILLING_MONTH",
-                    "VENDOR",
-                    "VENDOR_PARTNER_NAME",
-                    "VENDOR_PRODUCT_SKU",
-                    "MODIFIER",
-                    "UNIT_PRICE",
-                    "CURRENCY",
-                ],
-                dropna=False,
-                as_index=False,
-            )
-            .agg(QUANTITY=("QUANTITY", "sum"), AMOUNT=("AMOUNT", "sum"))
+        charge_types = usage_all["_CHARGE_TYPE"].fillna("").str.lower()
+        chargeable = usage_all["AMOUNT"].fillna(0).abs().gt(1e-9)
+        usage_all["_BILLABLE_OVERAGE_QUANTITY"] = (
+            usage_all["_OVERAGE_QUANTITY"].fillna(0)
+            .where(charge_types.eq("usage") & chargeable, 0)
+            .clip(lower=0)
         )
-        usage_all = usage_all[
-            [
-                "BILLING_MONTH",
-                "VENDOR",
-                "VENDOR_PARTNER_NAME",
-                "VENDOR_PRODUCT_SKU",
-                "MODIFIER",
-                "QUANTITY",
-                "UNIT_PRICE",
-                "AMOUNT",
-                "CURRENCY",
-            ]
+        usage_all["_COMMITTED_QUANTITY"] = usage_all["_SOURCE_QUANTITY"].fillna(0).where(
+            charge_types.eq("committed") & chargeable,
+            0,
+        )
+        grain = [
+            "BILLING_MONTH", "VENDOR", "VENDOR_PARTNER_NAME",
+            "VENDOR_PRODUCT_SKU", "MODIFIER", "UNIT_PRICE", "CURRENCY",
         ]
-    audit_all = (
-        pd.concat(audit_frames, ignore_index=True)
-        if audit_frames
-        else pd.DataFrame(columns=AUDIT_COLUMNS)
-    )
-    return usage_all, audit_all
 
-
-def filter_usage_months(
-    usage_df: pd.DataFrame,
-    audit_df: pd.DataFrame,
-    months: list[str] | None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    if not months:
-        return usage_df, audit_df
-    wanted = {dt.date.fromisoformat(f"{m}-01") for m in months}
-    fu = usage_df[usage_df["BILLING_MONTH"].isin(wanted)].copy()
-    fa = audit_df[audit_df["BILLING_MONTH"].isin(wanted)].copy()
-    if fu.empty:
-        raise RuntimeError(
-            f"No usage rows found for requested month(s): {', '.join(months)}"
+        grouped = usage_all.groupby(grain, dropna=False, as_index=False).agg(
+            QUANTITY=("QUANTITY", "sum"),
+            AMOUNT=("AMOUNT", "sum"),
+            source_quantity=("_SOURCE_QUANTITY", "sum"),
+            source_overage_quantity=("_OVERAGE_QUANTITY", "sum"),
+            billable_overage_quantity=("_BILLABLE_OVERAGE_QUANTITY", "sum"),
+            committed_quantity=("_COMMITTED_QUANTITY", "sum"),
+            subtotal=("_SUBTOTAL", "sum"),
+            tax=("_TAX", "sum"),
+            source_row_count=("_SOURCE_ROW_NUMBER", "size"),
+            source_product=("_SOURCE_PRODUCT", "first"),
+            source_product_count=("_SOURCE_PRODUCT", "nunique"),
+            charge_type=("_CHARGE_TYPE", "first"),
+            charge_type_count=("_CHARGE_TYPE", "nunique"),
+            invoice_name=("_INVOICE_NAME", "first"),
+            invoice_name_count=("_INVOICE_NAME", "nunique"),
+            source_file=("_SOURCE_FILE", "first"),
+            source_file_count=("_SOURCE_FILE", "nunique"),
+            source_sheet=("_SOURCE_SHEET", "first"),
+            source_sheet_count=("_SOURCE_SHEET", "nunique"),
+            source_row_min=("_SOURCE_ROW_NUMBER", "min"),
+            source_row_max=("_SOURCE_ROW_NUMBER", "max"),
+            domain_prefix=("_DOMAIN_PREFIX", "first"),
+            domain_prefix_count=("_DOMAIN_PREFIX", "nunique"),
+            primary_tenant_id=("_PRIMARY_TENANT_ID", "first"),
+            primary_tenant_id_count=("_PRIMARY_TENANT_ID", "nunique"),
+            product_tenant_id=("_PRODUCT_TENANT_ID", "first"),
+            product_tenant_id_count=("_PRODUCT_TENANT_ID", "nunique"),
+            precision_limited=("_PRODUCT_TENANT_ID_PRECISION_LIMITED", "any"),
+            invoice_date=("_INVOICE_DATE", "first"),
+            period_start=("_START_DATE", "min"),
+            period_end=("_END_DATE", "max"),
         )
-    return fu, fa
+
+        def compact_provenance(row: Any) -> str:
+            return json.dumps(
+                {
+                    "source_product": row.source_product,
+                    "source_product_count": int(row.source_product_count),
+                    "charge_type": row.charge_type,
+                    "charge_type_count": int(row.charge_type_count),
+                    "invoice_name": row.invoice_name,
+                    "invoice_name_count": int(row.invoice_name_count),
+                    "source_file": row.source_file,
+                    "source_file_count": int(row.source_file_count),
+                    "source_sheet": row.source_sheet,
+                    "source_sheet_count": int(row.source_sheet_count),
+                    "source_rows": [int(row.source_row_min), int(row.source_row_max)],
+                    "source_row_count": int(row.source_row_count),
+                    "domain_prefix": row.domain_prefix,
+                    "domain_prefix_count": int(row.domain_prefix_count),
+                    "primary_tenant_id": row.primary_tenant_id,
+                    "primary_tenant_id_count": int(row.primary_tenant_id_count),
+                    "product_tenant_id_as_stored": row.product_tenant_id,
+                    "product_tenant_id_count": int(row.product_tenant_id_count),
+                    "product_tenant_id_precision_limited": bool(row.precision_limited),
+                    "source_quantity": float(row.source_quantity),
+                    "source_overage_quantity": float(row.source_overage_quantity),
+                    "billable_overage_quantity": float(row.billable_overage_quantity),
+                    "committed_quantity": float(row.committed_quantity),
+                    "billable_quantity": float(row.QUANTITY),
+                    "subtotal": float(row.subtotal),
+                    "tax": float(row.tax),
+                    "invoice_date": row.invoice_date.isoformat(),
+                    "period_start": row.period_start.isoformat(),
+                    "period_end": row.period_end.isoformat(),
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            )
+
+        grouped["ADDITIONAL_INFO"] = [
+            compact_provenance(row) for row in grouped.itertuples(index=False)
+        ]
+        usage_all = grouped[list(USAGE_COLUMNS)]
+    audit_records = [
+        record
+        for audit_frame in audit_frames
+        for record in audit_frame.to_dict(orient="records")
+    ]
+    audit_all = pd.DataFrame(audit_records, columns=AUDIT_COLUMNS)
+    return usage_all, audit_all
 
 
 # ---------------------------------------------------------------------------
@@ -955,15 +1202,16 @@ CREATE TABLE IF NOT EXISTS {TARGET_DATABASE}.{TARGET_SCHEMA}.{TARGET_TABLE} (
     MODIFIER            VARCHAR,
     QUANTITY            NUMBER(18,4),
     UNIT_PRICE          NUMBER(18,6),
-    AMOUNT              NUMBER(18,4),
-    CURRENCY            VARCHAR
+    AMOUNT              NUMBER(38,6),
+    CURRENCY            VARCHAR,
+    ADDITIONAL_INFO     VARCHAR
 );
 """
 
 
 def audit_ddl() -> str:
     return f"""
-CREATE OR REPLACE TABLE {TARGET_DATABASE}.{TARGET_SCHEMA}.{AUDIT_TABLE} (
+CREATE TABLE IF NOT EXISTS {TARGET_DATABASE}.{TARGET_SCHEMA}.{AUDIT_TABLE} (
     SOURCE_FOLDER           VARCHAR,
     SOURCE_FILE             VARCHAR,
     SOURCE_CONTENT_HASH     VARCHAR,
@@ -978,10 +1226,17 @@ CREATE OR REPLACE TABLE {TARGET_DATABASE}.{TARGET_SCHEMA}.{AUDIT_TABLE} (
     CHARGEABLE_ROWS         NUMBER,
     ZERO_AMOUNT_ROWS        NUMBER,
     TOTAL_ROWS_EXCLUDED     NUMBER,
+    INVALID_ROWS            NUMBER,
+    DUPLICATE_ROWS          NUMBER,
+    INVOICE_SHEETS          VARCHAR,
     INGESTED_CW_TOTAL       NUMBER(18,4),
     INGESTED_CMS_TOTAL      NUMBER(18,4),
     SUMMARY_CW_TOTAL        NUMBER(18,4),
     SUMMARY_CMS_TOTAL       NUMBER(18,4),
+    SUMMARY_GRAND_TOTAL     NUMBER(18,4),
+    SUMMARY_ADJUSTMENT_TOTAL NUMBER(18,4),
+    SUMMARY_GRAND_TOTAL_DELTA NUMBER(18,4),
+    SUMMARY_NOTES           VARCHAR,
     CW_TOTAL_DELTA          NUMBER(18,4),
     CMS_TOTAL_DELTA         NUMBER(18,4),
     PERIOD_UNIQUE_CHECK     VARCHAR,
@@ -1019,78 +1274,113 @@ def load_snowflake(
     from snowflake.connector.pandas_tools import write_pandas
 
     conn = _snowflake_connection()
+    usage_stage = f"_AUVIK_USAGE_STAGE_{uuid.uuid4().hex[:12].upper()}"
+    audit_stage = f"_AUVIK_AUDIT_STAGE_{uuid.uuid4().hex[:12].upper()}"
     try:
         cur = conn.cursor()
         cur.execute(f"CREATE SCHEMA IF NOT EXISTS {TARGET_DATABASE}.{TARGET_SCHEMA}")
+        cur.execute(usage_ddl())
+        cur.execute(audit_ddl())
 
+        cur.execute(
+            f"ALTER TABLE {TARGET_DATABASE}.{TARGET_SCHEMA}.{TARGET_TABLE} "
+            "ADD COLUMN IF NOT EXISTS ADDITIONAL_INFO VARCHAR"
+        )
+        for column, data_type in (
+            ("INVALID_ROWS", "NUMBER"),
+            ("DUPLICATE_ROWS", "NUMBER"),
+            ("INVOICE_SHEETS", "VARCHAR"),
+            ("SUMMARY_GRAND_TOTAL", "NUMBER(18,4)"),
+            ("SUMMARY_ADJUSTMENT_TOTAL", "NUMBER(18,4)"),
+            ("SUMMARY_GRAND_TOTAL_DELTA", "NUMBER(18,4)"),
+            ("SUMMARY_NOTES", "VARCHAR"),
+        ):
+            cur.execute(
+                f"ALTER TABLE {TARGET_DATABASE}.{TARGET_SCHEMA}.{AUDIT_TABLE} "
+                f"ADD COLUMN IF NOT EXISTS {column} {data_type}"
+            )
+
+        cur.execute(
+            f"CREATE OR REPLACE TEMPORARY TABLE {TARGET_DATABASE}.{TARGET_SCHEMA}.{usage_stage} "
+            f"LIKE {TARGET_DATABASE}.{TARGET_SCHEMA}.{TARGET_TABLE}"
+        )
+        cur.execute(
+            f"CREATE OR REPLACE TEMPORARY TABLE {TARGET_DATABASE}.{TARGET_SCHEMA}.{audit_stage} "
+            f"LIKE {TARGET_DATABASE}.{TARGET_SCHEMA}.{AUDIT_TABLE}"
+        )
+
+        if not usage_df.empty:
+            success, _, rows, output = write_pandas(
+                conn, usage_df, usage_stage,
+                database=TARGET_DATABASE, schema=TARGET_SCHEMA,
+                quote_identifiers=False, use_logical_type=True,
+            )
+            if not success or rows != len(usage_df):
+                raise RuntimeError(
+                    f"Staging failed for {TARGET_TABLE}: expected {len(usage_df):,} "
+                    f"rows, staged {rows:,}; {output}"
+                )
+        if not audit_df.empty:
+            success, _, rows, output = write_pandas(
+                conn, audit_df, audit_stage,
+                database=TARGET_DATABASE, schema=TARGET_SCHEMA,
+                quote_identifiers=False, use_logical_type=True,
+            )
+            if not success or rows != len(audit_df):
+                raise RuntimeError(
+                    f"Staging failed for {AUDIT_TABLE}: expected {len(audit_df):,} "
+                    f"rows, staged {rows:,}; {output}"
+                )
+
+        incoming_months = sorted({
+            parsed.strftime("%Y-%m")
+            for value in usage_df["BILLING_MONTH"].tolist()
+            if (parsed := _to_date(value)) is not None
+        })
+        month_list = ", ".join(f"'{month}-01'::DATE" for month in incoming_months)
+
+        cur.execute("BEGIN")
         if reset:
-            print(f"RESET: dropping {TARGET_TABLE} and {AUDIT_TABLE}.", flush=True)
+            print(f"RESET: clearing {TARGET_TABLE} and {AUDIT_TABLE}.", flush=True)
             cur.execute(
                 f"DELETE FROM {TARGET_DATABASE}.{TARGET_SCHEMA}.{TARGET_TABLE} "
                 "WHERE UPPER(COALESCE(VENDOR, '')) = UPPER(%s)",
                 (TARGET_VENDOR,),
             )
-            cur.execute(f"DROP TABLE IF EXISTS {TARGET_DATABASE}.{TARGET_SCHEMA}.{AUDIT_TABLE}")
+            cur.execute(f"DELETE FROM {TARGET_DATABASE}.{TARGET_SCHEMA}.{AUDIT_TABLE}")
+        else:
+            cur.execute(
+                f"DELETE FROM {TARGET_DATABASE}.{TARGET_SCHEMA}.{TARGET_TABLE} "
+                "WHERE UPPER(COALESCE(VENDOR, '')) = UPPER(%s) "
+                f"AND BILLING_MONTH IN ({month_list})",
+                (TARGET_VENDOR,),
+            )
+            cur.execute(
+                f"DELETE FROM {TARGET_DATABASE}.{TARGET_SCHEMA}.{AUDIT_TABLE} "
+                f"WHERE BILLING_MONTH IN ({month_list})"
+            )
 
-        cur.execute(usage_ddl())
-        cur.execute(audit_ddl())
-
-        # Month-idempotent load: skip months already present in AUVIK_USAGE
+        usage_column_list = ", ".join(USAGE_COLUMNS)
+        audit_column_list = ", ".join(AUDIT_COLUMNS)
         cur.execute(
-            f"SELECT DISTINCT TO_CHAR(BILLING_MONTH, 'YYYY-MM') "
-            f"FROM {TARGET_DATABASE}.{TARGET_SCHEMA}.{TARGET_TABLE} "
-            "WHERE UPPER(COALESCE(VENDOR, '')) = UPPER(%s)",
-            (TARGET_VENDOR,),
+            f"INSERT INTO {TARGET_DATABASE}.{TARGET_SCHEMA}.{TARGET_TABLE} "
+            f"({usage_column_list}) SELECT {usage_column_list} "
+            f"FROM {TARGET_DATABASE}.{TARGET_SCHEMA}.{usage_stage}"
         )
-        existing_months: set[str] = {row[0] for row in cur.fetchall() if row[0]}
-
-        if not usage_df.empty:
-            incoming_months = sorted(
-                usage_df["BILLING_MONTH"].dropna().apply(
-                    lambda d: d.strftime("%Y-%m") if hasattr(d, "strftime") else str(d)[:7]
-                ).unique()
-            )
-            new_months = [m for m in incoming_months if m not in existing_months]
-            skipped = [m for m in incoming_months if m in existing_months]
-            if skipped:
-                print(f"Skipping already-loaded months: {skipped}", flush=True)
-            if new_months:
-                load_df = usage_df[
-                    usage_df["BILLING_MONTH"].apply(
-                        lambda d: (d.strftime("%Y-%m") if hasattr(d, "strftime") else str(d)[:7])
-                        in new_months
-                    )
-                ].reset_index(drop=True)
-                load_df = _fill_missing_prices(load_df, TARGET_VENDOR, conn=conn)
-                success, chunks, rows, output = write_pandas(
-                    conn,
-                    load_df,
-                    TARGET_TABLE,
-                    database=TARGET_DATABASE,
-                    schema=TARGET_SCHEMA,
-                    quote_identifiers=False,
-                )
-                if not success:
-                    raise RuntimeError(f"write_pandas failed for {TARGET_TABLE}: {output}")
-                print(f"Loaded {rows:,} rows into {TARGET_TABLE} ({chunks} chunk(s)).", flush=True)
-            else:
-                print("Nothing new to load into AUVIK_USAGE.", flush=True)
-
-        # Audit: always replace (one row per source file per run)
-        if not audit_df.empty:
-            success, chunks, rows, output = write_pandas(
-                conn,
-                audit_df,
-                AUDIT_TABLE,
-                database=TARGET_DATABASE,
-                schema=TARGET_SCHEMA,
-                quote_identifiers=False,
-            )
-            if not success:
-                raise RuntimeError(f"write_pandas failed for {AUDIT_TABLE}: {output}")
-            print(f"Loaded {rows:,} rows into {AUDIT_TABLE}.", flush=True)
-
+        cur.execute(
+            f"INSERT INTO {TARGET_DATABASE}.{TARGET_SCHEMA}.{AUDIT_TABLE} "
+            f"({audit_column_list}) SELECT {audit_column_list} "
+            f"FROM {TARGET_DATABASE}.{TARGET_SCHEMA}.{audit_stage}"
+        )
         conn.commit()
+        print(
+            f"Loaded {len(usage_df):,} rows into {TARGET_TABLE} and "
+            f"{len(audit_df):,} audit rows.",
+            flush=True,
+        )
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -1162,25 +1452,12 @@ def write_local_audit(usage_df: pd.DataFrame, audit_df: pd.DataFrame, label: str
     print(f"Wrote {audit_path}", flush=True)
 
 
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# Dynamic invoice rate fill (universal safety net)
-# ---------------------------------------------------------------------------
-def _fill_missing_prices(df, vendor_name, conn=None):
-    from invoice_rate_backfill import fill_missing_prices_dynamic
-
-    return fill_missing_prices_dynamic(df=df, vendor_name=vendor_name, conn=conn)
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Ingest Auvik Connectwise Usage Report workbooks into AUVIK_USAGE. "
-            "Only the Auvik CW folder is scanned; the CW/CMS entity split is "
-            "derived from Partner Name in the data."
+            "Ingest Auvik Connectwise Usage Report workbooks into canonical usage. "
+            "One authoritative workbook copy is selected per month; the "
+            "CW/CMS entity split is derived from Partner Name in the data."
         )
     )
     parser.add_argument(
@@ -1188,14 +1465,17 @@ def main() -> None:
         default=str(DEFAULT_SOURCE_ROOT_CW),
         help="Path to the Auvik CW month folder root (default: OneDrive path).",
     )
-    # Kept for backwards compatibility with run_full_pipeline.py
-    parser.add_argument("--channel", help="Ignored â€” Auvik reads CW only.")
-    parser.add_argument("--month", help="Load a single month in YYYY-MM format.")
     parser.add_argument(
-        "--all-months", action="store_true", help="Parse every discovered month folder."
+        "--source-root-cms",
+        default=str(DEFAULT_SOURCE_ROOT_CMS),
+        help="Fallback Auvik CMS root if the CW copy is unavailable.",
     )
-    parser.add_argument("--start-month", help="Lower bound (inclusive) for --all-months.")
-    parser.add_argument("--end-month", help="Upper bound (inclusive) for --all-months.")
+    parser.add_argument("--channel", help="Ignored; each workbook contains CW and CMS.")
+    month_scope = parser.add_mutually_exclusive_group(required=True)
+    month_scope.add_argument("--month", type=_month_argument, help="Load one month in YYYY-MM format.")
+    month_scope.add_argument("--all-months", action="store_true", help="Parse every discovered month folder.")
+    parser.add_argument("--start-month", type=_month_argument, help="Lower bound for --all-months.")
+    parser.add_argument("--end-month", type=_month_argument, help="Upper bound for --all-months.")
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -1204,34 +1484,42 @@ def main() -> None:
     parser.add_argument(
         "--reset",
         action="store_true",
-        help="Drop and recreate AUVIK_USAGE and AUVIK_USAGE_FILE_AUDIT before loading.",
+        help="Clear all Auvik history before loading; requires --all-months.",
     )
     args = parser.parse_args()
 
     source_root = Path(args.source_root)
-    if not source_root.exists():
-        raise FileNotFoundError(f"Source root does not exist: {source_root}")
-    if not args.month and not args.all_months:
-        raise SystemExit("Provide --month YYYY-MM or --all-months.")
+    source_root_cms = Path(args.source_root_cms)
+    if not source_root.exists() and not source_root_cms.exists():
+        raise FileNotFoundError("Neither the Auvik CW source root nor CMS fallback exists.")
+    if args.reset and not args.all_months:
+        raise SystemExit("--reset requires --all-months.")
+    if args.reset and (args.start_month or args.end_month):
+        raise SystemExit("--reset cannot be combined with month bounds.")
+    if (args.start_month or args.end_month) and not args.all_months:
+        raise SystemExit("--start-month/--end-month require --all-months.")
+    if args.start_month and args.end_month and args.start_month > args.end_month:
+        raise SystemExit("--start-month cannot be after --end-month.")
 
-    month_filter: str | None = args.month
+    if args.month:
+        requested_months = {args.month}
+    else:
+        available = {
+            source.folder_month
+            for source in discover_source_files(source_root) + discover_source_files(source_root_cms)
+            if source.folder_month is not None
+        }
+        requested_months = {
+            month for month in available
+            if (args.start_month is None or month >= args.start_month)
+            and (args.end_month is None or month <= args.end_month)
+        }
 
-    usage_df, audit_df = build_usage(source_root, source_root_cms=DEFAULT_SOURCE_ROOT_CMS, month_filter=month_filter)
-
-    # Apply start/end-month bounds when using --all-months
-    if args.all_months and (args.start_month or args.end_month):
-        def _in_range(d: object) -> bool:
-            if d is None:
-                return True
-            m = d.strftime("%Y-%m") if hasattr(d, "strftime") else str(d)[:7]
-            if args.start_month and m < args.start_month:
-                return False
-            if args.end_month and m > args.end_month:
-                return False
-            return True
-
-        usage_df = usage_df[usage_df["BILLING_MONTH"].apply(_in_range)].copy()
-        audit_df = audit_df[audit_df["BILLING_MONTH"].apply(_in_range)].copy()
+    usage_df, audit_df = build_usage(
+        source_root,
+        source_root_cms=source_root_cms,
+        months=requested_months,
+    )
 
     if usage_df.empty:
         raise RuntimeError("No usage rows parsed. Check source root and month filters.")
