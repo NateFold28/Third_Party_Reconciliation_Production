@@ -35,11 +35,14 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
+import hashlib
 import io
+import json
 import re
 import subprocess
 import sys
 import tempfile
+import uuid
 from pathlib import Path
 
 import openpyxl
@@ -77,6 +80,9 @@ SCHEMA_MATCH_THRESHOLD = 3       # >= this many canonical headers must match
 SITE_ACCOUNT_COL = "Site Account Name"
 SKU_COL = "Sku"
 CREATED_DATE_COL = "Created Date"
+ACCOUNT_COL = "Account Name"
+SITE_TYPE_COL = "Site Type"
+SITE_ID_COL = "Site ID"
 TOTAL_AGENTS_COL = "Total Active Agents per site"
 RETENTION_COL = "Retention Days"
 
@@ -92,6 +98,22 @@ TOTAL_AGENTS_PRODUCT_LABEL = "Total Active Agents"
 
 # Agent columns that don't follow the "*Agent(s)*" naming convention.
 KNOWN_AGENT_EXTRAS: tuple[str, ...] = ("Ranger AD Full", "Ranger AD Protect Full")
+EXPECTED_AGENT_COLUMNS: tuple[str, ...] = (
+    TOTAL_AGENTS_COL,
+    "Ranger Active Agents",
+    "Vigilance Active Agents",
+    "RSO Active Agents",
+    "Watchtower Active Agents",
+    "Cloud Funnel Active Agents",
+    "Forensics Active Agents",
+    "Ranger Insights Active Agents",
+    "Ranger AD Full",
+    "Ranger AD Protect Full",
+    "Singularity Identity Agents",
+    "Purple AI Agents",
+    "Threat Intelligence Agents",
+    "Data Retention Agents",
+)
 
 # Canonical vendor usage schema â€” shared across all third-party pipelines.
 TEMPLATE_COLUMNS: tuple[str, ...] = (
@@ -104,6 +126,26 @@ TEMPLATE_COLUMNS: tuple[str, ...] = (
     "UNIT_PRICE",
     "AMOUNT",
     "CURRENCY",
+    "ADDITIONAL_INFO",
+)
+
+AUDIT_COLUMNS: tuple[str, ...] = (
+    "SOURCE_FOLDER",
+    "SOURCE_FILE",
+    "SOURCE_CONTENT_HASH",
+    "BILLING_MONTH",
+    "SNAPSHOT_DATE",
+    "SOURCE_ROWS",
+    "PARTNERS",
+    "SITES",
+    "OUTPUT_ROWS",
+    "DUPLICATE_SITE_IDS",
+    "FOOTER_TOTAL_CHECK",
+    "MISSING_RATE_ROWS",
+    "MISSING_RATE_PRODUCTS",
+    "IGNORED_FILES",
+    "ERROR_MESSAGE",
+    "INGESTED_AT",
 )
 
 
@@ -137,7 +179,7 @@ def _clean_product_name(col_name: object) -> str:
 
 def _to_first_of_month(value: object) -> dt.date | None:
     """Truncate a Created Date value to the first day of its month."""
-    if value is None or (isinstance(value, float) and pd.isna(value)):
+    if value is None or bool(pd.isna(value)):
         return None
     if isinstance(value, (dt.datetime, dt.date)):
         return dt.date(value.year, value.month, 1)
@@ -303,11 +345,28 @@ def discover_month_folders(source_root: Path) -> dict[str, Path]:
 
 
 def locate_usage_file(month_folder: Path) -> Path | None:
-    """Find the ``ConnectWise Usage_*.xlsx`` file, skipping Excel lock files."""
-    for path in sorted(month_folder.glob("ConnectWise Usage_*.xlsx")):
-        if not path.name.startswith("~$"):
-            return path
-    return None
+    """Return the sole authoritative ConnectWise usage workbook."""
+    candidates = sorted(
+        path
+        for path in month_folder.iterdir()
+        if path.is_file()
+        and not path.name.startswith("~$")
+        and path.suffix.lower() in {".xlsx", ".xlsm"}
+        and re.fullmatch(
+            r"ConnectWise Usage_[^\\/]+\.xls[xm]",
+            path.name,
+            flags=re.IGNORECASE,
+        )
+    )
+    if not candidates:
+        return None
+    if len(candidates) != 1:
+        raise RuntimeError(
+            f"Expected exactly one ConnectWise Usage workbook in "
+            f"{month_folder.name}; found {len(candidates)}: "
+            f"{[path.name for path in candidates]}"
+        )
+    return candidates[0]
 
 
 def _read_file_bytes(path: Path) -> bytes:
@@ -336,9 +395,13 @@ def _read_file_bytes(path: Path) -> bytes:
 # ---------------------------------------------------------------------------
 
 _REQUIRED_HEADERS = {
+    _norm(ACCOUNT_COL),
     _norm(SITE_ACCOUNT_COL),
     _norm(SKU_COL),
+    _norm(SITE_TYPE_COL),
+    _norm(SITE_ID_COL),
     _norm(CREATED_DATE_COL),
+    _norm(RETENTION_COL),
     _norm(TOTAL_AGENTS_COL),
 }
 
@@ -358,16 +421,26 @@ def _find_usage_sheet(workbook: openpyxl.Workbook, path: Path) -> tuple[str, int
                 for c in range(1, max_col + 1)
             ]
             normalized = {_norm(h) for h in headers if h}
-            if len(_REQUIRED_HEADERS & normalized) >= SCHEMA_MATCH_THRESHOLD:
+            if _REQUIRED_HEADERS <= normalized:
                 return sheet_name, r, headers
 
-    print(f"SKIP {path.name}: no sheet matched required ConnectWise usage headers.")
-    return None
+    raise RuntimeError(f"{path.name}: no sheet contains the complete SentinelOne usage schema.")
 
 
 def _canonicalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Rename known columns to canonical names (whitespace/case tolerant)."""
-    exact = {_norm(c): c for c in (SITE_ACCOUNT_COL, SKU_COL, CREATED_DATE_COL, TOTAL_AGENTS_COL)}
+    exact = {
+        _norm(c): c
+        for c in (
+            ACCOUNT_COL,
+            SITE_ACCOUNT_COL,
+            SKU_COL,
+            SITE_TYPE_COL,
+            SITE_ID_COL,
+            CREATED_DATE_COL,
+            *EXPECTED_AGENT_COLUMNS,
+        )
+    }
     rename_map: dict[str, str] = {}
     for col in df.columns:
         n = _norm(col)
@@ -405,7 +478,9 @@ def _identify_agent_columns(columns: list[str]) -> list[str]:
 
 def _read_workbook(path: Path) -> pd.DataFrame:
     """Read the CW usage sheet from ``path`` into a raw DataFrame."""
-    wb = openpyxl.load_workbook(io.BytesIO(_read_file_bytes(path)), read_only=True, data_only=True)
+    file_bytes = _read_file_bytes(path)
+    content_hash = hashlib.sha256(file_bytes).hexdigest()
+    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
     try:
         match = _find_usage_sheet(wb, path)
         if match is None:
@@ -416,14 +491,21 @@ def _read_workbook(path: Path) -> pd.DataFrame:
         ws = wb[sheet_name]
 
         records: list[dict[str, object]] = []
-        for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+        for source_row, row in enumerate(
+            ws.iter_rows(min_row=header_row + 1, values_only=True),
+            start=header_row + 1,
+        ):
             if not row or all(cell is None for cell in row):
                 continue
-            records.append({headers[i]: row[i] if i < len(row) else None for i in range(len(headers))})
+            record = {headers[i]: row[i] if i < len(row) else None for i in range(len(headers))}
+            record["_SOURCE_ROW_NUMBER"] = source_row
+            records.append(record)
     finally:
         wb.close()
 
-    return pd.DataFrame(records)
+    frame = pd.DataFrame(records)
+    frame.attrs.update(source_sheet=sheet_name, source_content_hash=content_hash)
+    return frame
 
 
 def _clean_text(series: pd.Series) -> pd.Series:
@@ -435,43 +517,101 @@ def _clean_text(series: pd.Series) -> pd.Series:
     )
 
 
-def parse_usage_workbook(path: Path) -> pd.DataFrame:
+def parse_usage_workbook(
+    path: Path,
+    *,
+    expected_month: str | None = None,
+    rate_history: dict[str, dict[dt.date, float]] | None = None,
+    usage_alias_map: dict[str, str] | None = None,
+    ignored_files: tuple[str, ...] = (),
+    ingested_at: dt.datetime | None = None,
+) -> pd.DataFrame:
     """Parse a CW usage workbook into the ``SENTINELONE_USAGE`` template."""
     raw = _read_workbook(path)
     if raw.empty:
-        return pd.DataFrame(columns=list(TEMPLATE_COLUMNS))
+        raise RuntimeError(f"{path.name} contains no usage rows.")
+
+    source_sheet = str(raw.attrs.get("source_sheet", ""))
+    source_content_hash = str(raw.attrs.get("source_content_hash", ""))
 
     df = _canonicalize_columns(raw)
 
-    missing = [c for c in (SITE_ACCOUNT_COL, SKU_COL, CREATED_DATE_COL) if c not in df.columns]
+    required = [ACCOUNT_COL, SITE_ACCOUNT_COL, SKU_COL, SITE_TYPE_COL, SITE_ID_COL,
+                CREATED_DATE_COL, RETENTION_COL, *EXPECTED_AGENT_COLUMNS]
+    missing = [c for c in required if c not in df.columns]
     if missing:
-        print(f"SKIP {path.name}: matched sheet but missing canonical columns: {missing}")
-        return pd.DataFrame(columns=list(TEMPLATE_COLUMNS))
+        raise RuntimeError(f"{path.name} is missing required columns: {sorted(missing)}")
 
-    # Retention column may be absent in older workbooks.
-    if RETENTION_COL not in df.columns:
-        df[RETENTION_COL] = ""
-
-    for text_col in (SITE_ACCOUNT_COL, SKU_COL, RETENTION_COL):
+    for text_col in (ACCOUNT_COL, SITE_ACCOUNT_COL, SKU_COL, SITE_TYPE_COL, SITE_ID_COL, RETENTION_COL):
         df[text_col] = _clean_text(df[text_col])
 
     df["BILLING_MONTH"] = df[CREATED_DATE_COL].apply(_to_first_of_month)
 
-    # Drop vendor grand-total footer rows (blank Site/Sku) and any row missing
-    # a billing month.
-    df = df[
-        df["BILLING_MONTH"].notna()
-        & (df[SITE_ACCOUNT_COL] != "")
-        & (df[SKU_COL] != "")
-    ].copy()
-    if df.empty:
-        return pd.DataFrame(columns=list(TEMPLATE_COLUMNS))
+    unexpected_accounts = sorted(set(df[ACCOUNT_COL]) - {"", "Connectwise", "Total"})
+    if unexpected_accounts:
+        raise RuntimeError(f"{path.name} contains unexpected Account Name values: {unexpected_accounts}")
 
-    # Coerce all agent columns to numeric. Every agent column is retained --
-    # the Total Active Agents roll-up is emitted alongside per-product cols.
     agent_cols = _identify_agent_columns(list(df.columns))
+    missing_agent_cols = sorted(set(EXPECTED_AGENT_COLUMNS) - set(agent_cols))
+    if missing_agent_cols:
+        raise RuntimeError(f"{path.name} is missing expected usage products: {missing_agent_cols}")
     for c in agent_cols:
-        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
+        converted = pd.to_numeric(df[c], errors="coerce")
+        invalid = int((df[c].notna() & converted.isna()).sum())
+        if invalid:
+            raise RuntimeError(f"{path.name} has {invalid} nonnumeric values in {c!r}.")
+        df[c] = converted.fillna(0.0)
+
+    footer = df[df[ACCOUNT_COL].str.casefold() == "total"]
+    if len(footer) != 1:
+        raise RuntimeError(f"{path.name} must contain exactly one Total row; found {len(footer)}.")
+
+    potential_detail = df[df[ACCOUNT_COL].str.casefold() == "connectwise"].copy()
+    incomplete = ((potential_detail[SITE_ACCOUNT_COL] == "")
+                  | (potential_detail[SKU_COL] == "")
+                  | potential_detail["BILLING_MONTH"].isna())
+    positive_incomplete = incomplete & potential_detail[agent_cols].sum(axis=1).gt(0)
+    if positive_incomplete.any():
+        source_rows = potential_detail.loc[positive_incomplete, "_SOURCE_ROW_NUMBER"].astype(int).tolist()
+        raise RuntimeError(
+            f"{path.name} has positive usage with a missing partner, SKU, or billing date "
+            f"at source rows {source_rows[:20]}."
+        )
+
+    unexpected_site_types = sorted(set(
+        potential_detail.loc[
+            ~incomplete & ~potential_detail[SITE_TYPE_COL].str.casefold().eq("paid"),
+            SITE_TYPE_COL,
+        ]
+    ))
+    if unexpected_site_types:
+        raise RuntimeError(f"{path.name} contains unexpected site types: {unexpected_site_types}")
+
+    df = potential_detail[~incomplete & potential_detail[SITE_TYPE_COL].str.casefold().eq("paid")].copy()
+    if df.empty:
+        raise RuntimeError(f"{path.name} contains no valid paid usage rows.")
+
+    resolved_months = sorted(pd.to_datetime(df["BILLING_MONTH"]).dt.strftime("%Y-%m").unique())
+    if expected_month is not None and resolved_months != [expected_month]:
+        raise RuntimeError(
+            f"{path.name} resolves to billing months {resolved_months}, but the folder is {expected_month}."
+        )
+    snapshot_dates = sorted(pd.to_datetime(df[CREATED_DATE_COL], errors="coerce").dt.date.unique())
+    if len(snapshot_dates) != 1:
+        raise RuntimeError(f"{path.name} must contain one snapshot date; found {snapshot_dates}.")
+    snapshot_date = snapshot_dates[0]
+
+    duplicate_site_ids = int(df.duplicated(SITE_ID_COL, keep=False).sum())
+    if duplicate_site_ids:
+        raise RuntimeError(f"{path.name} contains {duplicate_site_ids} rows with duplicate Site ID values.")
+
+    footer_failures = {
+        column: round(float(df[column].sum() - footer[column].iloc[0]), 6)
+        for column in agent_cols
+        if abs(float(df[column].sum() - footer[column].iloc[0])) > 0.000001
+    }
+    if footer_failures:
+        raise RuntimeError(f"{path.name} detail rows do not match the Total row: {footer_failures}")
 
     # Drop partners (Site Account Name) whose usage AGGREGATED across every
     # row and every agent column sums to zero. A partner only qualifies as
@@ -494,7 +634,7 @@ def parse_usage_workbook(path: Path) -> pd.DataFrame:
             "with zero usage across every agent column."
         )
     if df.empty:
-        return pd.DataFrame(columns=list(TEMPLATE_COLUMNS))
+        raise RuntimeError(f"{path.name} contains no positive usage.")
 
     id_cols = ["BILLING_MONTH", SITE_ACCOUNT_COL, SKU_COL, RETENTION_COL]
     melted = df[id_cols + agent_cols].melt(
@@ -508,7 +648,7 @@ def parse_usage_workbook(path: Path) -> pd.DataFrame:
     #   * per-product add-on rows only where the module is enabled (> 0)
     melted = melted[melted["QUANTITY"] > 0].copy()
     if melted.empty:
-        return pd.DataFrame(columns=list(TEMPLATE_COLUMNS))
+        raise RuntimeError(f"{path.name} produced no positive usage.")
 
     melted["_CLEANED_PRODUCT"] = melted["RAW_PRODUCT"].apply(_clean_product_name)
 
@@ -541,8 +681,10 @@ def parse_usage_workbook(path: Path) -> pd.DataFrame:
         .reset_index()
         .rename(columns={SITE_ACCOUNT_COL: "VENDOR_PARTNER_NAME"})
     )
-    rate_history = load_invoice_rate_history()
-    usage_alias_map = _load_usage_product_alias_map()
+    if rate_history is None:
+        rate_history = load_invoice_rate_history()
+    if usage_alias_map is None:
+        usage_alias_map = _load_usage_product_alias_map()
     agg["VENDOR"] = "SentinelOne"
     agg["MODIFIER"] = None
 
@@ -567,14 +709,58 @@ def parse_usage_workbook(path: Path) -> pd.DataFrame:
     agg["AMOUNT"] = agg["QUANTITY"] * agg["UNIT_PRICE"]
     agg["CURRENCY"] = "USD"
 
-    return agg[list(TEMPLATE_COLUMNS)].reset_index(drop=True)
+    agg["ADDITIONAL_INFO"] = agg.apply(
+        lambda _row: json.dumps(
+            {
+                "source_file": path.name,
+                "source_sheet": source_sheet,
+                "source_content_hash": source_content_hash,
+                "snapshot_date": snapshot_date.isoformat(),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
+        axis=1,
+    )
+
+    result = agg[list(TEMPLATE_COLUMNS)].reset_index(drop=True)
+    result.attrs["source_audit"] = {
+        "SOURCE_FOLDER": path.parent.name,
+        "SOURCE_FILE": path.name,
+        "SOURCE_CONTENT_HASH": source_content_hash,
+        "BILLING_MONTH": dt.date.fromisoformat(f"{expected_month or resolved_months[0]}-01"),
+        "SNAPSHOT_DATE": snapshot_date,
+        "SOURCE_ROWS": len(df),
+        "PARTNERS": int(df[SITE_ACCOUNT_COL].nunique()),
+        "SITES": int(df[SITE_ID_COL].nunique()),
+        "OUTPUT_ROWS": len(result),
+        "DUPLICATE_SITE_IDS": duplicate_site_ids,
+        "FOOTER_TOTAL_CHECK": "PASS",
+        "MISSING_RATE_ROWS": int(result["UNIT_PRICE"].isna().sum()),
+        "MISSING_RATE_PRODUCTS": json.dumps(
+            sorted(result.loc[result["UNIT_PRICE"].isna(), "VENDOR_PRODUCT_SKU"].unique()),
+            separators=(",", ":"),
+        ),
+        "IGNORED_FILES": json.dumps(ignored_files, separators=(",", ":")),
+        "ERROR_MESSAGE": None,
+        "INGESTED_AT": ingested_at or dt.datetime.now(dt.UTC).replace(tzinfo=None),
+    }
+
+    return result
 
 
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
 
-def parse_month(source_root: Path, month: str) -> pd.DataFrame:
+def parse_month(
+    source_root: Path,
+    month: str,
+    *,
+    rate_history: dict[str, dict[dt.date, float]] | None = None,
+    usage_alias_map: dict[str, str] | None = None,
+    ingested_at: dt.datetime | None = None,
+) -> pd.DataFrame:
     """Parse a single ``YYYY-MM`` month folder and return the template frame."""
     month_folder = discover_month_folders(source_root).get(month)
     if month_folder is None:
@@ -585,7 +771,18 @@ def parse_month(source_root: Path, month: str) -> pd.DataFrame:
         raise FileNotFoundError(f"No ConnectWise Usage*.xlsx found in {month_folder}")
 
     try:
-        frame = parse_usage_workbook(usage_path)
+        ignored_files = tuple(sorted(
+            path.name for path in month_folder.iterdir()
+            if path.is_file() and not path.name.startswith("~$") and path != usage_path
+        ))
+        frame = parse_usage_workbook(
+            usage_path,
+            expected_month=month,
+            rate_history=rate_history,
+            usage_alias_map=usage_alias_map,
+            ignored_files=ignored_files,
+            ingested_at=ingested_at,
+        )
     except BaseException as exc:
         if isinstance(exc, KeyboardInterrupt):
             # XML parser on a corrupt file can raise KeyboardInterrupt via
@@ -673,14 +870,19 @@ CREATE TABLE IF NOT EXISTS {FQN} (
     MODIFIER            VARCHAR,
     QUANTITY            NUMBER(18, 4),
     UNIT_PRICE          NUMBER(18, 6),
-    AMOUNT              NUMBER(18, 4),
-    CURRENCY            VARCHAR
+    AMOUNT              NUMBER(18, 6),
+    CURRENCY            VARCHAR,
+    ADDITIONAL_INFO     VARCHAR
 );
 """
 
 
-def load_snowflake(df: pd.DataFrame, *, reset: bool = False) -> None:
-    """Idempotent load: skip billing months already present unless ``reset``."""
+def load_snowflake(
+    df: pd.DataFrame,
+    *,
+    reset: bool = False,
+) -> None:
+    """Stage and transactionally publish SentinelOne usage."""
     sys.path.insert(0, str(WORKSPACE_ROOT))
     from snowflake.connector.pandas_tools import write_pandas
     from TEMPLATES.Python.connection import get_snowflake_connection
@@ -691,18 +893,13 @@ def load_snowflake(df: pd.DataFrame, *, reset: bool = False) -> None:
         database=TARGET_DATABASE,
         schema=TARGET_SCHEMA,
     )
+    usage_stage = f"_S1_USAGE_STAGE_{uuid.uuid4().hex[:12].upper()}"
     try:
         cur = conn.cursor()
         cur.execute(f"CREATE SCHEMA IF NOT EXISTS {TARGET_DATABASE}.{TARGET_SCHEMA}")
 
-        if reset:
-            print(f"RESET: deleting existing {TARGET_VENDOR} rows from {FQN}.")
-            cur.execute(
-                f"DELETE FROM {FQN} WHERE UPPER(COALESCE(VENDOR, '')) = UPPER(%s)",
-                (TARGET_VENDOR,),
-            )
-
         cur.execute(snowflake_ddl())
+        cur.execute(f"ALTER TABLE {FQN} ADD COLUMN IF NOT EXISTS ADDITIONAL_INFO VARCHAR")
 
         cur.execute(
             f"SELECT DISTINCT BILLING_MONTH FROM {FQN} "
@@ -714,8 +911,8 @@ def load_snowflake(df: pd.DataFrame, *, reset: bool = False) -> None:
             for row in cur.fetchall()
         }
         incoming = sorted(pd.to_datetime(df["BILLING_MONTH"]).dt.date.astype(str).unique())
-        new_months = [m for m in incoming if m not in existing]
-        skipped = [m for m in incoming if m in existing]
+        new_months = incoming if reset else [m for m in incoming if m not in existing]
+        skipped = [] if reset else [m for m in incoming if m in existing]
 
         if skipped:
             print(f"Skipping months already loaded: {skipped}")
@@ -724,14 +921,37 @@ def load_snowflake(df: pd.DataFrame, *, reset: bool = False) -> None:
             return
 
         load_df = df[df["BILLING_MONTH"].astype(str).isin(new_months)].reset_index(drop=True)
+        cur.execute(f"CREATE TEMP TABLE {TARGET_DATABASE}.{TARGET_SCHEMA}.{usage_stage} LIKE {FQN}")
         success, _chunks, rows, output = write_pandas(
-            conn, load_df, TARGET_TABLE,
+            conn, load_df, usage_stage,
             database=TARGET_DATABASE, schema=TARGET_SCHEMA, quote_identifiers=False,
         )
-        if not success:
+        if not success or rows != len(load_df):
             raise RuntimeError(f"Snowflake write_pandas failed: {output}")
+
+        month_list = ", ".join(f"'{month}'::DATE" for month in new_months)
+        cur.execute("BEGIN")
+        if reset:
+            cur.execute(
+                f"DELETE FROM {FQN} WHERE UPPER(COALESCE(VENDOR, '')) = UPPER(%s)",
+                (TARGET_VENDOR,),
+            )
+        else:
+            cur.execute(
+                f"DELETE FROM {FQN} WHERE UPPER(COALESCE(VENDOR, '')) = UPPER(%s) "
+                f"AND BILLING_MONTH IN ({month_list})",
+                (TARGET_VENDOR,),
+            )
+        usage_columns = ", ".join(TEMPLATE_COLUMNS)
+        cur.execute(
+            f"INSERT INTO {FQN} ({usage_columns}) SELECT {usage_columns} "
+            f"FROM {TARGET_DATABASE}.{TARGET_SCHEMA}.{usage_stage}"
+        )
         conn.commit()
-        print(f"Appended {rows:,} rows for months {new_months} into {FQN}.")
+        print(f"Published {rows:,} rows for months {new_months} into {FQN}.")
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -782,7 +1002,17 @@ def main() -> None:
                 return
             months = pending_months
 
-    frames = [parse_month(source_root, m) for m in months]
+    rate_history = load_invoice_rate_history()
+    usage_alias_map = _load_usage_product_alias_map()
+    ingested_at = dt.datetime.now(dt.UTC).replace(tzinfo=None)
+    frames = [
+        parse_month(
+            source_root, m, rate_history=rate_history,
+            usage_alias_map=usage_alias_map, ingested_at=ingested_at,
+        )
+        for m in months
+    ]
+    audit_rows = [frame.attrs["source_audit"] for frame in frames if "source_audit" in frame.attrs]
     skipped = [m for m, f in zip(months, frames) if f.empty]
     if skipped:
         print(f"WARNING: {len(skipped)} month(s) skipped (parse failed or no rows): {skipped}")
@@ -806,6 +1036,11 @@ def main() -> None:
 
     label = "all_months" if args.all_months else args.month.replace("-", "_")
     write_audit(all_rows, label)
+    source_audit_path = OUTPUT_DIR / f"sentinelone_source_audit_{label}.csv"
+    pd.DataFrame(audit_rows, columns=list(AUDIT_COLUMNS)).to_csv(
+        source_audit_path, index=False, quoting=csv.QUOTE_MINIMAL
+    )
+    print(f"Wrote source audit: {source_audit_path}")
 
     if args.dry_run:
         print("Dry run complete. Snowflake load skipped.")

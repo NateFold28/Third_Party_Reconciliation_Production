@@ -2,9 +2,8 @@
 
 Design goals
 ------------
-* Mirror the C:/Users/Nate.Fold/OneDrive - ConnectWise, Inc/SentinelOne POC/
-  App_Formatting/Vendor_Recon_Dashboard_v2.html mockup as closely as
-  Streamlit allows: hero header, controls strip, RYG matrix, exception
+* Present the approved executive design in Streamlit: hero header, controls
+    strip, RYG matrix, exception
   detail cards, vendor deep dive, profitability by vendor, and an
   iterative AI Analyst chat.
 * The combined production pipeline loads each vendor from the shared
@@ -984,8 +983,7 @@ def _load_combined_vendor_impl(
     # Sole month-scope rule: restrict all frames to months where the
     # SUMMARY_PROD row shows DATA_LOAD_STATUS='LOADED' (or USAGE_ROW_COUNT>0
     # as a fallback if the status column is absent). VENDOR_SOURCE_ROW_COUNT
-    # in DETAIL/OUTPUT_PROD is a literal `1` for every row (see
-    # build_third_party_recon_output_prod.py line 447) so it cannot be used
+    # in DETAIL/OUTPUT_PROD is a literal `1` for every row, so it cannot be used
     # to distinguish loaded from unloaded months. SUMMARY_PROD carries the
     # actual load signal from THIRD_PARTY_RECON_VENDOR_USAGE_PROD counts.
     if not summary.empty and "BILLING_MONTH" in summary.columns:
@@ -2116,7 +2114,7 @@ with _refresh_col1:
 # Data-freshness diagnostic panel  (schema {SLICE_SCHEMA_VERSION})
 # Shows the user EXACTLY what Snowflake is returning right now, so they can
 # verify the pipeline was rebuilt with the canonical taxonomy. If the table
-# LAST_ALTERED is old or EXCEPTION_TYPE values don't match the 12-bucket
+# LAST_ALTERED is old or EXCEPTION_TYPE values don't match the seven-outcome
 # taxonomy, the pipeline needs to be re-run — no app-side change can help.
 #
 # Lazy-loaded: the queries only fire when the user opts in via the toggle.
@@ -3273,24 +3271,33 @@ def render_monthly_recon_table(vendor_key: str) -> None:
         st.markdown('<div class="note">No monthly summary rows in the selected period.</div>', unsafe_allow_html=True)
         return
 
-    display_rows: list[dict[str, Any]] = []
+    header = (
+        '<tr><th>Month</th>'
+        '<th class="c">Vendor Health</th>'
+        '<th class="num">Vendor seats</th><th class="num">CW Billed</th>'
+        '<th class="num">CW vs. Vendor</th><th class="num">CW revenue</th>'
+        '<th class="num">Vendor cost</th><th class="num">Margin $</th>'
+        '<th class="num">Margin %</th></tr>'
+    )
+    body = []
     for r in monthly.itertuples(index=False):
         vs, bs, rev, cost = r.VS, r.BS, r.REV, r.COST
         cw_vs_vendor_pct = ((bs - vs) / vs * 100) if vs else 0.0
         gm = rev - cost
         gm_pct = gm / rev if rev else 0
-        display_rows.append({
-            "Month": month_label(r.BILLING_MONTH),
-            "Vendor Health": HEALTH_LABELS[r.HEALTH_STATUS],
-            "Health Reason": r.HEALTH_REASON,
-            "Vendor Seats": vs,
-            "CW Billed": bs,
-            "CW vs. Vendor": cw_vs_vendor_pct,
-            "CW Revenue": rev,
-            "Vendor Cost": cost,
-            "Margin": gm,
-            "Margin %": gm_pct * 100,
-        })
+        cells = f'<tr><td><b>{month_label(r.BILLING_MONTH)}</b></td>'
+        cells += (
+            f'<td class="c">{chip_html(r.HEALTH_STATUS, HEALTH_LABELS[r.HEALTH_STATUS])}'
+            f'<span class="cellcap">{html.escape(r.HEALTH_REASON)}</span></td>'
+            f'<td class="num">{fmt_num(vs)}</td>'
+            f'<td class="num">{fmt_num(bs)}</td>'
+            f'<td class="num">{cw_vs_vendor_pct:+.1f}%</td>'
+            f'<td class="num">{fmt_money(rev)}</td>'
+            f'<td class="num">{fmt_money(cost)}</td>'
+            f'<td class="num">{fmt_money(gm)}</td>'
+            f'<td class="num">{gm_pct * 100:.1f}%</td></tr>'
+        )
+        body.append(cells)
 
     ytd_vs = float(monthly["VS"].sum())
     ytd_bs = float(monthly["BS"].sum())
@@ -3309,31 +3316,22 @@ def render_monthly_recon_table(vendor_key: str) -> None:
         ytd_gm_pct,
         ytd_gm,
     )
-    display_rows.append({
-        "Month": "YTD",
-        "Vendor Health": HEALTH_LABELS[ytd_health],
-        "Health Reason": ytd_health_reason,
-        "Vendor Seats": ytd_vs,
-        "CW Billed": ytd_bs,
-        "CW vs. Vendor": ytd_cw_vs_vendor_pct,
-        "CW Revenue": ytd_rev,
-        "Vendor Cost": ytd_cost,
-        "Margin": ytd_gm,
-        "Margin %": ytd_gm_pct * 100,
-    })
-    st.dataframe(
-        pd.DataFrame(display_rows),
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Vendor Seats": st.column_config.NumberColumn(format="%.0f"),
-            "CW Billed": st.column_config.NumberColumn(format="%.0f"),
-            "CW vs. Vendor": st.column_config.NumberColumn(format="%+.1f%%"),
-            "CW Revenue": st.column_config.NumberColumn(format="$%.2f"),
-            "Vendor Cost": st.column_config.NumberColumn(format="$%.2f"),
-            "Margin": st.column_config.NumberColumn(format="$%.2f"),
-            "Margin %": st.column_config.NumberColumn(format="%.1f%%"),
-        },
+    body.append(
+        '<tr style="font-weight:700;background:var(--cw-bg-3);color:var(--cw-text-0)"><td>YTD</td>'
+        f'<td class="c">{chip_html(ytd_health, HEALTH_LABELS[ytd_health])}'
+        f'<span class="cellcap">{html.escape(ytd_health_reason)}</span></td>'
+        f'<td class="num">{fmt_num(ytd_vs)}</td>'
+        f'<td class="num">{fmt_num(ytd_bs)}</td>'
+        f'<td class="num">{ytd_cw_vs_vendor_pct:+.1f}%</td>'
+        f'<td class="num">{fmt_money(ytd_rev)}</td>'
+        f'<td class="num">{fmt_money(ytd_cost)}</td>'
+        f'<td class="num">{fmt_money(ytd_gm)}</td>'
+        f'<td class="num">{ytd_gm_pct * 100:.1f}%</td></tr>'
+    )
+    st.markdown(
+        '<table class="recon"><thead>' + header + '</thead><tbody>'
+        + "".join(body) + '</tbody></table>',
+        unsafe_allow_html=True,
     )
 
 
@@ -3344,26 +3342,39 @@ def render_seat_trend(vendor_key: str) -> None:
         summary_all = summary_all[summary_all["BILLING_MONTH"].isin(selected_month_ts_list)]
     if summary_all.empty:
         return
-    rows: list[dict[str, Any]] = []
+    max_seats = float(
+        max(
+            summary_all["TOTAL_VENDOR_SEATS"].fillna(0).max(),
+            summary_all["TOTAL_BILLING_SEATS"].fillna(0).max(),
+            1,
+        )
+    )
+    header = (
+        '<tr><th>Month</th><th class="num">Vendor</th>'
+        '<th class="num">CW Billed</th><th class="num">CW vs. Vendor</th><th style="width:46%">Trend</th></tr>'
+    )
+    body = []
     for _, row in summary_all.iterrows():
         vs = float(row.get("TOTAL_VENDOR_SEATS") or 0)
         bs = float(row.get("TOTAL_BILLING_SEATS") or 0)
+        w_v = vs / max_seats * 100
+        w_b = bs / max_seats * 100
         cw_vs_vendor = ((bs - vs) / vs) if vs else 0.0
-        rows.append({
-            "Month": month_label(row["BILLING_MONTH"]),
-            "Vendor": vs,
-            "CW Billed": bs,
-            "CW vs. Vendor": cw_vs_vendor * 100,
-        })
-    st.dataframe(
-        pd.DataFrame(rows),
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Vendor": st.column_config.NumberColumn(format="%.0f"),
-            "CW Billed": st.column_config.NumberColumn(format="%.0f"),
-            "CW vs. Vendor": st.column_config.NumberColumn(format="%+.1f%%"),
-        },
+        cw_vs_vendor_txt = f"{cw_vs_vendor * 100:+.1f}%"
+        body.append(
+            f'<tr><td><b>{month_label(row["BILLING_MONTH"])}</b></td>'
+            f'<td class="num">{fmt_num(vs)}</td>'
+            f'<td class="num">{fmt_num(bs)}</td>'
+            f'<td class="num">{cw_vs_vendor_txt}</td>'
+            f'<td><div class="bar" style="height:7px;margin-bottom:3px">'
+            f'<span style="width:{w_v}%;background:var(--blue)"></span></div>'
+            f'<div class="bar" style="height:7px">'
+            f'<span style="width:{w_b}%;background:var(--green)"></span></div></td></tr>'
+        )
+    st.markdown(
+        '<table class="recon"><thead>' + header + '</thead><tbody>'
+        + "".join(body) + '</tbody></table>',
+        unsafe_allow_html=True,
     )
 
 

@@ -1,212 +1,166 @@
-﻿# Third Party Vendor Reconciliation Pipeline
+﻿# Third-Party Reconciliation Production Pipeline
 
-Production reconciliation system for 9 third-party vendors against ConnectWise billing.
+Production ingestion, reconciliation, canonical publication, and Streamlit presentation for Acronis, Auvik, Bitdefender, ESET, Exium, KeepIT, Proofpoint, SentinelOne, and Webroot.
 
-**Repo:** https://github.com/NateFold28/Third_Party_Reconciliation_Production
+This repository is intentionally production-only. Tests, benchmark artifacts, snapshots, ad hoc audits, retired SQL, and exploratory outputs do not belong here.
 
-## Repository Structure
+## Board-facing source of truth
 
-```
-├── Ingestion/          10 ingestion scripts (9 vendor usage + 1 invoice)
-├── Reconciliation/     9 vendor recon SQL files + orchestrators
-├── Maps/
-│   ├── sql/            source-of-truth mapping and source builders
-│   ├── seeds/          source-of-truth seed CSV files (partner, SKU)
-│   └── tools/          sanctioned map-ingestion tool(s)
-├── logs/               run artifacts and troubleshooting logs
-└── app/                Streamlit reconciliation dashboard
-```
+The Streamlit app is the business-facing contract. Unless a request explicitly says otherwise, every reconciliation metric refers to the value shown by the app.
 
-## Canonical Architecture
+Authoritative app tables:
 
-```
-1) Ingestion (10 scripts)
-   9 x <Vendor>_Vendor_Usage_Ingestion_Prod.py  -> THIRD_PARTY_RECON_VENDOR_USAGE_PROD
-   1 x Netsuite_Invoice_JSON_Ingestion_Prod.py  -> THIRD_PARTY_RECON_VENDOR_INVOICES
+- `ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_OUTPUT_PROD`
+- `ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_SUMMARY_PROD`
 
-2) Unified Maps (single source of truth)
-   Maps/seeds + Maps/sql/02_unified_reference_maps.sql ->
-     RECON_PARTNER_MAP
-     RECON_SKU_MAP
-     RECON_ACCOUNT_MERGE_RESOLVER
-     RECON_VENDOR_PARTNER_MANUAL_MAP
+Authoritative classifier:
 
-3) Unified Billing Sources
-   Maps/sql/01_unified_billing_sources.sql ->
-     THIRD_PARTY_RECON_SOURCE_ZUORA_PROD
-     THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD
-     THIRD_PARTY_RECON_SOURCE_TRT_PROD
-   Source policy:
-     - THIRD_PARTY_RECON_SOURCE_ZUORA_PROD is built from the live
-       ANALYTICS_DEV.DBT_NFOLD.FINAL_TPR_ENGINEERING_ZUORA_SOURCE_V2 source.
-     - THIRD_PARTY_RECON_SOURCE_MARKETPLACE_PROD is built directly from the
-       live ANALYTICS.DBO.CARR__ALL_TRANSACTIONS source.
-     - Active production recon scripts must not point back to the older
-       ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE object.
+- `Reconciliation/canonical_outcomes.py`
 
-4) Vendor Reconciliation (9 distinct scripts)
-   <Vendor>_Reconciliation_Script_Prod.sql -> <VENDOR>_RECON_DETAIL
-   _run_skeleton_pipeline.py -> THIRD_PARTY_RECON_DETAIL_PROD
-                           -> THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD
-   build_third_party_recon_output_prod.py -> THIRD_PARTY_RECON_OUTPUT_PROD
-                                         -> THIRD_PARTY_RECON_BILLING_LINE_DETAIL_PROD
-                                         -> THIRD_PARTY_RECON_SUMMARY_PROD
+Vendor detail tables and native `OUTCOME_FLAG` values are diagnostic evidence only. They must never be presented as the app clear rate. For example, a vendor-native quantity-tolerance result is not interchangeable with the canonical monetary KPI.
 
-   Grain policy:
-     - OUTPUT_PROD remains the stable vendor/account/month/product-family
-       reconciliation grain used for classification and clear-rate KPIs.
-     - BILLING_LINE_DETAIL_PROD preserves every Zuora invoice line and links it
-       to OUTPUT_PROD by CASE_ID when the billed SKU identifies one case.
-       Use it for invoice drilldown; do not sum repeated OUTPUT_PROD measures
-       after joining one case to several billing lines.
+### Canonical clear rate
 
-5) App
-   app/combined_recon_app.py reads OUTPUT_PROD + SUMMARY_PROD
-  and hides any vendor-month where vendor usage files are absent.
-```
+For the selected vendor and loaded period:
 
-No production logic is allowed outside this flow.
+`Clear rate = rows where OUTCOME_FLAG = 'Clear' / all published reconciliation rows`
 
-## Outcome Governance (Required)
+A row is `Clear` only when vendor amount is positive, CW billed amount is positive, and CW billed amount is greater than or equal to vendor amount. Rows with zero amount on both sides are retained in shared detail for audit but excluded from published output and KPI denominators.
 
-- `Reconciliation/canonical_outcomes.py` is the only authoritative outcome
-  classifier. Shared detail, app output, summaries, and app filters must use it.
-- `Clear` requires vendor amount > 0, CW amount > 0, and CW amount >= vendor
-  amount. Quantity tolerances, partner-month offsets, zero-dollar rows, and
-  vendor-native labels must never promote a row to `Clear`.
-- Rows where vendor amount = 0 and CW amount = 0 remain in shared detail for
-  source traceability but are excluded from app output, summaries, exception
-  queues, and every Clear-rate denominator because no reconciliation occurred.
-- With API usage present and vendor amount > CW amount >= 0, classify as
-  `API Usage, Insufficient CW Billing`.
-- Without API usage, vendor amount > 0 and CW amount = 0 is
-  `Vendor Billing, No CW Billing`; when both are positive and CW is lower, use
-  `Vendor Billing, Insufficient CW Billing` with no materiality threshold.
-- Duplicate billing remains an informational side flag. Its primary exception
-  category is intentionally disabled until the duplicate-source audit is done.
-- Vendor-native outcome fields are evidence only. The app must not derive or
-  remap outcomes from them.
+### Loaded-month rule
 
-## Mapping Governance (Required)
+Board-facing totals and YTD metrics include only rows in `THIRD_PARTY_RECON_SUMMARY_PROD` where `DATA_LOAD_STATUS = 'LOADED'`. A vendor-month is loaded when its source usage row count is greater than zero. Never treat missing months as zero-performance months.
 
-- Manual partner or SKU mapping must live in Maps sources only:
-  - Maps/seeds/*
-  - Maps/sql/02_unified_reference_maps.sql
-  - RECON_VENDOR_PARTNER_MANUAL_MAP populated from mapping SQL/tools
-- Manual mappings must not be hardcoded inside vendor reconciliation scripts.
-- Vendor scripts may consume mapping tables, but must not embed one-off partner/SKU overrides.
+### Canonical outcome taxonomy
 
-## Dependency Policy
+1. `Marketplace Billing Delay`
+2. `Clear`
+3. `Unmapped Partner`
+4. `API Usage, Insufficient CW Billing`
+5. `Vendor Billing, No CW Billing`
+6. `Vendor Billing, Insufficient CW Billing`
+7. `CW Billing, No Vendor Billing`
 
-- No legacy matched/resolved billing tables are used by active vendor recon scripts.
-- No active production path may read the older `ANALYTICS_DEV.DBT_NFOLD.ZUORA_THIRD_PARTY_RECON_BASE` object.
-- Vendor recon logic is housed in each vendor's script under Reconciliation/.
-- Improvement levers are limited to:
-  1) unified partner map, 2) unified SKU map, 3) vendor recon SQL logic.
-- Mapping fixes are applied as one-time Snowflake DML updates (for example MERGE/UPDATE)
-  against source-of-truth mapping tables, then re-run Maps/sql/02.
-  Do not hardcode mapping overrides inside vendor reconciliation SQL files.
+`Duplicated CW Invoice` remains a side flag and is not an enabled primary outcome.
 
-## Running the Pipeline
+## Production architecture
 
-```powershell
-# 1. Full refresh runner (recommended): ingestion + invoices + maps + sources + all 9 recon scripts
-.venv\Scripts\python.exe "Reconciliation\_run_full_refresh_pipeline.py" --from-month 2026-01
-
-# 1a. One-time baseline refresh (vendor-sliced replacement in shared usage table, then rerun all ingestion scripts)
-.venv\Scripts\python.exe "Reconciliation\_run_full_refresh_pipeline.py" --from-month 2026-01 --full-refresh-now
-
-# 1b. Optional, unsafe for freshness guarantees: skip ingestion/invoices when only code signatures are unchanged
-.venv\Scripts\python.exe "Reconciliation\_run_full_refresh_pipeline.py" --from-month 2026-01 --enable-smart-skip
-
-# 2. Recon-only rebuild (fast path, no ingestion/invoice refresh)
-.venv\Scripts\python.exe "Reconciliation\_run_skeleton_pipeline.py"
-
-# 3. Launch the app
-streamlit run "app\combined_recon_app.py"
+```text
+Vendor files / Snowflake sources
+        |
+        v
+Ingestion/*_Prod.py and production source SQL
+        |
+        v
+THIRD_PARTY_RECON_VENDOR_USAGE_PROD
+THIRD_PARTY_RECON_VENDOR_INVOICES
+        |
+        +--> Maps/sql/03_master_sf_partner_list.sql
+        +--> Maps/sql/02_unified_reference_maps.sql
+        |
+        v
+Reconciliation/<Vendor>_Reconciliation_Script_Prod.sql
+        |
+        v
+THIRD_PARTY_RECON_<VENDOR>_DETAIL
+THIRD_PARTY_RECON_SHARED_DETAIL
+        |
+        v
+Reconciliation/build_third_party_recon_output_prod.py
+        |
+        v
+THIRD_PARTY_RECON_OUTPUT_PROD
+THIRD_PARTY_RECON_SUMMARY_PROD
+        |
+        v
+App/combined_recon_app.py
 ```
 
-The full reconciliation pipeline rebuilds the invoice-vs-raw-usage intra control
-as a core invoice gate before app-facing output is rebuilt. Vendor invoices are
-the source of truth for charged quantity and amount; vendor raw usage must tie to
-that invoice control before recon/app metrics are trusted.
+## Production entry points
 
-Important:
-- `_run_skeleton_pipeline.py` does not run ingestion or invoice parsing.
-- `_run_full_refresh_pipeline.py` refreshes ingestion and parsed invoices by default. Code-only smart-skip is opt-in and does not prove source-data freshness.
-- `_run_full_refresh_pipeline.py` is the authoritative end-to-end path. It rebuilds ingestion, parsed invoices, invoice-price enrichment, maps, live billing sources, vendor recon detail, invoice control, OUTPUT_PROD, and SUMMARY_PROD together.
-- Invoice-price enrichment runs after vendor usage and invoice parsing and before every vendor reconciliation script.
-- Publication fails when populated invoice/account identities are missing their NetSuite/Salesforce links.
-- A complete run is recorded as authoritative only when Snowflake confirms that every canonical usage, invoice, billing-source, detail, intra-control, output, and summary table was altered after the run began. Partial and smart-skipped runs are labeled separately.
-- Use `--full-refresh-now` for a guaranteed one-time full baseline rebuild.
-- In `--full-refresh-now` mode, the runner now clears one vendor slice at a time before each ingestion script to prevent shared-table wipeouts if a later step fails.
-- Use `--enable-smart-skip` only when upstream source freshness has been verified independently.
+### Complete refresh
 
-## Proofpoint Validation Note (Important)
+Run `Reconciliation/_run_full_refresh_pipeline.py` for the authoritative end-to-end refresh. It:
 
-For raw usage inspection, do not use GROUP BY ALL unless you intentionally want
-deduplicated row signatures. It collapses duplicate records and can understate
-total quantity.
+1. ingests NetSuite invoice and vendor source data;
+2. backfills canonical invoice rates;
+3. validates source freshness;
+4. rebuilds the master Salesforce partner directory;
+5. rebuilds governed partner and SKU reference views;
+6. executes the reconciliation pipeline;
+7. validates canonical publication and app dependencies.
 
-Example:
-- Applied Network Solutions, Proofpoint, 2026-05 Professional
-  - Raw true total (SUM(quantity)): 585
-  - GROUP BY ALL signature total: 513
-  - Difference: 72 seats from duplicate raw rows collapsed by GROUP BY ALL
+The runner stops on any failed required step. `--skip-ingestion` and `--skip-maps` are controlled operational overrides, not the default production path.
 
-Use this query to validate true raw totals:
+### Reconciliation-only refresh
 
-```sql
-SELECT
-  vendor_partner_name,
-  vendor_product_sku,
-  SUM(quantity) AS qty,
-  SUM(amount)   AS amt
-FROM ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_USAGE_PROD
-WHERE vendor = 'Proofpoint'
-  AND billing_month = '2026-05-01'
-  AND vendor_partner_name ILIKE '%applied%'
-GROUP BY 1,2
-ORDER BY 1,2;
-```
+Run `Reconciliation/_run_skeleton_pipeline.py` only when source tables are already current. It rebuilds maps, vendor details, shared detail, and the canonical app tables without re-reading source files.
 
-## The Two Levers for Improvement
+### Application
 
-1. **Partner Map** — Edit `THIRD_PARTY_RECON_PARTNER_MAP_PROD` in Snowflake → re-run `Maps/sql/02_unified_reference_maps.sql` → re-run pipeline
-2. **SKU Map** — Edit `THIRD_PARTY_RECON_SKU_MAP_PROD` in Snowflake → re-run `Maps/sql/02_unified_reference_maps.sql` → re-run pipeline
+The production UI entry point is `App/combined_recon_app.py`. It reads the two canonical app tables directly and uses Snowflake table freshness to invalidate cached data.
 
-## Current Pipeline Performance (2026-09-02 strict rebuild)
+## Runtime requirements
 
-| Vendor | Clear % | Note |
-|---|---|---|
-| Proofpoint | 93.0% | strict monetary classifier |
-| SentinelOne | 82.1% | zero-versus-zero rows excluded |
-| ESET | 78.5% | zero-versus-zero rows excluded |
-| Acronis | 66.6% | zero-versus-zero rows excluded; structural audit required |
-| Auvik | 65.3% | strict monetary classifier |
-| Exium | 61.3% | strict monetary classifier |
-| Webroot | 54.2% | zero-versus-zero rows excluded; structural audit required |
-| Bitdefender | 53.5% | strict monetary classifier; shortfall audit required |
-| KeepIT | 35.4% | structural and financial audit required |
+- Python 3.12 or a compatible supported version.
+- Packages used by the retained source, including Streamlit, pandas, NumPy, Altair, openpyxl, and the Snowflake connector.
+- Workspace-level `TEMPLATES.Python.connection` available from the workspace root.
+- Snowflake access to:
+  - role `DEVELOPER`
+  - warehouse `REPORTING_WH`
+  - database `ANALYTICS_DEV`
+  - schema `DBT_NFOLD_TRANSFORMATION`
+- Synced source workbooks at the ingestion defaults, or explicit source-path CLI overrides supported by each ingestion script.
 
-Rates use loaded vendor-months only. Rows with explicit zero vendor amount and
-zero CW amount are retained in shared detail for audit but excluded from output
-and KPI denominators.
+Repository paths are derived from each entry point and are not tied to one clone location. Vendor workbook defaults remain operator-specific because they identify the controlled production source folders.
 
-**OUTPUT_PROD (current full rebuild)**: 86,695 rows across 9 vendors.
+## Governed mapping maintenance
 
-## Snowflake Environment
+Production mapping state lives in Snowflake, not in local snapshots.
 
-- Role: `DEVELOPER`
-- Warehouse: `REPORTING_WH`
-- Database: `ANALYTICS_DEV`
-- Schema: `DBT_NFOLD_TRANSFORMATION`
+- Partner source table: `THIRD_PARTY_RECON_PARTNER_MAP_PROD`
+- Manual overlay table: `THIRD_PARTY_RECON_PARTNER_MAP_MANUAL`
+- Master Salesforce directory: `MASTER_SF_PARTNER_LIST`
+- Governed partner views: `RECON_PARTNER_MAP`, `RECON_PARTNER_MAP_MONTHLY`
+- Governed SKU table/view: `RECON_SKU_MAP`
 
-## Do-Nots
+Retained maintenance utilities:
 
-- Do NOT bypass maps by hardcoding manual partner/SKU overrides in recon SQL.
-- Do NOT reintroduce any snapshot fallback path into the production orchestrators
-- Do NOT create per-vendor staging tables beyond `<VENDOR>_RECON_DETAIL`
-- `_LEGACY_20260823` tables are historical snapshots only; do not route active pipeline logic through them
-- Do NOT recreate legacy matched/resolved billing tables; vendor recon scripts are source-driven from unified billing sources
-- Do NOT route app-visible months through CW-only future billing periods when vendor usage files do not exist for that vendor
+- `Maps/tools/sync_sentinelone_partner_mapping.py` loads approved SentinelOne partner mappings.
+- `Maps/tools/load_webroot_sku_map.py` transactionally replaces and validates the Webroot SKU slice from `Maps/seeds/WEBROOT_RECON_SKU_MAP.csv`.
+
+After a mapping change, run the reconciliation-only pipeline or the complete refresh. The pipeline always creates `MASTER_SF_PARTNER_LIST` before rebuilding the unified references.
+
+## Release checklist
+
+Before a board demonstration or production promotion:
+
+1. Confirm all expected source months are present.
+2. Run the complete refresh through the governed production execution environment.
+3. Confirm every required ingestion, mapping, vendor reconciliation, shared-detail, and publication step succeeds.
+4. Verify only loaded vendor-months contribute to YTD metrics.
+5. Confirm app headline, month table, exception queue, and vendor detail totals agree with the canonical tables.
+6. Label any native vendor diagnostic explicitly; never substitute it for the app KPI.
+7. Confirm no test, snapshot, benchmark, archive, audit output, or generated log was added to the repository.
+
+## Repository layout
+
+- `App/` — production Streamlit application.
+- `Ingestion/` — production Python ingestion and invoice-rate enrichment.
+- `Maps/sql/` — production governed reference SQL.
+- `Maps/tools/` — approved transactional mapping loaders.
+- `Maps/seeds/` — input required by the Webroot mapping loader.
+- `Reconciliation/` — production vendor SQL, shared-detail SQL, orchestrators, canonical classifier, and canonical publisher.
+- `.github/copilot-instructions.md` — repository governance for automated changes.
+
+Runtime logs and generated outputs are intentionally ignored and regenerated outside version control.
+
+## Naming conventions
+
+- Production source directories use PascalCase: `App`, `Ingestion`, `Maps`, and `Reconciliation`.
+- Vendor ingestion entry points use `<Vendor>_Vendor_Usage_Ingestion_Prod.py`.
+- Vendor reconciliation entry points use `<Vendor>_Reconciliation_Script_Prod.sql`.
+- Ordered shared SQL uses a two-digit execution prefix followed by lowercase snake case.
+- Internal Python modules and orchestration scripts use lowercase snake case.
+- Governed seed filenames mirror their Snowflake object names in uppercase snake case.
+- Repository-relative paths use forward slashes and are resolved with `pathlib.Path`.

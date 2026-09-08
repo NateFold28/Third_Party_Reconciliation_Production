@@ -16,25 +16,25 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO = Path(r"C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline")
-PROJECT_ROOT = Path(r"C:\Users\Nate.Fold\projects")
+REPO = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = REPO.parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from TEMPLATES.Python.connection import get_snowflake_connection  # noqa: E402
 
 INGESTION_SCRIPTS = [
-    r"Ingestion\Acronis_Vendor_Usage_Ingestion_Prod.py",
-    r"Ingestion\Auvik_Vendor_Usage_Ingestion_Prod.py",
+    "Ingestion/Acronis_Vendor_Usage_Ingestion_Prod.py",
+    "Ingestion/Auvik_Vendor_Usage_Ingestion_Prod.py",
     # Bitdefender ingestion retired 2026-08-30. Vendor usage is now built
     # natively in _run_skeleton_pipeline.py STEP 0b from
     # ANALYTICS.DBO.PRODUCT_MANAGEMENT__ROYALTIES (see
     # Reconciliation/00_bitdefender_vendor_usage_rebuild.sql).
-    r"Ingestion\ESET_Vendor_Usage_Ingestion_Prod.py",
-    r"Ingestion\Exium_Vendor_Usage_Ingestion_Prod.py",
-    r"Ingestion\KeepIT_Vendor_Usage_Ingestion_Prod.py",
-    r"Ingestion\Proofpoint_Vendor_Usage_Ingestion_Prod.py",
-    r"Ingestion\SentinelOne_Vendor_Usage_Ingestion_Prod.py",
-    r"Ingestion\Webroot_Vendor_Usage_Ingestion_Prod.py",
+    "Ingestion/ESET_Vendor_Usage_Ingestion_Prod.py",
+    "Ingestion/Exium_Vendor_Usage_Ingestion_Prod.py",
+    "Ingestion/KeepIT_Vendor_Usage_Ingestion_Prod.py",
+    "Ingestion/Proofpoint_Vendor_Usage_Ingestion_Prod.py",
+    "Ingestion/SentinelOne_Vendor_Usage_Ingestion_Prod.py",
+    "Ingestion/Webroot_Vendor_Usage_Ingestion_Prod.py",
 ]
 
 INGESTION_EXTRA_ARGS: dict[str, list[str]] = {
@@ -379,6 +379,8 @@ def main() -> int:
         _save_state(state)
 
     if not args.skip_maps:
+        if not run_sql_file(REPO / "Maps" / "sql" / "03_master_sf_partner_list.sql", "Rebuild master Salesforce partner directory"):
+            return 1
         if not run_sql_file(REPO / "Maps" / "sql" / "02_unified_reference_maps.sql", "Rebuild unified reference maps"):
             return 1
 
@@ -387,7 +389,11 @@ def main() -> int:
             return 1
 
     if not args.skip_recon:
-        cmd = [sys.executable, str(REPO / "Reconciliation" / "_run_skeleton_pipeline.py")]
+        cmd = [
+            sys.executable,
+            str(REPO / "Reconciliation" / "_run_skeleton_pipeline.py"),
+            "--skip-maps",
+        ]
         if not run_cmd(cmd, "Run skeleton reconciliation pipeline", REPO / "Reconciliation"):
             state["recon_status"] = "failed"
             _save_state(state)

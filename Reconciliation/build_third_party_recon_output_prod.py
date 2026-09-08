@@ -21,8 +21,9 @@ from __future__ import annotations
 import sys, time
 from pathlib import Path
 
-REPO = Path(r"C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline")
-sys.path.insert(0, r"C:\Users\Nate.Fold\projects")
+REPO = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = REPO.parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
 from TEMPLATES.Python.connection import get_snowflake_connection  # noqa: E402
 from canonical_outcomes import strict_outcome_case  # noqa: E402
 

@@ -1,7 +1,6 @@
 -- =============================================================================
 -- 00_bitdefender_vendor_usage_rebuild.sql
--- Native replacement for the deprecated Excel-based Bitdefender ingestion
--- (Ingestion/_archive/Bitdefender_Vendor_Usage_Ingestion_Prod.py).
+-- Native production rebuild for Bitdefender vendor usage.
 --
 -- Populates THIRD_PARTY_RECON_VENDOR_USAGE_PROD Bitdefender rows directly from
 -- ANALYTICS.DBO.PRODUCT_MANAGEMENT__ROYALTIES using the same inclusion rules

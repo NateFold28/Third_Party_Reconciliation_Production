@@ -1,4 +1,4 @@
--- =============================================================================
+﻿-- =============================================================================
 -- UNIFIED BILLING SOURCE TABLES (PRODUCTION SCOPE)
 -- =============================================================================
 -- Centralized billing-source layer used by:
@@ -431,8 +431,9 @@ WHERE COALESCE(qty, 0) <> 0
 -- unused WEBROOT_TRT_PROD base table) have been dropped. All vendor scripts
 -- now source usage directly from
 --     ANALYTICS.DBO_BASE_CW_DP_TRT.BASE_CW_DP_TRT_V_CS_BILLING_PRODUCT_USAGE
--- via inline direct-from-live CTEs. Non-wired vendors (Auvik, Bitdefender,
--- ESET) leave API_QUANTITY / AVG_API_QUANTITY NULL until they are re-wired.
+-- via inline direct-from-live CTEs. Bitdefender and ESET leave
+-- API_QUANTITY / AVG_API_QUANTITY NULL; Auvik is wired directly in its
+-- reconciliation SQL.
 -- =============================================================================
 DROP VIEW  IF EXISTS THIRD_PARTY_RECON_TRT_BILLING_PROD;
 DROP VIEW  IF EXISTS THIRD_PARTY_RECON_SOURCE_TRT_PROD;

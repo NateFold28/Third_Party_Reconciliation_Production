@@ -2,7 +2,7 @@
 -- 02_unified_reference_maps.sql   (idempotent v3.1 — HYBRID VIEW/TABLE LAYOUT)
 --
 -- 2026-08-31 rewrite: converted the governed-map layer to reduce sprawl and
--- guarantee seed edits land immediately. Layout:
+-- guarantee governed source edits land immediately. Layout:
 --
 --   OBJECT                            | KIND  | RATIONALE
 --   ----------------------------------|-------|-----------------------------
@@ -14,7 +14,7 @@
 --   RECON_PARTNER_MAP_MONTHLY         | TABLE | RECON_PARTNER_MAP × 240-month spine
 --                                     |       | (~1.7M rows; rebuilt at STEP 0)
 --   V_RECON_PARTNER_MAP_MONTHLY_NORM  | VIEW  | normalized-name fallback
---   RECON_SKU_MAP                     | VIEW  | live over seed + pricebook
+--   RECON_SKU_MAP                     | VIEW  | live over governed source + pricebook
 --   V_RECON_PRICEBOOK_TIER_LOOKUP     | VIEW  | quantity-aware tier price lookup
 --
 -- User-facing guarantee: any edit to `THIRD_PARTY_RECON_PARTNER_MAP_PROD` or
@@ -22,16 +22,12 @@
 -- The 3 governed tables are rebuilt as pipeline STEP 0 (`run_repo_sql_file` of
 -- this script, invoked by `_run_skeleton_pipeline.py`). No manual step required.
 --
--- Prior version (all 4 as materialized tables, rebuilt manually) is archived at:
---   Maps/sql/_archive_20260831_governed_view_migration/02_unified_reference_maps_PRE_VIEW_MIGRATION.sql
---
 -- Sources:
 --   THIRD_PARTY_RECON_PARTNER_MAP_PROD  (production partner map source of truth)
 --   THIRD_PARTY_RECON_SKU_MAP_PROD      (production SKU map source of truth)
 --   ANALYTICS.DBO.CW_DW__MERGED_ACCOUNT_MAP  (upstream merge history — live)
 --   ANALYTICS.DBO_BASE_SALESFORCE.BASE_SALESFORCE__ACCOUNT  (parent rollup — live)
---   RECON_PRICEBOOK                     (base-tier price enrichment, loaded via
---                                        tools/load_pricebook_to_snowflake.py)
+--   RECON_PRICEBOOK                     (governed upstream base-tier enrichment)
 --
 -- Also kept:
 --   RECON_VENDOR_PARTNER_MANUAL_MAP  (manually-populated table — still a TABLE)
@@ -639,18 +635,16 @@ HAVING COUNT(DISTINCT sf_id) = 1;
 -- 2) SKU map  (source of truth: THIRD_PARTY_RECON_SKU_MAP_PROD)
 --
 -- Enrichment: LEFT JOIN RECON_PRICEBOOK to backfill VENDOR_UNIT_PRICE and
--- CW_UNIT_PRICE for seed rows that don't carry a price. RECON_PRICEBOOK is
--- loaded from the CW SKU_Information_PowerBI.xlsx workbook via
--- tools/load_pricebook_to_snowflake.py. The pricebook is refreshed manually
--- (Excel lives in OneDrive). At map-build time we pick one "base tier" per
+-- CW_UNIT_PRICE for source rows that don't carry a price. RECON_PRICEBOOK is
+-- maintained as a governed upstream input. At map-build time we pick one "base tier" per
 -- (VENDOR, CW_SKU) with priority EVERGREEN > MONTHLY > ANNUAL > ONE-TIME and,
 -- inside the winning billing type, the row with the smallest LOWERBOUND.
--- Seed values always win when present -- pricebook is fallback only.
+-- Governed source values always win when present -- pricebook is fallback only.
 --
 -- Full tier-aware lookup (pick price by seat count) is available via the
 -- helper view V_RECON_PRICEBOOK_TIER_LOOKUP defined further down.
 --
--- 2026-08-31: converted from TABLE to VIEW so seed edits to
+-- 2026-08-31: converted from TABLE to VIEW so source edits to
 -- THIRD_PARTY_RECON_SKU_MAP_PROD land immediately.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE VIEW RECON_SKU_MAP AS

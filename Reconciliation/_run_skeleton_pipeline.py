@@ -31,8 +31,9 @@ import sys
 import time
 from pathlib import Path
 
-REPO = Path(r"C:\Users\Nate.Fold\projects\PROJECTS\Third_Party_Reconciliation\Combined_Recon_Prod_Pipeline")
-sys.path.insert(0, r"C:\Users\Nate.Fold\projects")
+REPO = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = REPO.parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from TEMPLATES.Python.connection import get_snowflake_connection  # noqa: E402
 from canonical_outcomes import strict_outcome_case, structural_evidence_case
@@ -362,11 +363,6 @@ UPDATE {DETAIL_TABLE_STAGE}
 SET OUTCOME_FLAG = ({strict_outcome_case()});
 """
 
-BITDEFENDER_MDR_BUNDLE_SQL = ""  # retired 2026-08-29: bundle overlay disabled.
-
-WEBROOT_RMM_DISCOUNT_SQL = ""  # retired 2026-08-29: relied on THIRD_PARTY_RECON_SOURCE_TRT_PROD (dropped).
-
-
 INV_ID_BACKFILL_SQL = f"""{USE}
 UPDATE {DETAIL_TABLE_STAGE} d
 SET INV_ID = z.inv_id
@@ -453,7 +449,7 @@ def run_sql(conn, sql: str, label: str) -> bool:
         return False
 
 
-def main(*, staged_only: bool = False) -> int:
+def main(*, staged_only: bool = False, rebuild_maps: bool = True) -> int:
     conn = get_snowflake_connection(
         role="DEVELOPER", warehouse="REPORTING_WH",
         database="ANALYTICS_DEV", schema="DBT_NFOLD_TRANSFORMATION",
@@ -483,32 +479,43 @@ def main(*, staged_only: bool = False) -> int:
         # NOTE: STEP 0a ONLY reads from the mapping tables and writes to the
         # derived governed layer. It never modifies THIRD_PARTY_RECON_PARTNER_MAP_PROD
         # or any other manually-maintained table.
-        print("\n=== STEP 0a: rebuild governed partner map from THIRD_PARTY_RECON_PARTNER_MAP_PROD ===")
-        if not run_repo_sql_file(
-            conn,
-            r"Maps\sql\02_unified_reference_maps.sql",
-            "rebuild RECON_PARTNER_MAP + RECON_PARTNER_MAP_MONTHLY (picks up new partner entries)",
-        ):
-            return 1
+        if rebuild_maps:
+            print("\n=== STEP 0a: rebuild master Salesforce partner directory ===")
+            if not run_repo_sql_file(
+                conn,
+                "Maps/sql/03_master_sf_partner_list.sql",
+                "rebuild MASTER_SF_PARTNER_LIST",
+            ):
+                return 1
 
-        print("\n=== STEP 0b: rebuild Bitdefender vendor usage from PRODUCT_MANAGEMENT__ROYALTIES ===")
+            print("\n=== STEP 0b: rebuild governed partner map from THIRD_PARTY_RECON_PARTNER_MAP_PROD ===")
+            if not run_repo_sql_file(
+                conn,
+                "Maps/sql/02_unified_reference_maps.sql",
+                "rebuild RECON_PARTNER_MAP + RECON_PARTNER_MAP_MONTHLY (picks up new partner entries)",
+            ):
+                return 1
+        else:
+            print("\n=== STEP 0a-0b: governed map rebuild skipped by caller ===")
+
+        print("\n=== STEP 0c: rebuild Bitdefender vendor usage from PRODUCT_MANAGEMENT__ROYALTIES ===")
         # Native replacement for the deprecated Excel-based ingestion. Populates
         # THIRD_PARTY_RECON_VENDOR_USAGE_PROD Bitdefender rows directly from
         # ANALYTICS.DBO.PRODUCT_MANAGEMENT__ROYALTIES (Contract + Usage + prior-month
         # Marketplace + CW MDR bundle split into ATS_EDR + GRAVITYZONE rows).
         if not run_repo_sql_file(
             conn,
-            r"Reconciliation\00_bitdefender_vendor_usage_rebuild.sql",
+            "Reconciliation/00_bitdefender_vendor_usage_rebuild.sql",
             "rebuild THIRD_PARTY_RECON_VENDOR_USAGE_PROD Bitdefender rows (native royalties)",
         ):
             return 1
 
-        print("\n=== STEP 0c: enrich vendor usage with canonical invoice rates ===")
+        print("\n=== STEP 0d: enrich vendor usage with canonical invoice rates ===")
         # This must run after vendor usage and invoice parsing, but before any
         # vendor reconciliation SQL consumes UNIT_PRICE and AMOUNT.
         if not run_repo_sql_file(
             conn,
-            r"Maps\sql\00b_backfill_invoice_prices.sql",
+            "Maps/sql/00b_backfill_invoice_prices.sql",
             "backfill vendor usage UNIT_PRICE + AMOUNT from canonical invoices",
         ):
             return 1
@@ -557,7 +564,7 @@ def main(*, staged_only: bool = False) -> int:
         print("\n=== STEP 2b: build vendor invoice vs raw usage control (invoice gate) ===")
         if not run_repo_sql_file(
             conn,
-            r"Reconciliation\10_vendor_invoice_usage_intra_prod.sql",
+            "Reconciliation/10_vendor_invoice_usage_intra_prod.sql",
             "build THIRD_PARTY_RECON_VENDOR_INVOICE_USAGE_INTRA_PROD",
         ):
             return 1
@@ -705,5 +712,10 @@ if __name__ == "__main__":
         action="store_true",
         help="Build and validate staging tables without publishing shared production detail/output.",
     )
+    parser.add_argument(
+        "--skip-maps",
+        action="store_true",
+        help="Skip map rebuilds when they were already handled by the calling orchestrator.",
+    )
     args = parser.parse_args()
-    raise SystemExit(main(staged_only=args.staged_only))
+    raise SystemExit(main(staged_only=args.staged_only, rebuild_maps=not args.skip_maps))

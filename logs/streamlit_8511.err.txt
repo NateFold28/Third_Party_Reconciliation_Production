@@ -1,3 +1,0 @@
-2026-08-28 13:39:17.167 Uvicorn server started on :::8511
-2026-08-28 13:39:19.508 Did not auto detect external IP.
-Please go to https://docs.streamlit.io/ for debugging hints.

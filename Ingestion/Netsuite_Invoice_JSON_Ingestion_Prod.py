@@ -42,11 +42,14 @@ import argparse
 import json
 import re
 import sys
+from pathlib import Path
 from typing import Callable
 
 import pandas as pd
 
-sys.path.insert(0, r"C:\Users\Nate.Fold\projects")
+REPO = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = REPO.parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
 from TEMPLATES.Python.connection import get_snowflake_connection  # noqa: E402
 
 TARGET_TABLE = "ANALYTICS_DEV.DBT_NFOLD_TRANSFORMATION.THIRD_PARTY_RECON_VENDOR_INVOICES"
